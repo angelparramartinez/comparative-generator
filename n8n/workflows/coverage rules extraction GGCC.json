@@ -1,0 +1,534 @@
+{
+  "name": "coverage rules extraction GGCC",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Test",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Ramo",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Hogar"
+                  }
+                ]
+              }
+            },
+            {
+              "fieldLabel": "Condicionado general",
+              "fieldType": "file"
+            },
+            {
+              "fieldLabel": "Ontology",
+              "fieldType": "file"
+            },
+            {
+              "fieldLabel": "Previuos step output",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -464,
+        -48
+      ],
+      "id": "7223fbfa-7b7c-4a3c-86ff-e5ca53e347b8",
+      "name": "On form submission",
+      "webhookId": "e7487133-578b-4238-9a84-c64710884fb6"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://docling:5001/v1/convert/file",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "Condicionado_general"
+            },
+            {
+              "name": "to_formats",
+              "value": "json"
+            },
+            {
+              "name": "include_images",
+              "value": "false"
+            },
+            {
+              "name": "table_mode",
+              "value": "accurate"
+            },
+            {
+              "name": "table_cell_matching",
+              "value": "false"
+            },
+            {
+              "name": "pdf_backend",
+              "value": "dlparse_v4"
+            },
+            {
+              "name": "do_ocr",
+              "value": "true"
+            },
+            {
+              "name": "force_ocr",
+              "value": "false"
+            },
+            {
+              "name": "do_table_structure",
+              "value": "true"
+            },
+            {
+              "name": "pipeline",
+              "value": "standard"
+            },
+            {
+              "name": "image_export_mode",
+              "value": "placeholder"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -208,
+        -48
+      ],
+      "id": "42ed95d5-6feb-4f91-814a-f6b0004d3f9a",
+      "name": "Convert"
+    },
+    {
+      "parameters": {
+        "jsCode": "function clean(text) {\n  if (!text) return '';\n\n  return text\n    .replace(/\\s+/g, ' ')\n    .replace(/\\u0000/g, '')\n    .trim();\n}\n\nfunction extractTexts(doc) {\n  const texts = [];\n\n  for (const t of doc.texts || []) {\n    const text = clean(t.text || t.orig);\n\n    if (!text) continue;\n\n    texts.push({\n      type: t.label || 'text',\n      text,\n      page: t.prov?.[0]?.page_no || null\n    });\n  }\n\n  return texts;\n}\n\nfunction extractTables(doc) {\n  const tables = [];\n\n  for (const table of doc.tables || []) {\n\n    const grid = table?.data?.grid;\n\n    if (!Array.isArray(grid)) {\n      continue;\n    }\n\n    const rows = [];\n\n    for (const row of grid) {\n\n      if (!Array.isArray(row)) {\n        continue;\n      }\n\n      const cells = row.map(cell => {\n        return clean(cell?.text || '');\n      });\n\n      // evitar filas vacías\n      if (cells.some(Boolean)) {\n        rows.push(cells);\n      }\n    }\n\n    tables.push({\n      label: table.label || 'table',\n      page: table.prov?.[0]?.page_no || null,\n      rows\n    });\n  }\n\n  return tables;\n}\n\nfunction buildMarkdownTable(rows) {\n  if (!rows?.length) return '';\n\n  const md = [];\n\n  for (const row of rows) {\n    md.push(`| ${row.join(' | ')} |`);\n  }\n\n  return md.join('\\n');\n}\n\nfunction buildChunks(doc) {\n\n  const chunks = [];\n\n  // TEXTS\n  const texts = extractTexts(doc);\n\n  for (const t of texts) {\n    chunks.push({\n      type: t.type,\n      page: t.page,\n      content: t.text\n    });\n  }\n\n  // TABLES\n  const tables = extractTables(doc);\n\n  for (const table of tables) {\n\n    chunks.push({\n      type: 'table',\n      page: table.page,\n      content: buildMarkdownTable(table.rows),\n      rows: table.rows\n    });\n  }\n\n  return chunks;\n}\n\n// =========================\n// MAIN\n// =========================\n\nconst raw =\n  $input.first().json.document?.json_content ||\n  $input.first().json.json_content ||\n  $input.first().json;\n\nconst doc =\n  typeof raw === 'string'\n    ? JSON.parse(raw)\n    : raw;\n\nconst chunks = buildChunks(doc);\n\nreturn [{\n  json: {\n    totalChunks: chunks.length,\n    chunks\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        16,
+        -48
+      ],
+      "id": "22954c72-b9a0-44da-bf0d-4f78cc4a76cd",
+      "name": "ast walker"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "Previuos_step_output",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -32,
+        -224
+      ],
+      "id": "3db5690e-1b55-498e-96ee-9bcafa5c4a6b",
+      "name": "Extract from File"
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = items[0].json.data;\n\nif (Array.isArray(data)) {\n  return data.map(item => ({ json: item }));\n}\n\nreturn [{ json: data }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        208,
+        -224
+      ],
+      "id": "49c32c20-fa64-450f-90b8-1c7d79da79d1",
+      "name": "clean data"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1600,
+        -32
+      ],
+      "id": "8fe995f4-2664-46f6-aae0-651dbc3c3c0f",
+      "name": "Merge chuncks with embeddings"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://qdrant:6333/collections/insurance_ontology/points/search",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "vector",
+              "value": "={{$json.embedding}}"
+            },
+            {
+              "name": "limit",
+              "value": "={{4}}"
+            },
+            {
+              "name": "with_payload",
+              "value": "={{true}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1984,
+        48
+      ],
+      "id": "bbc2570d-855e-4ba7-bb75-aedea1f6796c",
+      "name": "Qdrant Search"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2272,
+        -16
+      ],
+      "id": "3946cb7b-60f5-4312-8f27-c9c8f09d615b",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ========================================\n// CLEANUP NODE\n// ========================================\n\nconst input = items[0].json.chunks || items[0].json;\n\nconst cleaned = [];\n\n// --------------------------------------------------\n// CONFIG\n// --------------------------------------------------\n\nconst REMOVE_TYPES = new Set([\n  \"page_header\",\n  \"page_footer\"\n]);\n\nconst REMOVE_PATTERNS = [\n  /^\\(continúa en la pág/i,\n  /^\\d+$/,\n  /^G\\d+$/,\n  /^\\(\\w+\\)$/,\n  /^02\\s*\\/\\s*2026$/,\n];\n\nconst START_PATTERN = /^Artículo\\s+\\d+º/i;\n\n// --------------------------------------------------\n// HELPERS\n// --------------------------------------------------\n\nfunction normalizeText(text) {\n  return text\n    .replace(/\\s+/g, \" \")\n    .replace(/­/g, \"\") // soft hyphen\n    .replace(/\\s+([.,;:])/g, \"$1\")\n    .trim();\n}\n\nfunction shouldRemoveChunk(chunk) {\n  if (!chunk.content) return true;\n\n  if (REMOVE_TYPES.has(chunk.type)) {\n    return true;\n  }\n\n  const text = chunk.content.trim();\n\n  for (const pattern of REMOVE_PATTERNS) {\n    if (pattern.test(text)) {\n      return true;\n    }\n  }\n\n  return false;\n}\n\n// --------------------------------------------------\n// MAIN\n// --------------------------------------------------\n\nlet started = false;\n\nfor (const chunk of input) {\n\n  // remove invalid chunks\n  if (shouldRemoveChunk(chunk)) {\n    continue;\n  }\n\n  // normalize\n  const content = normalizeText(chunk.content);\n\n  if (!content) {\n    continue;\n  }\n\n  // skip everything before first article\n  if (!started) {\n\n    if (START_PATTERN.test(content)) {\n      started = true;\n    } else {\n      continue;\n    }\n  }\n\n  cleaned.push({\n    type: chunk.type,\n    page: chunk.page,\n    content\n  });\n}\n\n// --------------------------------------------------\n// OUTPUT\n// --------------------------------------------------\n\nreturn [\n  {\n    json: {\n      totalChunks: cleaned.length,\n      chunks: cleaned\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        -48
+      ],
+      "id": "14a4a1cb-232f-4f2f-afce-c8fcdbad2f02",
+      "name": "cleanup"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================\n// HIERARCHY BUILDER\n// n8n Code Node\n// =====================================================\n\nconst input = $input.first().json;\n\nconst chunks = input.chunks || [];\n\nconst hierarchy = [];\nconst stack = [];\n\n// =====================================================\n// HELPERS\n// =====================================================\n\nfunction normalize(text) {\n  return (text || \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\nfunction detectLevel(content, previousLevel = 1) {\n\n  const text = normalize(content);\n\n  // ==========================================\n  // LEVEL 1\n  // Artículo Xº\n  // ==========================================\n\n  if (/^Artículo\\s+\\d+/i.test(text)) {\n    return 1;\n  }\n\n  // ==========================================\n  // LEVEL 3\n  // 1.1. Título\n  // ==========================================\n\n  if (/^\\d+\\.\\d+\\.\\s*/.test(text)) {\n    return 3;\n  }\n\n  // ==========================================\n  // LEVEL 2\n  // 1. Título\n  // ==========================================\n\n  if (/^\\d+\\.\\s+/.test(text)) {\n    return 2;\n  }\n\n  // ==========================================\n  // LEVEL 4\n  // ¿Qué cubre?\n  // ¿Qué no cubre?\n  // ==========================================\n\n  if (/^¿Qué/i.test(text)) {\n    return 4;\n  }\n\n  // ==========================================\n  // SEMANTIC TITLES\n  // Coberturas sin numeración\n  // ==========================================\n\n  const words = text.split(\" \").length;\n\n  const looksLikeTitle =\n    words <= 8 &&\n    !text.endsWith(\".\") &&\n    !text.startsWith(\"-\");\n\n  if (looksLikeTitle) {\n\n    // Después de exclusiones/cobertura\n    // normalmente empieza una nueva garantía\n    if (previousLevel >= 4) {\n      return 2;\n    }\n\n    return previousLevel + 1;\n  }\n\n  // ==========================================\n  // DEFAULT\n  // ==========================================\n\n  return 99;\n}\n\nfunction createNode(chunk, overrides = {}) {\n\n  const content = normalize(chunk.content);\n\n  return {\n    type: chunk.type,\n    level:\n      chunk.level ||\n      detectLevel(\n        content,\n        stack.length\n          ? stack[stack.length - 1].level\n          : 1\n      ),\n    page: chunk.page || null,\n    content,\n    children: [],\n    ...overrides\n  };\n}\n\n// =====================================================\n// MAIN LOOP\n// =====================================================\n\nfor (const chunk of chunks) {\n\n  let chunkType = chunk.type || \"text\";\n\n  const chunkContent = normalize(chunk.content);\n\n  // ===================================================\n  // NORMALIZE \"¿QUÉ...\" AS HEADERS\n  // incluso si vienen como list_item/text\n  // ===================================================\n\n  if (\n    /^¿Qué/i.test(chunkContent)\n  ) {\n    chunkType = \"section_header\";\n  }\n\n  // ===================================================\n  // NORMALIZE SEMANTIC HEADERS\n  // ===================================================\n\n  if (\n    chunkType !== \"section_header\"\n  ) {\n\n    const words = chunkContent.split(\" \").length;\n\n    const looksLikeSemanticTitle =\n      words <= 8 &&\n      !chunkContent.endsWith(\".\") &&\n      !chunkContent.startsWith(\"-\");\n\n    if (looksLikeSemanticTitle) {\n      chunkType = \"section_header\";\n    }\n  }\n\n  // ===================================================\n  // SECTION HEADERS\n  // ===================================================\n\n  if (chunkType === \"section_header\") {\n\n    // ==========================================\n    // CASO:\n    // \"Título ¿Qué cubre?\"\n    // ==========================================\n\n    const combinedMatch =\n      chunkContent.match(\n        /^(.*?)\\s+(¿Qué(?:\\s+no)?\\s+cubre.*)$/i\n      );\n\n    if (combinedMatch) {\n\n      const parentTitle =\n        normalize(combinedMatch[1]);\n\n      const childTitle =\n        normalize(combinedMatch[2]);\n\n      const parentNode = {\n        type: \"section_header\",\n        level: detectLevel(\n          parentTitle,\n          stack.length\n            ? stack[stack.length - 1].level\n            : 1\n        ),\n        page: chunk.page || null,\n        content: parentTitle,\n        children: []\n      };\n\n      const childNode = {\n        type: \"section_header\",\n        level: 4,\n        page: chunk.page || null,\n        content: childTitle,\n        children: []\n      };\n\n      // ==========================================\n      // CLEAN STACK\n      // ==========================================\n\n      while (\n        stack.length > 0 &&\n        stack[stack.length - 1].level >= parentNode.level\n      ) {\n        stack.pop();\n      }\n\n      // ==========================================\n      // INSERT PARENT\n      // ==========================================\n\n      if (stack.length === 0) {\n        hierarchy.push(parentNode);\n      } else {\n        stack[stack.length - 1]\n          .children\n          .push(parentNode);\n      }\n\n      // ==========================================\n      // INSERT CHILD\n      // ==========================================\n\n      parentNode.children.push(childNode);\n\n      // ==========================================\n      // PUSH TO STACK\n      // ==========================================\n\n      stack.push(parentNode);\n      stack.push(childNode);\n\n      continue;\n    }\n\n    // ==========================================\n    // NORMAL HEADER\n    // ==========================================\n\n    const node = createNode({\n      ...chunk,\n      type: chunkType\n    });\n\n    // ==========================================\n    // CLEAN STACK\n    // ==========================================\n\n    while (\n      stack.length > 0 &&\n      stack[stack.length - 1].level >= node.level\n    ) {\n      stack.pop();\n    }\n\n    // ==========================================\n    // INSERT NODE\n    // ==========================================\n\n    if (stack.length === 0) {\n      hierarchy.push(node);\n    } else {\n      stack[stack.length - 1]\n        .children\n        .push(node);\n    }\n\n    // ==========================================\n    // PUSH HEADER ONLY\n    // ==========================================\n\n    stack.push(node);\n\n    continue;\n  }\n\n  // ===================================================\n  // TEXT / LIST_ITEM / PARAGRAPH\n  // ===================================================\n\n  const leaf = {\n    type: chunkType,\n    page: chunk.page || null,\n    content: chunkContent\n  };\n\n  if (stack.length === 0) {\n    hierarchy.push(leaf);\n  } else {\n    stack[stack.length - 1]\n      .children\n      .push(leaf);\n  }\n}\n\n// =====================================================\n// OUTPUT\n// =====================================================\n\nreturn [\n  {\n    json: {\n      hierarchy\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        432,
+        -48
+      ],
+      "id": "3eb37d31-c3d0-4c1b-b737-f0ca727cdc11",
+      "name": "Hierarchy Builder"
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================\n// SEMANTIC ASSEMBLER\n// n8n Code Node\n// ============================================\n\nconst input = $input.first().json;\n\nconst hierarchy = input.hierarchy || [];\n\nconst semanticUnits = [];\n\nlet idCounter = 1;\n\n// ============================================\n// SECTION DETECTION\n// ============================================\n\nfunction detectSectionType(text = \"\") {\n  const t = text.toLowerCase();\n\n  if (/(qué no cubre|no cubre|exclusiones?)/i.test(t)) {\n    return \"exclusion\";\n  }\n\n  if (/(qué cubre|coberturas?|garantías?)/i.test(t)) {\n    return \"coverage\";\n  }\n\n  if (/(límites?|limitaciones?|sublímites?)/i.test(t)) {\n    return \"limit\";\n  }\n\n  if (/(franquicias?|deducible)/i.test(t)) {\n    return \"deductible\";\n  }\n\n  if (/(condiciones?|requisitos?)/i.test(t)) {\n    return \"condition\";\n  }\n\n  if (/(ámbito territorial|territorial)/i.test(t)) {\n    return \"territorial_scope\";\n  }\n\n  return null;\n}\n\n// ============================================\n// COVERAGE HEADER DETECTION\n// ============================================\n\nfunction isCoverageHeader(text = \"\") {\n  if (!text) return false;\n\n  if (detectSectionType(text)) {\n    return false;\n  }\n\n  const t = text.trim();\n\n  // Numeric coverage patterns\n  if (/^\\d+(\\.\\d+)*\\.?\\s+/.test(t)) {\n    return true;\n  }\n\n  // Common coverage patterns\n  if (/(garantía|cobertura|protección|asistencia)/i.test(t)) {\n    return true;\n  }\n\n  return true;\n}\n\n// ============================================\n// SEMANTIC TYPE DETECTION\n// ============================================\n\nfunction detectSemanticType(text = \"\", currentSection = null) {\n\n  const t = text.toLowerCase();\n\n  // EXCLUSION\n  if (\n    /(no cubre|no quedan cubiertos|queda excluido|se excluye|esta cobertura no|no se garantiza)/i.test(t)\n  ) {\n    return \"exclusion\";\n  }\n\n  // DEDUCTIBLE\n  if (\n    /(franquicia|deducible|a cargo del asegurado)/i.test(t)\n  ) {\n    return \"deductible\";\n  }\n\n  // LIMIT\n  if (\n    /(hasta|máximo|con el límite|no superior a|hasta un máximo)/i.test(t)\n  ) {\n    return \"limit\";\n  }\n\n  // CONDITION\n  if (\n    /(siempre que|cuando se asegure|en caso de|a condición de|si )/i.test(t)\n  ) {\n    return \"condition\";\n  }\n\n  // DEPENDENCY\n  if (\n    /(siempre que esté contratada|requiere la contratación|solo si se incluye)/i.test(t)\n  ) {\n    return \"dependency\";\n  }\n\n  // TERRITORIAL\n  if (\n    /(territorio|españa|unión europea|extranjero|ámbito territorial)/i.test(t)\n  ) {\n    return \"territorial_scope\";\n  }\n\n  // REQUIREMENT\n  if (\n    /(deberá|será necesario|obligatorio|requiere)/i.test(t)\n  ) {\n    return \"requirement\";\n  }\n\n  // SECTION FALLBACK\n  if (currentSection) {\n    return currentSection;\n  }\n\n  return \"unknown\";\n}\n\n// ============================================\n// TEXT NORMALIZATION\n// ============================================\n\nfunction normalizeText(text) {\n  return text\n    .replace(/\\s+/g, \" \")\n    .replace(/\\s([.,;:])/g, \"$1\")\n    .trim();\n}\n\n// ============================================\n// EMIT SEMANTIC UNIT\n// ============================================\n\nfunction emitSemanticUnit(context, text, sourceHeaders = []) {\n\n  const normalized = normalizeText(text);\n\n  if (!normalized) return;\n\n  const semanticType = detectSemanticType(\n    normalized,\n    context.currentSection\n  );\n\n  semanticUnits.push({\n    id: `su_${String(idCounter++).padStart(5, \"0\")}`,\n\n    article: context.article || null,\n\n    coverage_path: [...context.coveragePath],\n\n    section: context.currentSection || \"unknown\",\n\n    semantic_type: semanticType,\n\n    text: normalized,\n\n    source_headers: sourceHeaders,\n\n    lineage: [\n      context.article,\n      ...context.coveragePath\n    ].filter(Boolean),\n\n    metadata: {\n      contains_limits:\n        semanticType === \"limit\",\n\n      contains_conditions:\n        semanticType === \"condition\",\n\n      contains_exclusions:\n        semanticType === \"exclusion\",\n\n      word_count:\n        normalized.split(/\\s+/).length\n    }\n  });\n}\n\n// ============================================\n// CONSOLIDATE TEXT CHILDREN\n// ============================================\n\nfunction consolidateTextNodes(children = []) {\n\n  const blocks = [];\n\n  let currentBlock = [];\n\n  function flush() {\n\n    if (currentBlock.length) {\n\n      blocks.push({\n        type: \"text_block\",\n        content: currentBlock.join(\"\\n\")\n      });\n\n      currentBlock = [];\n    }\n  }\n\n  for (const child of children) {\n\n    // TEXT NODES\n    if (\n      child.type === \"text\" ||\n      child.type === \"paragraph\"\n    ) {\n      currentBlock.push(child.content);\n      continue;\n    }\n\n    // LIST ITEMS\n    if (child.type === \"list_item\") {\n\n      currentBlock.push(`- ${child.content}`);\n      continue;\n    }\n\n    // STRUCTURAL NODE\n    flush();\n\n    blocks.push(child);\n  }\n\n  flush();\n\n  return blocks;\n}\n\n// ============================================\n// DFS WALKER\n// ============================================\n\nfunction walk(node, parentContext = {}) {\n\n  const context = {\n    article: parentContext.article || null,\n    coveragePath: [...(parentContext.coveragePath || [])],\n    currentSection: parentContext.currentSection || null\n  };\n\n  // ========================================\n  // SECTION HEADERS\n  // ========================================\n\n  if (node.type === \"section_header\") {\n\n    const header = normalizeText(node.content);\n\n    // ARTICLE\n    if (/^artículo/i.test(header)) {\n\n      context.article = header;\n    }\n\n    // SEMANTIC SECTION\n    const detectedSection = detectSectionType(header);\n\n    if (detectedSection) {\n\n      context.currentSection = detectedSection;\n    }\n    else {\n\n      // COVERAGE HEADER\n      if (isCoverageHeader(header)) {\n\n        context.coveragePath.push(header);\n      }\n    }\n  }\n\n  // ========================================\n  // CHILD CONSOLIDATION\n  // ========================================\n\n  const children = consolidateTextNodes(node.children || []);\n\n  // ========================================\n  // PROCESS CHILDREN\n  // ========================================\n\n  for (const child of children) {\n\n    // CONSOLIDATED TEXT BLOCK\n    if (child.type === \"text_block\") {\n\n      emitSemanticUnit(\n        context,\n        child.content,\n        [...context.coveragePath]\n      );\n\n      continue;\n    }\n\n    // RECURSIVE DESCENT\n    walk(child, context);\n  }\n}\n\n// ============================================\n// ROOT WALK\n// ============================================\n\nfor (const node of hierarchy) {\n  walk(node, {});\n}\n\n// ============================================\n// OUTPUT\n// ============================================\n\nreturn [\n  {\n    json: {\n      semantic_units: semanticUnits\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        640,
+        -48
+      ],
+      "id": "755699f8-fae5-4f9f-b12b-acb92ea4755f",
+      "name": "Semantic Assembler"
+    },
+    {
+      "parameters": {
+        "jsCode": "// =====================================================\n// ONTOLOGY EMBEDDING BUILDER\n// n8n Code Node\n// =====================================================\n\nconst input = $input.first().json;\n\nconst semanticUnits = input.semantic_units || [];\n\nconst embeddingDocuments = [];\n\n// =====================================================\n// HELPERS\n// =====================================================\n\nfunction normalize(text) {\n  return (text || \"\")\n    .replace(/\\s+/g, \" \")\n    .trim();\n}\n\nfunction buildEmbeddingText(unit) {\n\n  const parts = [];\n\n  // ==========================================\n  // ARTICLE\n  // ==========================================\n\n  if (unit.article) {\n    parts.push(`Artículo: ${normalize(unit.article)}`);\n  }\n\n  // ==========================================\n  // COVERAGE PATH\n  // ==========================================\n\n  if (\n    Array.isArray(unit.coverage_path) &&\n    unit.coverage_path.length > 0\n  ) {\n    parts.push(\n      `Cobertura: ${unit.coverage_path.join(\" > \")}`\n    );\n  }\n\n  // ==========================================\n  // SECTION\n  // ==========================================\n\n  if (unit.section) {\n    parts.push(`Sección: ${unit.section}`);\n  }\n\n  // ==========================================\n  // SEMANTIC TYPE\n  // ==========================================\n\n  if (unit.semantic_type) {\n    parts.push(\n      `Tipo semántico: ${unit.semantic_type}`\n    );\n  }\n\n  // ==========================================\n  // SOURCE HEADERS\n  // ==========================================\n\n  if (\n    Array.isArray(unit.source_headers) &&\n    unit.source_headers.length > 0\n  ) {\n    parts.push(\n      `Headers: ${unit.source_headers.join(\" > \")}`\n    );\n  }\n\n  // ==========================================\n  // LINEAGE\n  // ==========================================\n\n  if (\n    Array.isArray(unit.lineage) &&\n    unit.lineage.length > 0\n  ) {\n    parts.push(\n      `Jerarquía: ${unit.lineage.join(\" > \")}`\n    );\n  }\n\n  // ==========================================\n  // LEGAL TEXT\n  // ==========================================\n\n  if (unit.text) {\n    parts.push(\n      `Texto jurídico: ${normalize(unit.text)}`\n    );\n  }\n\n  return parts.join(\"\\n\");\n}\n\n// =====================================================\n// MAIN LOOP\n// =====================================================\n\nfor (const unit of semanticUnits) {\n\n  const embeddingText = buildEmbeddingText(unit);\n\n  embeddingDocuments.push({\n\n    id: unit.id,\n\n    embedding_text: embeddingText,\n\n    semantic_unit: unit\n\n  });\n}\n\n// =====================================================\n// OUTPUT\n// =====================================================\n\nreturn [\n  {\n    json: {\n      total_documents: embeddingDocuments.length,\n      embedding_documents: embeddingDocuments\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        848,
+        -48
+      ],
+      "id": "f1812f3d-e677-44c7-ba4a-b3c4d03686bd",
+      "name": "Ontology Embedding Builder"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "nomic-embed-text"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.embedding_text }}"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1280,
+        64
+      ],
+      "id": "7c3df868-4d6d-489e-8453-9ea7cded878b",
+      "name": "Generate chunks embeddings"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "embedding_documents",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1056,
+        -48
+      ],
+      "id": "4d595a86-89ea-4595-972d-56d9c2c0d58a",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itemsOut = [];\n\n/**\n * =========================================================\n * LEGAL RULE CANDIDATE DETECTOR\n * =========================================================\n *\n * OBJETIVO:\n * Detectar semantic units que probablemente\n * contienen reglas jurídicas computables.\n *\n * ESTE NODO:\n * ✔ detecta señales jurídicas\n * ✔ calcula confidence\n * ✔ clasifica complejidad\n * ✔ enruta hacia LLM\n * ✔ identifica spans\n * ✔ aplica semantic priors\n * ✔ evita overlaps\n * ✔ reduce falsos positivos\n * ✔ suprime señales redundantes\n * ✔ optimiza coste LLM\n * ✔ detecta exclusiones implícitas\n * ✔ detecta temporal limits\n * ✔ ayuda al Rule Chunker\n *\n * ESTE NODO NO:\n * ✘ extrae reglas\n * ✘ hace grounding ontológico\n * ✘ normaliza operadores\n *\n * =========================================================\n */\n\n\n// =========================================================\n// CUE DEFINITIONS\n// =========================================================\n\nconst cueDefinitions = [\n\n  // =====================================================\n  // LONGEST / MOST SPECIFIC FIRST\n  // =====================================================\n\n  // -----------------------------------------------------\n  // EXCLUDES_IF\n  // -----------------------------------------------------\n\n  {\n    type: \"excludes_if\",\n    strength: \"strong\",\n    confidence: 0.97,\n    regex: /\\bno se aplica cuando\\b/gi\n  },\n\n  /**\n   * IMPORTANTE:\n   * más restrictivo para reducir\n   * falsos positivos narrativos\n   */\n\n  {\n    type: \"excludes_if\",\n    strength: \"strong\",\n    confidence: 0.95,\n    regex: /\\bcuando no\\s+(exista|se cumpla|se produzca|haya|est[eé])\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // NEGATIONS\n  // -----------------------------------------------------\n\n  {\n    type: \"negation\",\n    strength: \"strong\",\n    confidence: 0.95,\n    regex: /\\bsalvo cuando\\b/gi\n  },\n\n  {\n    type: \"negation\",\n    strength: \"strong\",\n    confidence: 0.93,\n    regex: /\\ba menos que\\b/gi\n  },\n\n  {\n    type: \"negation\",\n    strength: \"medium\",\n    confidence: 0.84,\n    regex: /\\bsin perjuicio de\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // STRONG LIMITS\n  // -----------------------------------------------------\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.98,\n    regex: /\\bhasta el\\s+\\d{1,3}(?:[.,]\\d+)?\\s?%/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.98,\n    regex: /\\bhasta\\s+\\d+[.,]?\\d*\\s?(€|euros)\\b/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.96,\n    regex: /\\b\\d{1,3}(?:[.,]\\d+)?\\s?%/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.95,\n    regex: /\\b\\d+[.,]?\\d*\\s?(€|euros)\\b/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.94,\n    regex: /\\bmás de\\s+\\d+[.,]?\\d*\\s*(días|meses|años|€|euros|%)?/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.93,\n    regex: /\\b(superior|inferior)\\s+a\\s+\\d+/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"strong\",\n    confidence: 0.91,\n    regex: /\\bal menos\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // STRONG REQUIRES\n  // -----------------------------------------------------\n\n  {\n    type: \"requires\",\n    strength: \"strong\",\n    confidence: 0.95,\n    regex: /\\ba condición de que\\b/gi\n  },\n\n  {\n    type: \"requires\",\n    strength: \"strong\",\n    confidence: 0.92,\n    regex: /\\bser[aá] requisito\\b/gi\n  },\n\n  {\n    type: \"requires\",\n    strength: \"strong\",\n    confidence: 0.90,\n    regex: /\\brequerir[aá]\\b/gi\n  },\n\n  {\n    type: \"requires\",\n    strength: \"strong\",\n    confidence: 0.89,\n    regex: /\\bcondicionado a\\b/gi\n  },\n\n  {\n    type: \"requires\",\n    strength: \"strong\",\n    confidence: 0.90,\n    regex: /\\bsiempre que\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // DEPENDENCIES\n  // -----------------------------------------------------\n\n  {\n    type: \"depends_on\",\n    strength: \"strong\",\n    confidence: 0.91,\n    regex: /\\bsupeditad[oa]\\b/gi\n  },\n\n  {\n    type: \"depends_on\",\n    strength: \"medium\",\n    confidence: 0.82,\n    regex: /\\bdepende de\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // EXCLUDES\n  // -----------------------------------------------------\n\n  {\n    type: \"excludes\",\n    strength: \"strong\",\n    confidence: 0.98,\n    regex: /\\bquedan excluidos\\b/gi\n  },\n\n  {\n    type: \"excludes\",\n    strength: \"strong\",\n    confidence: 0.96,\n    regex: /\\bno se cubre\\b/gi\n  },\n\n  {\n    type: \"excludes\",\n    strength: \"strong\",\n    confidence: 0.96,\n    regex: /\\bno estarán cubiertos\\b/gi\n  },\n\n  {\n    type: \"excludes\",\n    strength: \"strong\",\n    confidence: 0.95,\n    regex: /\\bno quedará cubierta\\b/gi\n  },\n\n  {\n    type: \"excludes\",\n    strength: \"strong\",\n    confidence: 0.94,\n    regex: /\\bquedará limitada\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // MEDIUM CUES\n  // -----------------------------------------------------\n\n  {\n    type: \"requires\",\n    strength: \"medium\",\n    confidence: 0.76,\n    regex: /\\búnicamente\\b/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"medium\",\n    confidence: 0.80,\n    regex: /\\bmáximo\\b/gi\n  },\n\n  {\n    type: \"limit\",\n    strength: \"medium\",\n    confidence: 0.80,\n    regex: /\\bmínimo\\b/gi\n  },\n\n  {\n    type: \"optional_if\",\n    strength: \"medium\",\n    confidence: 0.74,\n    regex: /\\bopcional\\b/gi\n  },\n\n  // -----------------------------------------------------\n  // WEAK CUES\n  // -----------------------------------------------------\n\n  {\n    type: \"optional_if\",\n    strength: \"weak\",\n    confidence: 0.60,\n    regex: /\\bpodrá\\b/gi\n  }\n];\n\n\n// =========================================================\n// HELPERS\n// =========================================================\n\nfunction boostConfidence(\n  baseConfidence,\n  semanticType,\n  section,\n  cueType\n) {\n\n  let boosted = baseConfidence;\n\n  // -------------------------------------------------------\n  // semantic priors\n  // -------------------------------------------------------\n\n  if (\n    semanticType === \"exclusion\" &&\n    (\n      cueType === \"excludes\" ||\n      cueType === \"excludes_if\" ||\n      cueType === \"negation\"\n    )\n  ) {\n    boosted += 0.05;\n  }\n\n  if (\n    semanticType === \"condition\" &&\n    cueType === \"requires\"\n  ) {\n    boosted += 0.04;\n  }\n\n  if (\n    semanticType === \"limit\" &&\n    (\n      cueType === \"limit\" ||\n      cueType === \"temporal_limit\"\n    )\n  ) {\n    boosted += 0.05;\n  }\n\n  // -------------------------------------------------------\n  // section priors\n  // -------------------------------------------------------\n\n  if (\n    section === \"territorial_scope\" &&\n    cueType === \"limit\"\n  ) {\n    boosted += 0.04;\n  }\n\n  // -------------------------------------------------------\n  // clamp\n  // -------------------------------------------------------\n\n  if (boosted > 0.99) {\n    boosted = 0.99;\n  }\n\n  return Number(boosted.toFixed(2));\n}\n\n\n// =========================================================\n// DETECT LIMIT SUBTYPE\n// =========================================================\n\nfunction detectLimitSubtype(text) {\n\n  const t = text.toLowerCase();\n\n  if (\n    t.includes(\"día\") ||\n    t.includes(\"días\") ||\n    t.includes(\"mes\") ||\n    t.includes(\"meses\") ||\n    t.includes(\"año\") ||\n    t.includes(\"años\")\n  ) {\n    return \"temporal_limit\";\n  }\n\n  return \"limit\";\n}\n\n\n// =========================================================\n// OVERLAP DETECTION\n// =========================================================\n\nfunction hasOverlap(existingMatches, start, end) {\n\n  return existingMatches.some(existing => {\n\n    return (\n      start < existing.end &&\n      end > existing.start\n    );\n  });\n}\n\n\n// =========================================================\n// SUPPRESS REDUNDANT WEAK LIMITS\n// =========================================================\n\nfunction hasNearbyStrongLimit(matches, start) {\n\n  return matches.some(m => {\n\n    return (\n      (\n        m.type === \"limit\" ||\n        m.type === \"temporal_limit\"\n      ) &&\n      m.strength === \"strong\" &&\n      Math.abs(m.start - start) < 25\n    );\n  });\n}\n\n\n// =========================================================\n// SUPPRESS MAX/MIN\n// NEAR NUMERIC LIMITS\n// =========================================================\n\nfunction hasNearbyNumericLimit(matches, start) {\n\n  return matches.some(m => {\n\n    return (\n      (\n        m.type === \"limit\" ||\n        m.type === \"temporal_limit\"\n      ) &&\n      m.strength === \"strong\" &&\n      Math.abs(m.start - start) < 60\n    );\n  });\n}\n\n\n// =========================================================\n// COMPLEXITY\n// =========================================================\n\nfunction detectComplexity(cueMatches) {\n\n  const cueTypes = [\n    ...new Set(cueMatches.map(c => c.type))\n  ];\n\n  const strongCueCount =\n    cueMatches.filter(c => c.strength === \"strong\").length;\n\n  const hasNegation =\n    cueTypes.includes(\"negation\");\n\n  const hasMultipleCueTypes =\n    cueTypes.length > 1;\n\n  if (\n    hasNegation &&\n    hasMultipleCueTypes\n  ) {\n    return \"nested\";\n  }\n\n  if (\n    hasMultipleCueTypes ||\n    strongCueCount > 1\n  ) {\n    return \"compound\";\n  }\n\n  return \"simple\";\n}\n\n\n// =========================================================\n// SHOULD CALL LLM\n// =========================================================\n\nfunction shouldCallLLM(\n  cueMatches,\n  semanticType\n) {\n\n  const strongCues =\n    cueMatches.filter(c => c.strength === \"strong\");\n\n  const mediumCues =\n    cueMatches.filter(c => c.strength === \"medium\");\n\n  const cueTypes = [\n    ...new Set(cueMatches.map(c => c.type))\n  ];\n\n  // -------------------------------------------------------\n  // exclusions always matter\n  // -------------------------------------------------------\n\n  if (\n    semanticType === \"exclusion\"\n  ) {\n    return true;\n  }\n\n  // -------------------------------------------------------\n  // any strong cue\n  // -------------------------------------------------------\n\n  if (strongCues.length > 0) {\n    return true;\n  }\n\n  // -------------------------------------------------------\n  // multiple medium cues\n  // -------------------------------------------------------\n\n  if (mediumCues.length >= 2) {\n    return true;\n  }\n\n  // -------------------------------------------------------\n  // multiple cue types\n  // -------------------------------------------------------\n\n  if (cueTypes.length >= 2) {\n    return true;\n  }\n\n  return false;\n}\n\n\n// =========================================================\n// MAIN LOOP\n// =========================================================\n\nfor (const item of items) {\n\n  const su = item.json.semantic_unit || {};\n\n  const text = su.text || \"\";\n\n  const semanticType = su.semantic_type || \"\";\n\n  const section = su.section || \"\";\n\n  const coveragePath = su.coverage_path || [];\n\n  const lineage = su.lineage || [];\n\n  const cueMatches = [];\n\n  // =====================================================\n  // DETECT CUES\n  // =====================================================\n\n  for (const cue of cueDefinitions) {\n\n    const matches = [...text.matchAll(cue.regex)];\n\n    for (const match of matches) {\n\n      const start = match.index;\n      const end = match.index + match[0].length;\n\n      // -------------------------------------------------\n      // avoid overlaps\n      // -------------------------------------------------\n\n      if (\n        hasOverlap(cueMatches, start, end)\n      ) {\n        continue;\n      }\n\n      // -------------------------------------------------\n      // limit subtype\n      // -------------------------------------------------\n\n      let finalType = cue.type;\n\n      if (cue.type === \"limit\") {\n        finalType = detectLimitSubtype(match[0]);\n      }\n\n      // -------------------------------------------------\n      // suppress max/min\n      // near numeric limits\n      // -------------------------------------------------\n\n      if (\n        finalType === \"limit\" &&\n        cue.strength === \"medium\" &&\n        (\n          match[0].toLowerCase() === \"máximo\" ||\n          match[0].toLowerCase() === \"mínimo\"\n        ) &&\n        hasNearbyNumericLimit(cueMatches, start)\n      ) {\n        continue;\n      }\n\n      // -------------------------------------------------\n      // suppress weak limits\n      // near strong limits\n      // -------------------------------------------------\n\n      if (\n        finalType === \"limit\" &&\n        cue.strength === \"weak\" &&\n        hasNearbyStrongLimit(cueMatches, start)\n      ) {\n        continue;\n      }\n\n      const boostedConfidence = boostConfidence(\n        cue.confidence,\n        semanticType,\n        section,\n        finalType\n      );\n\n      cueMatches.push({\n\n        type: finalType,\n\n        strength: cue.strength,\n\n        confidence: boostedConfidence,\n\n        text: match[0],\n\n        start,\n\n        end\n      });\n    }\n  }\n\n  // =====================================================\n  // AGGREGATIONS\n  // =====================================================\n\n  const cueTypes = [\n    ...new Set(cueMatches.map(c => c.type))\n  ];\n\n  const strongestConfidence =\n    cueMatches.length > 0\n      ? Math.max(...cueMatches.map(c => c.confidence))\n      : 0;\n\n  const strongCueCount =\n    cueMatches.filter(c => c.strength === \"strong\").length;\n\n  const distinctLimitTexts = [\n    ...new Set(\n      cueMatches\n        .filter(c =>\n          c.type === \"limit\" ||\n          c.type === \"temporal_limit\"\n        )\n        .map(c => c.text.toLowerCase())\n    )\n  ];\n\n  /**\n   * IMPORTANTE:\n   * útil para Rule Chunker\n   * y reducción de complejidad artificial\n   */\n\n  const distinctCueTexts = [\n    ...new Set(\n      cueMatches.map(c => c.text.toLowerCase())\n    )\n  ];\n\n  const implicitExclusionCandidate =\n    semanticType === \"exclusion\" &&\n    cueMatches.length === 0;\n\n  // =====================================================\n  // OUTPUT\n  // =====================================================\n\n  itemsOut.push({\n\n    json: {\n\n      semantic_unit_id: su.id,\n\n      article: su.article,\n\n      section,\n\n      semantic_type: semanticType,\n\n      coverage_path: coveragePath,\n\n      lineage,\n\n      text,\n\n      metadata: su.metadata || {},\n\n      ontology_matches: item.json.result || [],\n\n      legal_cue_analysis: {\n\n        has_legal_cues:\n          cueMatches.length > 0,\n\n        cue_types: cueTypes,\n\n        cue_matches: cueMatches,\n\n        complexity:\n          detectComplexity(cueMatches),\n\n        cue_confidence:\n          strongestConfidence,\n\n        strong_cue_count:\n          strongCueCount,\n\n        distinct_cue_types_count:\n          cueTypes.length,\n\n        distinct_limit_values:\n          distinctLimitTexts.length,\n\n        distinct_cue_texts_count:\n          distinctCueTexts.length,\n\n        implicit_exclusion_candidate:\n          implicitExclusionCandidate,\n\n        should_call_llm:\n          shouldCallLLM(\n            cueMatches,\n            semanticType\n          )\n      }\n    }\n  });\n}\n\nreturn itemsOut;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2448,
+        -16
+      ],
+      "id": "2714392c-e449-485f-a304-7de9e569869e",
+      "name": "Legal Rule Candidate Detector"
+    },
+    {
+      "parameters": {
+        "jsCode": "const itemsOut = [];\n\n/**\n * =========================================================\n * RULE CHUNKER v4.1 STABLE\n * =========================================================\n *\n * NUEVO:\n * ✔ excluyéndose → excludes\n * ✔ con exclusión de → excludes\n * ✔ únicamente → requires\n *\n * =========================================================\n *\n * OBJETIVO:\n * Crear chunks jurídicos coherentes y enriquecidos\n * para el extractor LLM.\n *\n * =========================================================\n */\n\n\n// =========================================================\n// CONFIG\n// =========================================================\n\nconst MIN_CHUNK_LENGTH = 25;\n\n\n// =========================================================\n// HELPERS\n// =========================================================\n\nfunction cleanText(text) {\n\n  return text\n    .replace(/\\s+/g, \" \")\n    .replace(/\\n+/g, \"\\n\")\n    .trim();\n}\n\n\n// =========================================================\n// SENTENCE SPLITTER\n// =========================================================\n\nfunction splitIntoSentences(text) {\n\n  return text\n    .split(\n      /(?<=[.;:])\\s+|\\n+/g\n    )\n    .map(s => s.trim())\n    .filter(Boolean);\n}\n\n\n// =========================================================\n// BULLET SPLITTER\n// =========================================================\n\nfunction splitBullets(text) {\n\n  const normalized =\n    text\n      .replace(/\\s+-\\s+/g, \"\\n- \")\n      .replace(/\\s+•\\s+/g, \"\\n• \");\n\n  const bulletRegex =\n    /(?:^|\\n)\\s*[-•·▪◦]\\s+/g;\n\n  const hasBullets =\n    bulletRegex.test(normalized);\n\n  if (!hasBullets) {\n    return [normalized];\n  }\n\n  return normalized\n    .split(bulletRegex)\n    .map(t => t.trim())\n    .filter(t => t.length > 20);\n}\n\n\n// =========================================================\n// ENUMERATION-AWARE LEGAL UNIT\n// =========================================================\n\nfunction isStandaloneLegalBullet(text) {\n\n  const t = text.toLowerCase();\n\n  // -------------------------------------------------------\n  // limits\n  // -------------------------------------------------------\n\n  const hasLimit =\n    /\\b(hasta|maximo|máximo|mínimo)\\b/i.test(t) ||\n    /\\b\\d+[.,]?\\d*\\s?(€|euros|%)\\b/i.test(t);\n\n  // -------------------------------------------------------\n  // conditions\n  // -------------------------------------------------------\n\n  const hasCondition =\n    t.includes(\"siempre que\") ||\n    t.includes(\"a condición de\") ||\n    t.includes(\"condicionado a\") ||\n    t.includes(\"únicamente\");\n\n  // -------------------------------------------------------\n  // exclusions\n  // -------------------------------------------------------\n\n  const hasNegation =\n    t.includes(\"salvo\") ||\n    t.includes(\"no se aplica\") ||\n    t.includes(\"quedan excluidos\") ||\n    t.includes(\"con exclusión de\") ||\n    t.includes(\"excluyéndose\");\n\n  // -------------------------------------------------------\n  // density\n  // -------------------------------------------------------\n\n  const longEnough =\n    text.length > 60;\n\n  return (\n    longEnough &&\n    (\n      hasLimit ||\n      hasCondition ||\n      hasNegation\n    )\n  );\n}\n\n\n// =========================================================\n// LEGAL BOUNDARY DETECTION\n// =========================================================\n\nfunction startsNewLegalChunk(sentence) {\n\n  const s = sentence.toLowerCase();\n\n  return (\n\n    s.startsWith(\"salvo \") ||\n\n    s.startsWith(\"siempre que\") ||\n\n    s.startsWith(\"a condición de\") ||\n\n    s.startsWith(\"quedan excluidos\") ||\n\n    s.startsWith(\"no se cubre\") ||\n\n    s.startsWith(\"no se aplica\") ||\n\n    s.startsWith(\"con exclusión de\") ||\n\n    s.startsWith(\"excluyéndose\") ||\n\n    s.startsWith(\"hasta el\") ||\n\n    s.startsWith(\"hasta \") ||\n\n    s.startsWith(\"máximo \") ||\n\n    s.startsWith(\"mínimo \") ||\n\n    s.startsWith(\"únicamente\") ||\n\n    /\\b\\d+[.,]?\\d*\\s?(€|euros|%)\\b/i.test(s)\n\n  );\n}\n\n\n// =========================================================\n// MULTI-CUE DETECTION\n// =========================================================\n\nfunction detectAllCues(text) {\n\n  const t = text.toLowerCase();\n\n  const detected = [];\n\n  // -------------------------------------------------------\n  // NEGATION / EXCEPTION\n  // -------------------------------------------------------\n\n  if (\n    t.includes(\"salvo\") ||\n    t.includes(\"a menos que\")\n  ) {\n    detected.push(\"negation\");\n  }\n\n  // -------------------------------------------------------\n  // EXCLUSION\n  // -------------------------------------------------------\n\n  if (\n    t.includes(\"quedan excluidos\") ||\n    t.includes(\"no se cubre\") ||\n    t.includes(\"no estarán cubiertos\") ||\n    t.includes(\"no quedará cubierta\") ||\n    t.includes(\"no se aplica\") ||\n    t.includes(\"con exclusión de\") ||\n    t.includes(\"excluyéndose\") ||\n    t.includes(\"excluidos\")\n  ) {\n    detected.push(\"excludes\");\n  }\n\n  // -------------------------------------------------------\n  // REQUIRES\n  // -------------------------------------------------------\n\n  if (\n    t.includes(\"siempre que\") ||\n    t.includes(\"a condición de\") ||\n    t.includes(\"condicionado a\") ||\n    t.includes(\"únicamente\")\n  ) {\n    detected.push(\"requires\");\n  }\n\n  // -------------------------------------------------------\n  // TEMPORAL LIMIT\n  // -------------------------------------------------------\n\n  if (\n    /\\b(más de|menos de|inferior a|superior a)\\s+\\d+\\s+(días|meses|años)\\b/i.test(t)\n  ) {\n    detected.push(\"temporal_limit\");\n  }\n\n  // -------------------------------------------------------\n  // LIMIT\n  // -------------------------------------------------------\n\n  if (\n    /\\bhasta el\\s+\\d+/i.test(t) ||\n    /\\b\\d+[.,]?\\d*\\s?(€|euros|%)\\b/i.test(t)\n  ) {\n    detected.push(\"limit\");\n  }\n\n  // -------------------------------------------------------\n  // DEPENDENCY\n  // -------------------------------------------------------\n\n  if (\n    t.includes(\"depende de\") ||\n    t.includes(\"supeditado\")\n  ) {\n    detected.push(\"depends_on\");\n  }\n\n  // -------------------------------------------------------\n  // FALLBACK\n  // -------------------------------------------------------\n\n  if (detected.length === 0) {\n    detected.push(\"generic_rule\");\n  }\n\n  return detected;\n}\n\n\n// =========================================================\n// PRIMARY CUE\n// =========================================================\n\nfunction computePrimaryCue(cues) {\n\n  const precedence = {\n\n    excludes: 100,\n\n    negation: 95,\n\n    temporal_limit: 90,\n\n    limit: 80,\n\n    requires: 70,\n\n    depends_on: 60,\n\n    generic_rule: 10\n  };\n\n  let bestCue = \"generic_rule\";\n\n  let bestScore = 0;\n\n  for (const cue of cues) {\n\n    const score =\n      precedence[cue] || 0;\n\n    if (score > bestScore) {\n\n      bestScore = score;\n\n      bestCue = cue;\n    }\n  }\n\n  return bestCue;\n}\n\n\n// =========================================================\n// CHUNK TYPE\n// =========================================================\n\nfunction detectChunkType(primaryCue) {\n\n  switch (primaryCue) {\n\n    case \"limit\":\n      return \"limit_rule\";\n\n    case \"temporal_limit\":\n      return \"temporal_limit_rule\";\n\n    case \"requires\":\n      return \"condition_rule\";\n\n    case \"excludes\":\n      return \"exclusion_rule\";\n\n    case \"negation\":\n      return \"exception_rule\";\n\n    case \"depends_on\":\n      return \"dependency_rule\";\n\n    default:\n      return \"generic_rule\";\n  }\n}\n\n\n// =========================================================\n// CHUNK PRIORITY\n// =========================================================\n\nfunction computeChunkPriority(\n  allCues,\n  text\n) {\n\n  let score = 1;\n\n  // -------------------------------------------------------\n  // cue density\n  // -------------------------------------------------------\n\n  score += allCues.length;\n\n  // -------------------------------------------------------\n  // exclusions\n  // -------------------------------------------------------\n\n  if (\n    allCues.includes(\"excludes\") ||\n    allCues.includes(\"negation\")\n  ) {\n    score += 3;\n  }\n\n  // -------------------------------------------------------\n  // conditions\n  // -------------------------------------------------------\n\n  if (\n    allCues.includes(\"requires\")\n  ) {\n    score += 2;\n  }\n\n  // -------------------------------------------------------\n  // limits\n  // -------------------------------------------------------\n\n  if (\n    allCues.includes(\"limit\") ||\n    allCues.includes(\"temporal_limit\")\n  ) {\n    score += 2;\n  }\n\n  // -------------------------------------------------------\n  // numeric density\n  // -------------------------------------------------------\n\n  const numericMatches =\n    text.match(/\\d+/g) || [];\n\n  score += Math.min(\n    numericMatches.length,\n    3\n  );\n\n  // -------------------------------------------------------\n  // long chunks\n  // -------------------------------------------------------\n\n  if (text.length > 250) {\n    score += 1;\n  }\n\n  return score;\n}\n\n\n// =========================================================\n// CHUNK COMPLEXITY\n// =========================================================\n\nfunction detectChunkComplexity(allCues) {\n\n  if (allCues.length >= 4) {\n    return \"nested\";\n  }\n\n  if (allCues.length >= 2) {\n    return \"compound\";\n  }\n\n  return \"simple\";\n}\n\n\n// =========================================================\n// BUILD CHUNK\n// =========================================================\n\nfunction buildChunk(\n  chunkText,\n  semanticUnitId,\n  chunkCounter\n) {\n\n  const cleanChunk =\n    cleanText(chunkText);\n\n  // -------------------------------------------------------\n  // multi-cue detection\n  // -------------------------------------------------------\n\n  const allDetectedCues =\n    detectAllCues(cleanChunk);\n\n  const primaryCue =\n    computePrimaryCue(allDetectedCues);\n\n  const secondaryCues =\n    allDetectedCues.filter(\n      c => c !== primaryCue\n    );\n\n  return {\n\n    chunk_id:\n      `${semanticUnitId}_c${chunkCounter}`,\n\n    chunk_type:\n      detectChunkType(primaryCue),\n\n    primary_cue:\n      primaryCue,\n\n    secondary_cues:\n      secondaryCues,\n\n    all_detected_cues:\n      allDetectedCues,\n\n    chunk_complexity:\n      detectChunkComplexity(\n        allDetectedCues\n      ),\n\n    chunk_priority:\n      computeChunkPriority(\n        allDetectedCues,\n        cleanChunk\n      ),\n\n    text:\n      cleanChunk\n  };\n}\n\n\n// =========================================================\n// MAIN LOOP\n// =========================================================\n\nfor (const item of items) {\n\n  const json = item.json;\n\n  const su =\n    json.semantic_unit || json;\n\n  const semanticUnitId =\n    json.semantic_unit_id ||\n    su.id ||\n    \"unknown\";\n\n  const legalAnalysis =\n    json.legal_cue_analysis || {};\n\n  const text =\n    cleanText(su.text || \"\");\n\n  if (!text) {\n    continue;\n  }\n\n  // =====================================================\n  // BULLET SPLIT\n  // =====================================================\n\n  const bulletSections =\n    splitBullets(text);\n\n  const chunks = [];\n\n  let chunkCounter = 1;\n\n  // =====================================================\n  // PROCESS BULLETS\n  // =====================================================\n\n  for (const bullet of bulletSections) {\n\n    // ---------------------------------------------------\n    // STANDALONE LEGAL BULLET\n    // ---------------------------------------------------\n\n    if (\n      isStandaloneLegalBullet(bullet)\n    ) {\n\n      chunks.push(\n        buildChunk(\n          bullet,\n          semanticUnitId,\n          chunkCounter++\n        )\n      );\n\n      continue;\n    }\n\n    // ===================================================\n    // SENTENCE SPLIT\n    // ===================================================\n\n    const sentences =\n      splitIntoSentences(bullet);\n\n    let currentChunk = \"\";\n\n    for (const sentence of sentences) {\n\n      const shouldStartNewChunk =\n        startsNewLegalChunk(sentence);\n\n      // -------------------------------------------------\n      // FLUSH\n      // -------------------------------------------------\n\n      if (\n        shouldStartNewChunk &&\n        currentChunk.length > 0\n      ) {\n\n        const chunkText =\n          cleanText(currentChunk);\n\n        if (\n          chunkText.length >= MIN_CHUNK_LENGTH\n        ) {\n\n          chunks.push(\n            buildChunk(\n              chunkText,\n              semanticUnitId,\n              chunkCounter++\n            )\n          );\n        }\n\n        currentChunk = sentence;\n\n      } else {\n\n        currentChunk +=\n          (currentChunk ? \" \" : \"\") +\n          sentence;\n      }\n    }\n\n    // ===================================================\n    // FINAL FLUSH\n    // ===================================================\n\n    const finalChunk =\n      cleanText(currentChunk);\n\n    if (\n      finalChunk &&\n      finalChunk.length >= MIN_CHUNK_LENGTH\n    ) {\n\n      chunks.push(\n        buildChunk(\n          finalChunk,\n          semanticUnitId,\n          chunkCounter++\n        )\n      );\n    }\n  }\n\n  // =====================================================\n  // OUTPUT\n  // =====================================================\n\n  itemsOut.push({\n\n    json: {\n\n      semantic_unit_id:\n        semanticUnitId,\n\n      article:\n        su.article,\n\n      section:\n        su.section,\n\n      semantic_type:\n        su.semantic_type,\n\n      coverage_path:\n        su.coverage_path || [],\n\n      lineage:\n        su.lineage || [],\n\n      metadata:\n        su.metadata || {},\n\n      ontology_matches:\n        json.ontology_matches || [],\n\n      legal_cue_analysis:\n        legalAnalysis,\n\n      chunk_count:\n        chunks.length,\n\n      chunks\n    }\n  });\n}\n\nreturn itemsOut;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2640,
+        -16
+      ],
+      "id": "975578b3-cc77-48f5-a2b9-645acdfa01c9",
+      "name": "Rule Chunker"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Convert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert": {
+      "main": [
+        [
+          {
+            "node": "ast walker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ast walker": {
+      "main": [
+        [
+          {
+            "node": "cleanup",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "clean data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "clean data": {
+      "main": [
+        []
+      ]
+    },
+    "Merge chuncks with embeddings": {
+      "main": [
+        [
+          {
+            "node": "Qdrant Search",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Qdrant Search": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Legal Rule Candidate Detector",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "cleanup": {
+      "main": [
+        [
+          {
+            "node": "Hierarchy Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hierarchy Builder": {
+      "main": [
+        [
+          {
+            "node": "Semantic Assembler",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Semantic Assembler": {
+      "main": [
+        [
+          {
+            "node": "Ontology Embedding Builder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate chunks embeddings": {
+      "main": [
+        [
+          {
+            "node": "Merge chuncks with embeddings",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Ontology Embedding Builder": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Generate chunks embeddings",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge chuncks with embeddings",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Legal Rule Candidate Detector": {
+      "main": [
+        [
+          {
+            "node": "Rule Chunker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "7f9af30c-5421-4f1c-a858-8169d9d9162b",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "094d843aba98a408460a52abbcf3251e1f006878716356a4b46e28a891d979c3"
+  },
+  "id": "4lD6rRIFeglRdZyF",
+  "tags": []
+}

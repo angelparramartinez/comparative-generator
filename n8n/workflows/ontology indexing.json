@@ -1,0 +1,354 @@
+{
+  "name": "ontology indexing",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Test",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Ontology",
+              "fieldType": "file"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -640,
+        -272
+      ],
+      "id": "cb296d1d-69dd-489c-ad3f-4e47b6d2ea9a",
+      "name": "On form submission",
+      "webhookId": "63b0567e-5dd9-40e9-a7cf-0cb05da7f1c1"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "binaryPropertyName": "=Ontology",
+        "destinationKey": "ontology_text",
+        "options": {
+          "encoding": "utf8"
+        }
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        -256
+      ],
+      "id": "5f615f97-53dc-4518-8037-618d150bd537",
+      "name": "Extract ontology"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ontologyText = $json.ontology_text || '';\n\n//\n// ======================================================\n// EXTRAER ONTOLOGY TYPE\n// ======================================================\n//\n\nconst ontologyTypeMatch = ontologyText.match(\n  /OntologyType:\\s*([A-Za-z0-9_-]+)/i\n);\n\nconst ontologyType = ontologyTypeMatch\n  ? ontologyTypeMatch[1].trim().toLowerCase()\n  : 'unknown';\n\n//\n// ======================================================\n// NORMALIZACIÓN\n// ======================================================\n//\n\nconst normalized = ontologyText\n  .replace(/\\r\\n/g, '\\n')\n  .trim();\n\n//\n// ======================================================\n// DIVIDIR POR CONCEPTOS (## concept)\n// ======================================================\n//\n\nconst rawSections = normalized.split(/^##\\s+/gm);\n\nconst concepts = [];\n\nfor (const section of rawSections) {\n\n  let block = section.trim();\n\n  if (!block) {\n    continue;\n  }\n\n  const lines = block.split('\\n');\n\n  const conceptId = (lines[0] || '').trim();\n\n  //\n  // Ignorar cabeceras generales\n  //\n  if (\n    !conceptId ||\n    conceptId.startsWith('#') ||\n    conceptId.includes('OntologyType:')\n  ) {\n    continue;\n  }\n\n  //\n  // ======================================================\n  // LIMPIEZA DEL BLOQUE\n  // ======================================================\n  //\n  block = block\n\n    // eliminar separadores markdown\n    .replace(/---+/g, '')\n\n    // eliminar líneas decorativas tipo:\n    // # ============================\n    .replace(/^#\\s*=+.*$/gm, '')\n\n    // eliminar cabeceras de sección tipo:\n    // # RISK CONCEPTS\n    // # INSURANCE CONCEPTS\n    .replace(/^#\\s+[A-Z ]+$/gm, '')\n\n    // compactar saltos de línea excesivos\n    .replace(/\\n{3,}/g, '\\n\\n')\n\n    .trim();\n\n  //\n  // Recalcular identificador tras limpieza\n  //\n  const cleanedLines = block.split('\\n');\n\n  const cleanedConceptId =\n    (cleanedLines[0] || '').trim();\n\n  if (!cleanedConceptId) {\n    continue;\n  }\n\n  //\n  // Estadísticas\n  //\n  const wordCount = block\n    .split(/\\s+/)\n    .filter(Boolean)\n    .length;\n\n  concepts.push({\n    json: {\n\n      // identificador único del concepto\n      concept_id: cleanedConceptId,\n\n      // ramo\n      ontology_type: ontologyType,\n\n      // texto para embedding\n      ontology_text: block,\n\n      // métricas\n      concept_words: wordCount,\n      concept_length: block.length\n\n    }\n  });\n}\n\n//\n// ======================================================\n// ORDEN CONSISTENTE\n// ======================================================\n//\n\nconcepts.sort((a, b) =>\n  a.json.concept_id.localeCompare(\n    b.json.concept_id\n  )\n);\n\nreturn concepts;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        592,
+        -256
+      ],
+      "id": "a27192f2-d18d-4196-ae62-6400c6a9eaec",
+      "name": "Ontology Splitter"
+    },
+    {
+      "parameters": {
+        "url": "http://qdrant:6333/collections/insurance_ontology",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -448,
+        -32
+      ],
+      "id": "25adff86-1bb3-4cbc-a51f-717d22331aa4",
+      "name": "Check collection",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "c9c1ed7a-697e-45a8-ad2a-7e0770885cf9",
+              "leftValue": "={{ $json.error?.status }}",
+              "rightValue": 404,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        -240,
+        -32
+      ],
+      "id": "c9d24fd2-9908-4bef-92b6-481ff7daab5a",
+      "name": "Must create collection"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://qdrant:6333/collections/insurance_ontology",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "{\n  \"vectors\": {\n    \"size\": 768,\n    \"distance\": \"Cosine\"\n  }\n}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -16,
+        -112
+      ],
+      "id": "a4700fba-5300-4be4-a842-e78f3d0b09ea",
+      "name": "Create collection"
+    },
+    {
+      "parameters": {
+        "mode": "chooseBranch"
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        224,
+        -256
+      ],
+      "id": "68aa0052-2e29-400e-b99d-11e561c7041d",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -16,
+        32
+      ],
+      "id": "1480bb22-d9a9-4bf3-ae61-a687e8e37454",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://host.docker.internal:11434/api/embeddings",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model",
+              "value": "nomic-embed-text"
+            },
+            {
+              "name": "prompt",
+              "value": "={{ $json.ontology_text }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        800,
+        -256
+      ],
+      "id": "dc462614-3c2a-4911-a74b-d8702182e9da",
+      "name": "Generate Embedding"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const splitter = $('Ontology Splitter').item.json;\n\nconst conceptId = splitter.concept_id;\nconst ontologyType = splitter.ontology_type;\nconst ontologyText = splitter.ontology_text;\n\nconst embedding = $json.embedding;\n\nfunction deterministicId(str) {\n  let hash = 0;\n\n  for (let i = 0; i < str.length; i++) {\n    hash = ((hash << 5) - hash) + str.charCodeAt(i);\n    hash |= 0;\n  }\n\n  return Math.abs(hash);\n}\n\nconst conceptKey = `${ontologyType}:${conceptId}`;\nconst pointId = deterministicId(conceptKey);\n\nreturn {\n  json: {\n    points: [\n      {\n        id: pointId,\n        vector: embedding,\n        payload: {\n          concept_key: conceptKey,\n          concept_id: conceptId,\n          ontology_type: ontologyType,\n          ontology_text: ontologyText,\n          searchable_text: ontologyText,\n          concept_words: splitter.concept_words,\n          concept_length: splitter.concept_length\n        }\n      }\n    ]\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        992,
+        -256
+      ],
+      "id": "0b04057d-d28c-4737-a2e5-d2c4e1c420bb",
+      "name": "Build Qdrant Point"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "http://qdrant:6333/collections/insurance_ontology/points",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        1200,
+        -256
+      ],
+      "id": "6f9e9cb2-48cc-4293-8306-466b2ba0184d",
+      "name": "Upsert en Qdrant"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Check collection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract ontology": {
+      "main": [
+        [
+          {
+            "node": "Ontology Splitter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check collection": {
+      "main": [
+        [
+          {
+            "node": "Must create collection",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Must create collection": {
+      "main": [
+        [
+          {
+            "node": "Create collection",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create collection": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Ontology Splitter": {
+      "main": [
+        [
+          {
+            "node": "Generate Embedding",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Extract ontology",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Generate Embedding": {
+      "main": [
+        [
+          {
+            "node": "Build Qdrant Point",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Qdrant Point": {
+      "main": [
+        [
+          {
+            "node": "Upsert en Qdrant",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "a35cb9d4-73eb-4dae-a04a-915a93667420",
+  "meta": {
+    "instanceId": "094d843aba98a408460a52abbcf3251e1f006878716356a4b46e28a891d979c3"
+  },
+  "id": "FQKkeruU3Gofeqqz",
+  "tags": []
+}

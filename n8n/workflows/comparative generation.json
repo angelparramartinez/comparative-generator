@@ -1,0 +1,1111 @@
+{
+  "name": "comparative generation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Generar comparativa",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "Ramo",
+              "fieldType": "dropdown",
+              "fieldOptions": {
+                "values": [
+                  {
+                    "option": "Hogar"
+                  }
+                ]
+              },
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Product Company Id",
+              "fieldType": "number",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Excel de coberturas (pega el enlace)",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Tuning de la compañía",
+              "fieldType": "file",
+              "acceptFileTypes": ".json",
+              "requiredField": true
+            },
+            {
+              "fieldLabel": "Condicionado general",
+              "fieldType": "file",
+              "acceptFileTypes": ".pdf"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -1232,
+        240
+      ],
+      "id": "92f3d099-f978-43ce-9029-e490c56e5055",
+      "name": "On form submission",
+      "webhookId": "804535ad-7591-401f-aa73-4d8cc596a107"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $('On form submission').item.json['Excel de coberturas (pega el enlace)'] }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": 2076746543,
+          "mode": "list",
+          "cachedResultName": "Coberturas opcionales",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cXH4BNvkOp-bybd9j15JemNei3WQyXIknuHaYQCb_GQ/edit#gid=2076746543"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -976,
+        64
+      ],
+      "id": "a603d800-d4a8-405c-a809-ced359e02433",
+      "name": "Optional Covers",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = '{{ $('On form submission').item.json.Ramo }}' and mimeType = 'application/vnd.google-apps.folder'",
+        "returnAll": true,
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1DGlByd-N1zpIM8P-WE9YjRbtj8Ovw0WY",
+            "mode": "list",
+            "cachedResultName": "Plantillas comparativa de coberturas",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1DGlByd-N1zpIM8P-WE9YjRbtj8Ovw0WY"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -976,
+        432
+      ],
+      "id": "f64e64f1-98a2-4e63-b64e-45d7814b9ba4",
+      "name": "carpeta ramo",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "=name = 'datos_riesgo_{{ $('On form submission').item.json.Ramo }}.json'",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "={{ $json.id }}",
+            "mode": "id"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -784,
+        432
+      ],
+      "id": "dff089ee-8a8e-47dc-a3eb-37fd38da84f1",
+      "name": "fichero ramo",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -608,
+        432
+      ],
+      "id": "098f60d0-a5db-41ef-8daf-990d0fc820d2",
+      "name": "descargar fichero ramo",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "resource": "fileFolder",
+        "searchMethod": "query",
+        "queryString": "name = 'Modelo comparativa de coberturas - AI ready.md'",
+        "filter": {
+          "folderId": {
+            "__rl": true,
+            "value": "1DGlByd-N1zpIM8P-WE9YjRbtj8Ovw0WY",
+            "mode": "list",
+            "cachedResultName": "Plantillas comparativa de coberturas",
+            "cachedResultUrl": "https://drive.google.com/drive/folders/1DGlByd-N1zpIM8P-WE9YjRbtj8Ovw0WY"
+          }
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -976,
+        656
+      ],
+      "id": "412cb9bf-99d3-4d83-b114-2cb60d0f2e92",
+      "name": "modelo comparativa",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -784,
+        656
+      ],
+      "id": "a0031a55-81d9-4cff-adfb-1205787bffbd",
+      "name": "descargar modelo comparativa",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -416,
+        432
+      ],
+      "id": "8406c1f7-4e83-4fe4-9637-b5dd720823d3",
+      "name": "Extract from ramo"
+    },
+    {
+      "parameters": {
+        "operation": "text",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -592,
+        672
+      ],
+      "id": "82a1fc2e-e439-408a-9c34-f5fd63327e99",
+      "name": "Extract from modelo comparativa"
+    },
+    {
+      "parameters": {
+        "authentication": "serviceAccount",
+        "documentId": {
+          "__rl": true,
+          "value": "={{ $json[\"Excel de coberturas (pega el enlace)\"] }}",
+          "mode": "url"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Coberturas por modalidad",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1cXH4BNvkOp-bybd9j15JemNei3WQyXIknuHaYQCb_GQ/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.7,
+      "position": [
+        -976,
+        -96
+      ],
+      "id": "3b23dfb9-3d8b-4069-a6b8-871d9ca8401c",
+      "name": "Covers by modality",
+      "credentials": {
+        "googleApi": {
+          "id": "tyE0cuJcKBG86gjb",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "=Tuning_de_la_compa__a",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -976,
+        240
+      ],
+      "id": "7da41c9c-09cb-44b2-8367-31b2fc84deda",
+      "name": "Extract from Tuning"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-latest",
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1.1,
+      "position": [
+        640,
+        304
+      ],
+      "id": "4a5425dc-1faf-4757-9a3d-0ec7cb62f363",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "oGMq2z8bZOtZIjyW",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"mappings\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"excel_name\": {\n            \"type\": \"string\",\n            \"description\": \"Nombre exacto de la cobertura en el Excel\"\n          },\n          \"tuning_key\": {\n            \"type\": \"string\",\n            \"description\": \"Clave técnica del tuning. Si no hay, dejar vacío o poner 'N/A'\"\n          },\n          \"confidence\": {\n            \"type\": \"number\",\n            \"description\": \"Nivel de confianza 0-1\"\n          },\n          \"reasoning\": {\n            \"type\": \"string\",\n            \"description\": \"Explicación del mapeo\"\n          }\n        },\n        \"required\": [\"excel_name\", \"tuning_key\", \"confidence\", \"reasoning\"]\n      }\n    }\n  }\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.3,
+      "position": [
+        800,
+        272
+      ],
+      "id": "bf410c14-2e68-4d1a-9147-4628f1192335",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=**Role:** Eres un experto en sistemas de Seguros y Mapping de Datos. Tu misión es realizar un mapeo semántico entre coberturas comerciales (Excel) y claves técnicas (Tuning).\n\n**Protocolo de actuación:**\n1. **Origen de Datos:** Utilizarás los elementos de `context.data.optionals`.\n2. **Diccionario de Referencia:** Utilizarás las claves (`key`) y etiquetas (`label`) de `context.data.tuning`.\n3. **Conocimiento de Dominio (Seguros):**\n   - Entiende acrónimos: \"RC\" o \"R.C.\" es \"Responsabilidad Civil\", \"DA\" es \"Daños por Agua\".\n   - Jerarquía: Si el Excel pide algo específico (ej: \"perros peligrosos\") y el Tuning tiene el concepto general (ej: \"tenencia de perros\"), el mapeo es CORRECTO.\n4. **Lógica de Mapeo Semántico:**\n   - No busques coincidencia de palabras exacta, busca coincidencia de concepto.\n   - Analiza la `key` como pista secundaria: claves que empiezan por 'qrc' suelen referirse a Responsabilidad Civil.\n   - Prioriza siempre el `label`, pero si el significado coincide, la `key` es válida.\n5. **Control de Errores:** Solo si no hay absolutamente ninguna relación temática entre el Excel y el diccionario, devuelve \"NOT_FOUND\".\n\n**Restricción de Salida:**\nDevuelve únicamente un objeto JSON válido con el array `mappings`. No incluyas explicaciones, introducciones ni bloques de código markdown.\nNo modifiques el cover_name en los datos de salida.\n\n**Input Data:**\n- Source (Excel): {{ JSON.stringify($json.context.data.optionals) }}\n- Dictionary (Tuning): {{ JSON.stringify($json.context.data.tuning) }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        32
+      ],
+      "id": "8db86bca-db8e-43f3-8724-916ab54ccc14",
+      "name": "Mapping coberturas opcionales y tuning",
+      "retryOnFail": true,
+      "waitBetweenTries": 1000
+    },
+    {
+      "parameters": {
+        "numberInputs": 6
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -48,
+        256
+      ],
+      "id": "db9cf1cd-e067-4f10-bf48-f4f87f73bf9a",
+      "name": "Merge"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Fuentes de datos limpias (usando el método seguro de n8n)\nconst modalityCovers = $(\"Clean covers and modalities\").all().map(item => item.json);\nconst optionalCovers = $(\"Clean Optional Covers\").all().map(item => item.json);\n\n// 2. Tuning y otros\nconst tuningRaw = $(\"Extract from Tuning\").first().json;\nconst actualTuningContent = tuningRaw.data ? tuningRaw.data : tuningRaw;\nconst tuningSimplified = Object.keys(actualTuningContent).map(key => {\n  const item = actualTuningContent[key];\n  return {\n    key: key,\n    label: (item && item.label) ? item.label : 'Sin etiqueta'\n  };\n});\n\n// 3. Empaquetamos todo en un único ítem de salida estructurado correctamente\nreturn [\n  {\n    json: {\n      context: {\n        data: {\n          modalities: modalityCovers,\n          optionals: optionalCovers,\n          tuning: tuningSimplified,\n          risk: $(\"Extract from ramo\").first().json\n        },\n        instructions: $(\"Extract from modelo comparativa\").first().json.text,\n        configuration: {\n          product_company_id: $(\"On form submission\").first().json?.[\"Product Company Id\"] || 235\n        }\n      }\n    },\n    pairedItem: {\n      item: 0\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        320
+      ],
+      "id": "0e7de810-98b9-4aeb-aea1-78dad51e1c6a",
+      "name": "build agents context"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos todos los items que vienen del nodo de Google Sheets\nconst rawItems = $input.all();\n\n// 2. Filtramos para quitar la primera fila (la que tiene los nombres de las modalidades)\n// y nos aseguramos de procesar solo filas que tengan un ID de cobertura (col_1)\nconst filteredRows = rawItems.filter(item => {\n  const row = item.json;\n  return row.row_number > 2 && row.col_1 !== \"\" && row.col_1 !== undefined;\n});\n\n// 3. Transformamos cada fila al formato optimizado\nreturn filteredRows.map(item => {\n  const row = item.json;\n  \n  const formattedCover = {\n    cover_id: parseInt(row.col_1),\n    cover_name: row.col_2,\n    modalities: {}\n  };\n\n  // Recorremos todas las llaves del objeto original\n  Object.keys(row).forEach(key => {\n    // Si la llave es un número (ID de modalidad), la añadimos al objeto modalities\n    // Excluimos las columnas de control\n    if (!isNaN(key) && key !== \"col_1\" && key !== \"col_2\" && key !== \"row_number\") {\n      // Solo añadimos la modalidad si tiene texto (está incluida)\n      const content = row[key] ? row[key].trim() : \"\";\n      if (content !== \"\" && content.toLowerCase() !== \"sin cobertura\") {\n        formattedCover.modalities[key] = content;\n      }\n    }\n  });\n\n  return { json: formattedCover };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        -96
+      ],
+      "id": "1bb7b820-2393-47aa-8caf-0a7274156669",
+      "name": "Clean covers and modalities"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Traemos los datos del nodo \"Clean covers and modalities\"\n// Esto funciona como un diccionario para buscar IDs por nombre de cobertura\nconst cleanModalities = $(\"Clean covers and modalities\").all();\n\n// 2. Traemos los datos de la entrada actual (la hoja de opcionales)\nconst rawOptionals = $input.all();\n\n// 3. Procesamos cada fila de la hoja de opcionales\nreturn rawOptionals.map(item => {\n  const row = item.json;\n\n  // Extraemos el nombre del epígrafe que viene en el Excel\n  const nombreEpigrafeExcel = row[\"EPÍGRAFE EN EL QUE SE DEBE INCLUIR\"];\n\n  // BUSQUEDA: Buscamos en la lista de modalidades limpias cuál coincide con ese nombre\n  // Usamos .find() para encontrar el objeto que tenga el mismo 'cover_name'\n  const coverMatch = cleanModalities.find(modalidad => \n    modalidad.json.cover_name === nombreEpigrafeExcel\n  );\n\n  // 4. Devolvemos el objeto limpio y \"traducido\"\n  return {\n    json: {\n      cover_name: row[\"COBERTURA OPCIONAL\"],\n      text_content: row[\"TEXTO QUE SE DEBE INCLUIR\"] ? row[\"TEXTO QUE SE DEBE INCLUIR\"].trim() : \"\",\n      // Si encontramos coincidencia, ponemos el ID (ej: 15), si no, ponemos null\n      parent_cover_id: coverMatch ? coverMatch.json.cover_id : null\n    }\n  };\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -720,
+        112
+      ],
+      "id": "ef103ea1-6eab-4fcb-b93c-dbe5cca2c10b",
+      "name": "Clean Optional Covers"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos el contexto y los mappings usando el nombre real del nodo\nconst context = $(\"build agents context\").first().json.context;\nconst mappings = $(\"Mapping coberturas opcionales y tuning\").first().json.output.mappings;\n\n// 2. Procesamos Coberturas por Modalidad\nconst modalityCovers = context.data.modalities.map(row => {\n  return {\n    source_type: 'modality',\n    cover_id: row.cover_id, // Aquí ya se llamaba cover_id\n    cover_name: row.cover_name,\n    modalities: row.modalities \n  };\n});\n\n// 3. Procesamos Coberturas Opcionales\nconst optionalCovers = context.data.optionals.map(row => {\n  // Buscamos la tuning_key en los mappings\n  const mapping = mappings.find(m => m.excel_name === row.cover_name) || {};\n  \n  return {\n    source_type: 'optional',\n    // CORRECCIÓN: Usamos parent_cover_id que es el nombre que viene del nodo de limpieza\n    cover_id: row.parent_cover_id, \n    cover_name: row.cover_name,\n    text_content: row.text_content,\n    tuning_key: mapping.tuning_key || \"NOT_FOUND\"\n  };\n});\n\n// 4. Devolvemos el array directamente para que n8n lo reconozca como múltiples items\nreturn [...modalityCovers, ...optionalCovers];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1392,
+        304
+      ],
+      "id": "32574f30-10c7-419b-86fa-c3542ea3c1cf",
+      "name": "Prepare Batch Data"
+    },
+    {
+      "parameters": {
+        "batchSize": "=1",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1904,
+        304
+      ],
+      "id": "02ecf008-ae18-45ef-a6b2-41dfb661e250",
+      "name": "Loop Over Items",
+      "notesInFlow": false
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-flash-latest",
+          "mode": "list",
+          "cachedResultName": "models/gemini-flash-latest"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=**Role:** Senior Insurance Underwriting Logic Engineer.\n**Context:** You are analyzing an Insurance company's clauses and technical metadata to map them to SQL logic.\n\n**Task:**\n1. Analyze the 'text_content' to understand the coverage scope and its relationship with the risk.\n2. Use the provided 'tuning_metadata' to build the correct technical expression for optional coverages.\n\n**Instructions for Analysis:**\n- Read the text once to capture the underwriting intent.\n- Do NOT re-state, summarize, or include any part of the text in your output.\n- Focus ONLY on generating the final JSON logic.\n\n**Logic Rules for 'expr' field:**\n1. **IF source_type == 'modality'**: \n   - Set 'expr' to: \"INCLUDED\"\n\n2. **IF source_type == 'optional'**:\n   - If 'tuning_metadata' is null, return an empty array [].\n   - **Case A: type is \"boolean\"** (no options provided):\n     Use: tuning?.KEY == true ? \"INCLUDED\" : \"OPTIONAL\"\n   - **Case B: type is \"string\" or \"number\"** (options provided):\n     - If an option has value \"0\" (label \"No contratada\"), use: tuning?.KEY != \"0\" ? \"INCLUDED\" : \"OPTIONAL\"\n     - If options are \"si\" (value \"S\") and \"no\" (value \"N\"), use: tuning?.KEY == \"S\" ? \"INCLUDED\" : \"OPTIONAL\"\n     - Default: tuning?.KEY != null ? \"INCLUDED\" : \"OPTIONAL\"\n\n**Strict Output Constraints:**\n- Replace KEY with the actual value of 'tuning_key'.\n- Return ONLY a raw JSON array of objects.\n- Format: [{\"c_id\": X, \"m_id\": Y, \"expr\": \"Z\"}]\n- NO markdown code blocks (```), NO text, NO explanations.\n\n**Input Data:**\n{{ JSON.stringify($json) }}\n"
+            }
+          ]
+        },
+        "builtInTools": {},
+        "options": {
+          "maxOutputTokens": 4096,
+          "temperature": 0.1
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1.2,
+      "position": [
+        2448,
+        400
+      ],
+      "id": "4af43211-3918-4bd2-905c-5c92185b63af",
+      "name": "Message a model",
+      "retryOnFail": true,
+      "waitBetweenTries": 1000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "oGMq2z8bZOtZIjyW",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Accedemos a la ruta específica donde Google guarda el texto\n// El texto viene en: content -> parts -> primer elemento -> text\nconst rawText = $json.content.parts[0].text;\n\ntry {\n  // 2. Quitamos espacios en blanco y convertimos el texto en un Array real\n  const cleanJson = JSON.parse(rawText.trim());\n  \n  // 3. Devolvemos el array. n8n automáticamente creará un item por cada objeto\n  return cleanJson;\n} catch (e) {\n  // Si algo falla (ej: Gemini devolvió texto en vez de JSON), capturamos el error\n  return [{\n    error: \"No se pudo parsear el JSON\",\n    mensaje: e.message,\n    lo_que_llego: rawText\n  }];\n}"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2768,
+        400
+      ],
+      "id": "1557bad6-be64-4744-ae32-b3dfebe82323",
+      "name": "Extract and Parse"
+    },
+    {
+      "parameters": {
+        "amount": 1
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2272,
+        400
+      ],
+      "id": "fad7bbc2-581d-4b84-9153-bf4c791931d6",
+      "name": "Wait",
+      "webhookId": "3a3e393c-05be-41b4-88e5-4fee0a3515c7"
+    },
+    {
+      "parameters": {
+        "jsCode": "// 1. Obtenemos el diccionario del nodo \"Extract from Tuning\"\nconst tuningMap = $(\"Extract from Tuning\").first().json.data;\n\n// 2. Obtenemos los datos de la cobertura actual (del Loop)\nconst item = $json;\nconst key = item.tuning_key;\n\n// 3. Buscamos la definición técnica del campo\nconst fieldDef = tuningMap ? tuningMap[key] : null;\n\nlet tuningMetadata = null;\n\nif (fieldDef) {\n  // Inicializamos el objeto con lo básico\n  tuningMetadata = {\n    type: fieldDef.type,\n    label: fieldDef.label\n  };\n\n  // 4. Lógica de mejora: solo incluimos 'options' si tienen contenido\n  const items = (fieldDef.options && fieldDef.options[0]) ? fieldDef.options[0].items : [];\n  \n  if (items && items.length > 0) {\n    tuningMetadata.options = items;\n  }\n}\n\n// 5. Limpieza de texto para el text_content\nif (item.text_content) {\n  item.text_content = item.text_content\n    .replace(/[\\r\\n]+/g, ' ')\n    .replace(/\\s\\s+/g, ' ')\n    .trim();\n}\n\n// 6. Devolvemos el objeto enriquecido\nreturn {\n  ...item,\n  tuning_metadata: tuningMetadata\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2080,
+        400
+      ],
+      "id": "0b27e55d-deff-4e91-8a39-cf1082762d6b",
+      "name": "Pepare Data For Agent"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Actúa como un experto en análisis de condicionados de seguros.\n\nTu tarea es detectar ÚNICAMENTE relaciones EXPLÍCITAS entre:\n\n- campos del esquema de riesgo\n- y coberturas o garantías del producto asegurador.\n\nEl objetivo NO es interpretar el producto ni resumir coberturas.\n\nEl objetivo es identificar cuándo una cobertura:\n\n- depende de un campo del riesgo,\n- requiere un capital concreto,\n- solo aplica para determinados valores,\n- necesita declaración expresa,\n- o deja de aplicar según determinadas características del riesgo.\n\n# IMPORTANTE\n\nSOLO extrae dependencias EXPLÍCITAS presentes en el texto.\n\nNO inventes reglas.\nNO deduzcas lógica actuarial.\nNO generes interpretaciones comerciales.\nNO expliques coberturas.\nNO resumas artículos.\nNO generes reglas genéricas.\n\n# ESQUEMA DEL RIESGO\n\n{{ JSON.stringify($json.riskSchema) }}\n\n# FRAGMENTO DEL CONDICIONADO\n\nTítulo:\n{{ $json.title }}\n\nContenido:\n{{ $json.content }}\n\n# QUÉ DEBES EXTRAER\n\nExtrae únicamente relaciones donde:\n\n- una cobertura dependa de un campo,\n- una garantía requiera un capital asegurado,\n- una cobertura solo exista para ciertos valores,\n- una cobertura quede limitada o excluida según el riesgo,\n- una declaración específica sea obligatoria,\n- exista una condición explícita de aplicación.\n\n# QUÉ NO DEBES EXTRAER\n\nNO extraigas:\n\n- descripciones de coberturas,\n- diferencias comerciales menores,\n- listados masivos de garantías,\n- textos puramente legales,\n- explicaciones generales,\n- información sin relación directa con campos del riesgo.\n\n# FORMATO DE SALIDA\n\nDevuelve ÚNICAMENTE un array JSON plano.\n\nFormato exacto:\n\n[\n  {\n    \"field\": \"content\",\n    \"coverage\": \"Restauración estética de mobiliario\",\n    \"dependency\": \"requires_capital\",\n    \"details\": \"Solo disponible si se contrata capital de contenido\",\n    \"citation\": \"Artículo 2º Garantías principales\"\n  }\n]\n\n# TIPOS DE DEPENDENCIA VÁLIDOS\n\nUsa únicamente uno de estos valores:\n\n- requires_capital\n- requires_declaration\n- only_for_value\n- excluded_for_value\n- limited_for_value\n- conditional_application\n\n# REGLAS IMPORTANTES\n\n- Cada objeto debe representar UNA única dependencia.\n- Usa nombres de campos reales del esquema de riesgo.\n- Si una cobertura depende de varios campos, crea un objeto separado por cada campo.\n- Prioriza dependencias estructurales y reutilizables.\n- Si el fragmento no contiene dependencias relevantes, devuelve [].\n- Devuelve únicamente JSON válido.",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        16,
+        896
+      ],
+      "id": "0219f5b1-7d0b-499d-bb99-a73e02b8de3d",
+      "name": "Basic LLM Chain",
+      "retryOnFail": true
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://docling:5001/v1/convert/file",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "Condicionado_general"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -976,
+        896
+      ],
+      "id": "2d936288-8735-4d64-92dd-d9d606b830d7",
+      "name": "HTTP Request"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $json.document.md_content || '';\n\n// Eliminar cualquier imagen embebida base64\nconst cleaned = markdown.replace(\n  /!\\[.*?\\]\\(data:image\\/[\\s\\S]*?\\)/gm,\n  ''\n);\n\nreturn [{\n  json: {\n    markdown: cleaned\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -768,
+        896
+      ],
+      "id": "9a4253bd-8909-4611-aec7-236e5e887a41",
+      "name": "Clear markdown"
+    },
+    {
+      "parameters": {
+        "jsCode": "const markdown = $json.markdown || '';\n\nconst regex = /^##\\s+(Artículo\\s+.*|Artículo Preliminar.*)/gmi;\n\nconst matches = [...markdown.matchAll(regex)];\n\nconst results = [];\n\n// --------------------------------------------------\n// BLOQUE INICIAL (tablas + índice + esquemas)\n// --------------------------------------------------\n\nif (matches.length > 0 && matches[0].index > 0) {\n\n  const introContent = markdown\n    .slice(0, matches[0].index)\n    .trim();\n\n  if (introContent.length > 1000) {\n\n    results.push({\n      json: {\n        title: 'INTRO_AND_TABLES',\n        content: introContent,\n        length: introContent.length\n      }\n    });\n\n  }\n}\n\n// --------------------------------------------------\n// ARTÍCULOS\n// --------------------------------------------------\n\nfor (let i = 0; i < matches.length; i++) {\n\n  const start = matches[i].index;\n\n  const end = matches[i + 1]\n    ? matches[i + 1].index\n    : markdown.length;\n\n  const content = markdown\n    .slice(start, end)\n    .trim();\n\n  if (content.length < 1000) continue;\n\n  results.push({\n    json: {\n      title: matches[i][1].trim(),\n      content,\n      length: content.length\n    }\n  });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -576,
+        896
+      ],
+      "id": "c507d2e3-d51e-4044-b5c9-08e8280f4784",
+      "name": "semantic markdown chunks"
+    },
+    {
+      "parameters": {
+        "jsCode": "const riskSchema = $(\"Extract from ramo\").first().json;\n\nreturn items.map(item => {\n\n  return {\n    json: {\n      ...item.json,\n      riskSchema\n    }\n  };\n\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -400,
+        896
+      ],
+      "id": "740e5e97-a5ba-4506-983b-c68fd5bc37af",
+      "name": "enrich chunks with risk schema"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "value": "claude-sonnet-4-6",
+          "mode": "list",
+          "cachedResultName": "Claude Sonnet 4.6"
+        },
+        "options": {
+          "temperature": 0
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.3,
+      "position": [
+        16,
+        1088
+      ],
+      "id": "ed704ae3-a4ba-453f-973a-c74ea9537a51",
+      "name": "Anthropic Chat Model",
+      "credentials": {
+        "anthropicApi": {
+          "id": "ty0Nlg9GOt4su6PI",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        384,
+        560
+      ],
+      "id": "2ce40475-7712-4415-a6d6-92f0d73a5af8",
+      "name": "Loop Over Items1"
+    },
+    {
+      "parameters": {
+        "jsCode": "return $(\"Basic LLM Chain\").all();"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        544
+      ],
+      "id": "b8fe68c6-5d50-4a02-bef8-f94946524628",
+      "name": "collect llm outputs"
+    },
+    {
+      "parameters": {
+        "jsCode": "return items.filter(item =>\n  item.json.title === 'Artículo 3º Garantías de daños consecuenciales'\n);"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -192,
+        896
+      ],
+      "id": "2ca43d12-4072-4093-ba6f-860ad12f6762",
+      "name": "temporal filter"
+    },
+    {
+      "parameters": {
+        "jsCode": "const raw = $json.text || '[]';\n\n// Elimina bloques markdown\nconst cleaned = raw\n  .replace(/```json/g, '')\n  .replace(/```/g, '')\n  .trim();\n\nlet parsed;\n\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (err) {\n\n  return [\n    {\n      json: {\n        error: true,\n        message: err.message,\n        raw: cleaned\n      }\n    }\n  ];\n}\n\n// Devuelve cada regla como item independiente\nreturn parsed.map(rule => ({\n  json: rule\n}));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        368,
+        896
+      ],
+      "id": "e7578cfe-5a8e-47bd-9f81-86200d332851",
+      "name": "parse llm json"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://docling:5001/v1/convert/file",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "files",
+              "inputDataFieldName": "Condicionado_general"
+            },
+            {
+              "name": "target_type",
+              "value": "json"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 600000
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -976,
+        1088
+      ],
+      "id": "c9164260-8b4a-480b-9358-6ee7985fffff",
+      "name": "Docling json"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "On form submission": {
+      "main": [
+        [
+          {
+            "node": "Covers by modality",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract from Tuning",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "carpeta ramo",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Optional Covers",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "modelo comparativa",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Docling json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Optional Covers": {
+      "main": [
+        [
+          {
+            "node": "Clean Optional Covers",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "carpeta ramo": {
+      "main": [
+        [
+          {
+            "node": "fichero ramo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "fichero ramo": {
+      "main": [
+        [
+          {
+            "node": "descargar fichero ramo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "descargar fichero ramo": {
+      "main": [
+        [
+          {
+            "node": "Extract from ramo",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "modelo comparativa": {
+      "main": [
+        [
+          {
+            "node": "descargar modelo comparativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "descargar modelo comparativa": {
+      "main": [
+        [
+          {
+            "node": "Extract from modelo comparativa",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from ramo": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Extract from modelo comparativa": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 4
+          }
+        ]
+      ]
+    },
+    "Covers by modality": {
+      "main": [
+        [
+          {
+            "node": "Clean covers and modalities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from Tuning": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Mapping coberturas opcionales y tuning",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Mapping coberturas opcionales y tuning",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Mapping coberturas opcionales y tuning": {
+      "main": [
+        []
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "build agents context",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "build agents context": {
+      "main": [
+        []
+      ]
+    },
+    "Clean covers and modalities": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Optional Covers": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Prepare Batch Data": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Pepare Data For Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract and Parse": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Extract and Parse",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pepare Data For Agent": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request": {
+      "main": [
+        [
+          {
+            "node": "Clear markdown",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clear markdown": {
+      "main": [
+        [
+          {
+            "node": "semantic markdown chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "semantic markdown chunks": {
+      "main": [
+        [
+          {
+            "node": "enrich chunks with risk schema",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "enrich chunks with risk schema": {
+      "main": [
+        [
+          {
+            "node": "temporal filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items1": {
+      "main": [
+        [
+          {
+            "node": "collect llm outputs",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "parse llm json",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "temporal filter": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate"
+  },
+  "versionId": "153e4c5d-5063-499c-92b5-52f93f1c0676",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "094d843aba98a408460a52abbcf3251e1f006878716356a4b46e28a891d979c3"
+  },
+  "id": "NYQndXJymoGYihbq",
+  "tags": [
+    {
+      "updatedAt": "2026-04-28T15:00:25.258Z",
+      "createdAt": "2026-04-28T15:00:25.258Z",
+      "id": "r8WxYWgccJ24I16j",
+      "name": "v0"
+    }
+  ]
+}
