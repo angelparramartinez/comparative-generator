@@ -1,0 +1,47 @@
+services:
+
+  n8n:
+    image: n8nio/n8n:latest
+    restart: unless-stopped
+
+    ports:
+      - "${N8N_PORT}:5678"
+
+    environment:
+      - TZ=Europe/Madrid
+      - N8N_ENCRYPTION_KEY=jz1ysYPflUCv6lb7qaECy0NzjL351F5k
+
+    volumes:
+      - ./data/n8n:/home/node/.n8n
+
+    depends_on:
+      - docling
+      - qdrant
+
+  docling:
+    image: quay.io/docling-project/docling-serve:latest
+    restart: unless-stopped
+
+    ports:
+      - "${DOCLING_PORT}:5001"
+
+    environment:
+      - DOCLING_SERVE_ENABLE_UI=true
+      - DOCLING_SERVE_MAX_SYNC_WAIT=600
+
+    volumes:
+      - ./data/docling:/data
+
+  qdrant:
+
+    image: qdrant/qdrant:latest
+
+    restart: unless-stopped
+
+    ports:
+
+      - "${QDRANT_PORT}:6333"
+
+    volumes:
+
+      - ./data/qdrant:/qdrant/storage
