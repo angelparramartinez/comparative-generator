@@ -1,0 +1,18 @@
+# Runtime data
+data/
+
+# Environment
+.env
+
+# n8n
+**/credentials.json
+
+# IDE
+.idea/
+.vscode/
+
+# macOS
+.DS_Store
+
+# Logs
+*.log
