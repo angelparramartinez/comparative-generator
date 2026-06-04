@@ -1,0 +1,178 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+  "title": "Legal Rule Extractor Input Schema v1",
+
+  "description": "Input contract between Rule Chunker and Legal Rule Extractor.",
+
+  "type": "object",
+
+  "required": [
+    "schema_version",
+    "semantic_unit_id",
+    "chunk",
+    "coverage_context",
+    "ontology_matches"
+  ],
+
+  "properties": {
+
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+
+    "semantic_unit_id": {
+      "type": "string"
+    },
+
+    "chunk": {
+
+      "type": "object",
+
+      "required": [
+        "chunk_id",
+        "text",
+        "chunk_type",
+        "primary_cue",
+        "secondary_cues",
+        "all_detected_cues",
+        "chunk_complexity",
+        "chunk_priority"
+      ],
+
+      "properties": {
+
+        "chunk_id": {
+          "type": "string"
+        },
+
+        "text": {
+          "type": "string"
+        },
+
+        "chunk_type": {
+          "type": "string",
+          "enum": [
+            "condition_rule",
+            "limit_rule",
+            "temporal_limit_rule",
+            "exclusion_rule",
+            "exception_rule",
+            "dependency_rule",
+            "generic_rule"
+          ]
+        },
+
+        "primary_cue": {
+          "type": "string"
+        },
+
+        "secondary_cues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+
+        "all_detected_cues": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+
+        "chunk_complexity": {
+          "type": "string",
+          "enum": [
+            "simple",
+            "compound",
+            "nested"
+          ]
+        },
+
+        "chunk_priority": {
+          "type": "integer"
+        }
+      }
+    },
+
+    "coverage_context": {
+
+      "type": "object",
+
+      "required": [
+        "coverage_path",
+        "section",
+        "semantic_type"
+      ],
+
+      "properties": {
+
+        "coverage_path": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+
+        "section": {
+          "type": "string"
+        },
+
+        "semantic_type": {
+          "type": "string"
+        },
+
+        "article": {
+          "type": "string"
+        },
+
+        "lineage": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+
+    "ontology_matches": {
+
+      "type": "array",
+
+      "items": {
+
+        "type": "object",
+
+        "required": [
+          "concept_id",
+          "score"
+        ],
+
+        "properties": {
+
+          "concept_id": {
+            "type": "string"
+          },
+
+          "concept_key": {
+            "type": "string"
+          },
+
+          "ontology_text": {
+            "type": "string"
+          },
+
+          "score": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,429 @@
+{
+  "version": "1.0",
+
+  "description": "Golden few-shot examples for Legal Rule Extractor",
+
+  "examples": [
+
+    {
+      "id": "FS001",
+
+      "input": {
+        "chunk": {
+          "text": "La garantía únicamente se aplicará cuando exista capital asegurado de contenido."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "contentCapital",
+            "score": 0.91
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "requires",
+            "target": "contentCapital",
+            "operator": ">",
+            "value": 0,
+            "unit": "BOOLEAN",
+            "confidence": 0.95,
+            "evidence": "cuando exista capital asegurado de contenido",
+            "ontology_refs": [
+              "contentCapital"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS002",
+
+      "input": {
+        "chunk": {
+          "text": "La cobertura solo será válida si existe contenido asegurado."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "contentCapital",
+            "score": 0.89
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "requires",
+            "target": "contentCapital",
+            "operator": ">",
+            "value": 0,
+            "unit": "BOOLEAN",
+            "confidence": 0.93,
+            "evidence": "si existe contenido asegurado",
+            "ontology_refs": [
+              "contentCapital"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS003",
+
+      "input": {
+        "chunk": {
+          "text": "Quedan excluidos los daños causados por inundación."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "floodDamage",
+            "score": 0.94
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "excludes",
+            "target": "floodDamage",
+            "operator": "EXISTS",
+            "value": true,
+            "unit": "BOOLEAN",
+            "confidence": 0.97,
+            "evidence": "Quedan excluidos los daños causados por inundación",
+            "ontology_refs": [
+              "floodDamage"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS004",
+
+      "input": {
+        "chunk": {
+          "text": "Con exclusión de los daños producidos por guerra."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "warDamage",
+            "score": 0.88
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "excludes",
+            "target": "warDamage",
+            "operator": "EXISTS",
+            "value": true,
+            "unit": "BOOLEAN",
+            "confidence": 0.93,
+            "evidence": "Con exclusión de los daños producidos por guerra",
+            "ontology_refs": [
+              "warDamage"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS005",
+
+      "input": {
+        "chunk": {
+          "text": "La cobertura se limita a 300 euros."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "repairCost",
+            "score": 0.86
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "limit",
+            "target": "repairCost",
+            "operator": "<=",
+            "value": 300,
+            "unit": "EUR",
+            "confidence": 0.96,
+            "evidence": "300 euros",
+            "ontology_refs": [
+              "repairCost"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS006",
+
+      "input": {
+        "chunk": {
+          "text": "Hasta el 10% del capital asegurado."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "insuredCapital",
+            "score": 0.91
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "limit",
+            "target": "insuredCapital",
+            "operator": "PERCENT_LIMIT",
+            "value": 10,
+            "unit": "PERCENT",
+            "confidence": 0.97,
+            "evidence": "10% del capital asegurado",
+            "ontology_refs": [
+              "insuredCapital"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS007",
+
+      "input": {
+        "chunk": {
+          "text": "Siempre que exista sistema de alarma conectado."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "alarmSystem",
+            "score": 0.92
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "requires",
+            "target": "alarmSystem",
+            "operator": "=",
+            "value": true,
+            "unit": "BOOLEAN",
+            "confidence": 0.95,
+            "evidence": "Siempre que exista sistema de alarma conectado",
+            "ontology_refs": [
+              "alarmSystem"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS008",
+
+      "input": {
+        "chunk": {
+          "text": "La garantía depende de la contratación de asistencia jurídica."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "legalAssistanceCoverage",
+            "score": 0.89
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "depends_on",
+            "target": "legalAssistanceCoverage",
+            "operator": "EXISTS",
+            "value": true,
+            "unit": "BOOLEAN",
+            "confidence": 0.91,
+            "evidence": "depende de la contratación de asistencia jurídica",
+            "ontology_refs": [
+              "legalAssistanceCoverage"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS009",
+
+      "input": {
+        "chunk": {
+          "text": "No se cubrirán daños por inundación si la vivienda permanece desocupada más de 90 días."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "floodDamage",
+            "score": 0.91
+          },
+          {
+            "concept_id": "vacancyPeriod",
+            "score": 0.87
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "excludes_if",
+            "target": "floodDamage",
+            "operator": "EXISTS",
+            "value": true,
+            "conditions": [
+              {
+                "target": "vacancyPeriod",
+                "operator": ">",
+                "value": 90,
+                "unit": "DAYS"
+              }
+            ],
+            "confidence": 0.88,
+            "evidence": "si la vivienda permanece desocupada más de 90 días",
+            "ontology_refs": [
+              "floodDamage",
+              "vacancyPeriod"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS010",
+
+      "input": {
+        "chunk": {
+          "text": "Cobertura válida únicamente en España y Portugal."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "coverage",
+            "score": 0.84
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "territorial_limit",
+            "target": "coverage",
+            "operator": "IN",
+            "value": [
+              "ES",
+              "PT"
+            ],
+            "confidence": 0.92,
+            "evidence": "únicamente en España y Portugal",
+            "ontology_refs": [
+              "coverage"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS011",
+
+      "input": {
+        "chunk": {
+          "text": "La garantía tendrá una duración máxima de 12 meses."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "coverageDuration",
+            "score": 0.90
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "temporal_limit",
+            "target": "coverageDuration",
+            "operator": "<=",
+            "value": 12,
+            "unit": "MONTHS",
+            "confidence": 0.95,
+            "evidence": "duración máxima de 12 meses",
+            "ontology_refs": [
+              "coverageDuration"
+            ]
+          }
+        ]
+      }
+    },
+
+    {
+      "id": "FS012",
+
+      "input": {
+        "chunk": {
+          "text": "Los daños estéticos podrán contratarse opcionalmente."
+        },
+
+        "ontology_matches": [
+          {
+            "concept_id": "aestheticDamageCoverage",
+            "score": 0.93
+          }
+        ]
+      },
+
+      "output": {
+        "legal_effects": [
+          {
+            "effect_type": "optional_if",
+            "target": "aestheticDamageCoverage",
+            "operator": "EXISTS",
+            "value": true,
+            "confidence": 0.90,
+            "evidence": "podrán contratarse opcionalmente",
+            "ontology_refs": [
+              "aestheticDamageCoverage"
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

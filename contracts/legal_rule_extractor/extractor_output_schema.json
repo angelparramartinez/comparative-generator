@@ -1,0 +1,299 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+
+  "title": "Legal Rule Extractor Output Schema v1",
+
+  "description": "Canonical legal effect extraction output.",
+
+  "type": "object",
+
+  "required": [
+    "schema_version",
+    "semantic_unit_id",
+    "chunk_id",
+    "legal_effects"
+  ],
+
+  "properties": {
+
+    "schema_version": {
+      "type": "string",
+      "enum": [
+        "1.0"
+      ]
+    },
+
+    "semantic_unit_id": {
+      "type": "string"
+    },
+
+    "chunk_id": {
+      "type": "string"
+    },
+
+    "legal_effects": {
+
+      "type": "array",
+
+      "items": {
+
+        "type": "object",
+
+        "required": [
+          "effect_id",
+          "effect_type",
+          "target",
+          "operator",
+          "confidence",
+          "evidence",
+          "ontology_refs"
+        ],
+
+        "properties": {
+
+          "effect_id": {
+            "type": "string"
+          },
+
+          "effect_type": {
+
+            "type": "string",
+
+            "enum": [
+              "requires",
+              "requires_any",
+              "requires_all",
+              "excludes",
+              "excludes_if",
+              "limit",
+              "territorial_limit",
+              "temporal_limit",
+              "depends_on",
+              "included_if",
+              "optional_if"
+            ]
+          },
+
+          "target": {
+            "type": "string"
+          },
+
+          "operator": {
+
+            "type": "string",
+
+            "enum": [
+              "=",
+              "!=",
+              ">",
+              ">=",
+              "<",
+              "<=",
+              "IN",
+              "NOT_IN",
+              "EXISTS",
+              "NOT_EXISTS",
+              "PERCENT_LIMIT"
+            ]
+          },
+
+          "value": {
+
+            "oneOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+
+          "unit": {
+
+            "type": [
+              "string",
+              "null"
+            ],
+
+            "enum": [
+              "EUR",
+              "PERCENT",
+              "DAYS",
+              "MONTHS",
+              "YEARS",
+              "KMH",
+              "BOOLEAN",
+              null
+            ]
+          },
+
+          "conditions": {
+
+            "type": "array",
+
+            "items": {
+
+              "type": "object",
+
+              "required": [
+                "target",
+                "operator"
+              ],
+
+              "properties": {
+
+                "target": {
+                  "type": "string"
+                },
+
+                "operator": {
+
+                  "type": "string",
+
+                  "enum": [
+                    "=",
+                    "!=",
+                    ">",
+                    ">=",
+                    "<",
+                    "<=",
+                    "IN",
+                    "NOT_IN",
+                    "EXISTS",
+                    "NOT_EXISTS",
+                    "PERCENT_LIMIT"
+                  ]
+                },
+
+                "value": {
+
+                  "oneOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    },
+                    {
+                      "type": "boolean"
+                    },
+                    {
+                      "type": "array"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+
+                "unit": {
+
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+
+                  "enum": [
+                    "EUR",
+                    "PERCENT",
+                    "DAYS",
+                    "MONTHS",
+                    "YEARS",
+                    "KMH",
+                    "BOOLEAN",
+                    null
+                  ]
+                }
+              }
+            }
+          },
+
+          "scope": {
+
+            "type": "object",
+
+            "properties": {
+
+              "territory": {
+
+                "type": "array",
+
+                "items": {
+                  "type": "string"
+                }
+              },
+
+              "coverage": {
+                "type": "string"
+              },
+
+              "insured_object": {
+                "type": "string"
+              },
+
+              "insured_person": {
+                "type": "string"
+              },
+
+              "risk_type": {
+                "type": "string"
+              }
+            }
+          },
+
+          "confidence": {
+
+            "type": "number",
+
+            "minimum": 0,
+
+            "maximum": 1
+          },
+
+          "evidence": {
+            "type": "string"
+          },
+
+          "ontology_refs": {
+
+            "type": "array",
+
+            "items": {
+              "type": "string"
+            }
+          },
+
+          "metadata": {
+
+            "type": "object",
+
+            "properties": {
+
+              "extraction_method": {
+                "type": "string"
+              },
+
+              "extractor_version": {
+                "type": "string"
+              },
+
+              "requires_review": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,372 @@
+version: "1.0"
+
+extractor:
+  name: "legal_rule_extractor"
+  version: "1.0"
+  description: >
+    Extract structured legal effects from insurance legal text.
+    Produce only canonical Legal Effect Schema v1 outputs.
+
+# ============================================================
+# GROUNDING RULES
+# ============================================================
+
+grounding_rules:
+
+  - id: G1
+    title: Use ontology matches only
+    severity: critical
+    enforcement: mandatory
+    description: >
+      Targets must be selected exclusively from ontology_matches.
+
+  - id: G2
+    title: Never invent ontology concepts
+    severity: critical
+    enforcement: mandatory
+    description: >
+      The extractor must never generate ontology concepts
+      that are not present in ontology_matches.
+
+  - id: G3
+    title: Prefer most specific concept
+    severity: high
+    enforcement: preferred
+    description: >
+      When several ontology concepts are available,
+      select the most specific compatible concept.
+
+  - id: G4
+    title: Single primary target
+    severity: high
+    enforcement: mandatory
+    description: >
+      Each legal effect must contain exactly one primary target.
+
+  - id: G5
+    title: Secondary concepts go to ontology_refs
+    severity: medium
+    enforcement: preferred
+    description: >
+      Supporting ontology concepts should be placed
+      in ontology_refs.
+
+  - id: G6
+    title: Ambiguous targets reduce confidence
+    severity: medium
+    enforcement: mandatory
+    description: >
+      Confidence must be reduced when several ontology
+      concepts could be valid targets.
+
+  - id: G7
+    title: Reject extraction without target
+    severity: critical
+    enforcement: mandatory
+    description: >
+      If no valid ontology target exists,
+      no legal effect should be generated.
+
+# ============================================================
+# EFFECT EXTRACTION RULES
+# ============================================================
+
+effect_rules:
+
+  - id: E1
+    title: One legal effect per legal meaning
+    severity: high
+    enforcement: mandatory
+    description: >
+      Distinct legal meanings must generate
+      distinct legal effects.
+
+  - id: E2
+    title: Multiple effects allowed
+    severity: high
+    enforcement: mandatory
+    description: >
+      A chunk may generate multiple legal effects.
+
+  - id: E3
+    title: Do not merge unrelated effects
+    severity: high
+    enforcement: mandatory
+    description: >
+      Limits, exclusions and requirements
+      must remain separate effects.
+
+  - id: E4
+    title: Preserve legal semantics
+    severity: critical
+    enforcement: mandatory
+    description: >
+      Extracted effects must preserve the original
+      legal meaning.
+
+# ============================================================
+# EFFECT TYPE RULES
+# ============================================================
+
+effect_type_rules:
+
+  supported_effect_types:
+
+    - requires
+    - requires_any
+    - requires_all
+    - excludes
+    - excludes_if
+    - limit
+    - territorial_limit
+    - temporal_limit
+    - depends_on
+    - included_if
+    - optional_if
+
+  rules:
+
+    - id: T1
+      title: Use supported effect types only
+      severity: critical
+      enforcement: mandatory
+
+    - id: T2
+      title: Never invent effect types
+      severity: critical
+      enforcement: mandatory
+
+# ============================================================
+# OPERATOR RULES
+# ============================================================
+
+operator_rules:
+
+  supported_operators:
+
+    - "="
+    - "!="
+    - ">"
+    - ">="
+    - "<"
+    - "<="
+    - "IN"
+    - "NOT_IN"
+    - "EXISTS"
+    - "NOT_EXISTS"
+    - "PERCENT_LIMIT"
+
+  normalization_examples:
+
+    - source: "existe"
+      operator: ">"
+
+    - source: "no existe"
+      operator: "="
+
+    - source: "hasta"
+      operator: "<="
+
+    - source: "máximo"
+      operator: "<="
+
+    - source: "mínimo"
+      operator: ">="
+
+    - source: "superior a"
+      operator: ">"
+
+    - source: "inferior a"
+      operator: "<"
+
+  rules:
+
+    - id: O1
+      title: Normalize operators
+      severity: critical
+      enforcement: mandatory
+
+    - id: O2
+      title: Use canonical operators only
+      severity: critical
+      enforcement: mandatory
+
+    - id: O3
+      title: Never emit natural language operators
+      severity: critical
+      enforcement: mandatory
+
+# ============================================================
+# VALUE RULES
+# ============================================================
+
+value_rules:
+
+  - id: V1
+    title: Extract numeric values
+    severity: critical
+    enforcement: mandatory
+
+  - id: V2
+    title: Preserve units separately
+    severity: critical
+    enforcement: mandatory
+
+  - id: V3
+    title: Do not mix value and unit
+    severity: high
+    enforcement: mandatory
+
+# ============================================================
+# CONFIDENCE RULES
+# ============================================================
+
+confidence_rules:
+
+  scale:
+    minimum: 0.0
+    maximum: 1.0
+
+  thresholds:
+
+    high_confidence: 0.90
+    medium_confidence: 0.75
+    low_confidence: 0.60
+
+  rules:
+
+    - id: C1
+      title: Direct wording increases confidence
+      severity: medium
+
+    - id: C2
+      title: Explicit ontology match increases confidence
+      severity: medium
+
+    - id: C3
+      title: Ambiguity reduces confidence
+      severity: high
+
+    - id: C4
+      title: Implicit inference reduces confidence
+      severity: high
+
+    - id: C5
+      title: Confidence is per effect
+      severity: critical
+
+# ============================================================
+# EVIDENCE RULES
+# ============================================================
+
+evidence_rules:
+
+  - id: EV1
+    title: Evidence is mandatory
+    severity: critical
+    enforcement: mandatory
+
+  - id: EV2
+    title: Evidence must be verbatim
+    severity: critical
+    enforcement: mandatory
+
+  - id: EV3
+    title: Evidence must support the effect
+    severity: critical
+    enforcement: mandatory
+
+# ============================================================
+# AMBIGUITY RULES
+# ============================================================
+
+ambiguity_rules:
+
+  - id: A1
+    title: Prefer explicit interpretation
+    severity: high
+
+  - id: A2
+    title: Reduce confidence under ambiguity
+    severity: high
+
+  - id: A3
+    title: Do not invent missing information
+    severity: critical
+
+  - id: A4
+    title: Unknown target means no extraction
+    severity: critical
+
+# ============================================================
+# VALIDATION RULES
+# ============================================================
+
+validation_rules:
+
+  - id: VAL1
+    title: Schema compliance required
+    severity: critical
+
+  - id: VAL2
+    title: effect_type mandatory
+    severity: critical
+
+  - id: VAL3
+    title: target mandatory
+    severity: critical
+
+  - id: VAL4
+    title: operator mandatory
+    severity: critical
+
+  - id: VAL5
+    title: confidence mandatory
+    severity: critical
+
+  - id: VAL6
+    title: evidence mandatory
+    severity: critical
+
+# ============================================================
+# FALLBACK RULES
+# ============================================================
+
+fallback_rules:
+
+  - id: F1
+    title: Prefer no extraction over hallucination
+    severity: critical
+
+  - id: F2
+    title: Invalid target means reject effect
+    severity: critical
+
+  - id: F3
+    title: Invalid operator means reject effect
+    severity: critical
+
+  - id: F4
+    title: Low confidence effects remain extractable
+    severity: medium
+    description: >
+      Effects may be emitted with low confidence
+      when evidence exists.
+
+# ============================================================
+# OUTPUT POLICY
+# ============================================================
+
+output_policy:
+
+  schema_version: "1.0"
+
+  output_format: "Legal Effect Schema v1"
+
+  requirements:
+
+    - valid_json
+    - schema_compliant
+    - ontology_grounded
+    - evidence_present
+    - confidence_present
