@@ -17,12 +17,12 @@
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.5,
       "position": [
-        -640,
-        -272
+        0,
+        16
       ],
-      "id": "cb296d1d-69dd-489c-ad3f-4e47b6d2ea9a",
+      "id": "54f80ea1-3c05-4bb0-a9ab-db4ff95d67de",
       "name": "On form submission",
-      "webhookId": "63b0567e-5dd9-40e9-a7cf-0cb05da7f1c1"
+      "webhookId": "63821bb0-ca0e-49a0-9a87-e410040dcad2"
     },
     {
       "parameters": {
@@ -36,23 +36,23 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1.1,
       "position": [
-        400,
-        -256
+        1040,
+        32
       ],
-      "id": "5f615f97-53dc-4518-8037-618d150bd537",
+      "id": "a1d509a0-2c9f-4647-8fbb-d3f6bdd84250",
       "name": "Extract ontology"
     },
     {
       "parameters": {
-        "jsCode": "const ontologyText = $json.ontology_text || '';\n\n//\n// ======================================================\n// EXTRAER ONTOLOGY TYPE\n// ======================================================\n//\n\nconst ontologyTypeMatch = ontologyText.match(\n  /OntologyType:\\s*([A-Za-z0-9_-]+)/i\n);\n\nconst ontologyType = ontologyTypeMatch\n  ? ontologyTypeMatch[1].trim().toLowerCase()\n  : 'unknown';\n\n//\n// ======================================================\n// NORMALIZACIÓN\n// ======================================================\n//\n\nconst normalized = ontologyText\n  .replace(/\\r\\n/g, '\\n')\n  .trim();\n\n//\n// ======================================================\n// DIVIDIR POR CONCEPTOS (## concept)\n// ======================================================\n//\n\nconst rawSections = normalized.split(/^##\\s+/gm);\n\nconst concepts = [];\n\nfor (const section of rawSections) {\n\n  let block = section.trim();\n\n  if (!block) {\n    continue;\n  }\n\n  const lines = block.split('\\n');\n\n  const conceptId = (lines[0] || '').trim();\n\n  //\n  // Ignorar cabeceras generales\n  //\n  if (\n    !conceptId ||\n    conceptId.startsWith('#') ||\n    conceptId.includes('OntologyType:')\n  ) {\n    continue;\n  }\n\n  //\n  // ======================================================\n  // LIMPIEZA DEL BLOQUE\n  // ======================================================\n  //\n  block = block\n\n    // eliminar separadores markdown\n    .replace(/---+/g, '')\n\n    // eliminar líneas decorativas tipo:\n    // # ============================\n    .replace(/^#\\s*=+.*$/gm, '')\n\n    // eliminar cabeceras de sección tipo:\n    // # RISK CONCEPTS\n    // # INSURANCE CONCEPTS\n    .replace(/^#\\s+[A-Z ]+$/gm, '')\n\n    // compactar saltos de línea excesivos\n    .replace(/\\n{3,}/g, '\\n\\n')\n\n    .trim();\n\n  //\n  // Recalcular identificador tras limpieza\n  //\n  const cleanedLines = block.split('\\n');\n\n  const cleanedConceptId =\n    (cleanedLines[0] || '').trim();\n\n  if (!cleanedConceptId) {\n    continue;\n  }\n\n  //\n  // Estadísticas\n  //\n  const wordCount = block\n    .split(/\\s+/)\n    .filter(Boolean)\n    .length;\n\n  concepts.push({\n    json: {\n\n      // identificador único del concepto\n      concept_id: cleanedConceptId,\n\n      // ramo\n      ontology_type: ontologyType,\n\n      // texto para embedding\n      ontology_text: block,\n\n      // métricas\n      concept_words: wordCount,\n      concept_length: block.length\n\n    }\n  });\n}\n\n//\n// ======================================================\n// ORDEN CONSISTENTE\n// ======================================================\n//\n\nconcepts.sort((a, b) =>\n  a.json.concept_id.localeCompare(\n    b.json.concept_id\n  )\n);\n\nreturn concepts;"
+        "jsCode": "const ontologyText = $json.ontology_text || '';\n\n//\n// ======================================================\n// EXTRAER ONTOLOGY TYPE\n// ======================================================\n//\n\nconst ontologyTypeMatch = ontologyText.match(\n  /OntologyType:\\s*([A-Za-z0-9_-]+)/i\n);\n\nconst ontologyType = ontologyTypeMatch\n  ? ontologyTypeMatch[1].trim().toLowerCase()\n  : 'unknown';\n\n//\n// ======================================================\n// NORMALIZACIÓN\n// ======================================================\n//\n\nconst normalized = ontologyText\n  .replace(/\\r\\n/g, '\\n')\n  .trim();\n\n//\n// ======================================================\n// UTILIDADES\n// ======================================================\n//\n\nfunction extractSingleValue(block, fieldName) {\n\n  const regex = new RegExp(\n    `^${fieldName}:\\\\s*(.*)$`,\n    'mi'\n  );\n\n  const match = block.match(regex);\n\n  return match\n    ? match[1].trim()\n    : null;\n}\n\nfunction extractSectionList(block, sectionName) {\n\n  const lines = block.split('\\n');\n\n  const values = [];\n\n  let insideSection = false;\n\n  for (const line of lines) {\n\n    const trimmed = line.trim();\n\n    //\n    // Inicio de sección\n    //\n    if (\n      trimmed.toLowerCase() ===\n      `${sectionName.toLowerCase()}:`\n    ) {\n      insideSection = true;\n      continue;\n    }\n\n    //\n    // Cambio a otra sección\n    //\n    if (\n      insideSection &&\n      /^[a-zA-Z_]+:\\s*/.test(trimmed)\n    ) {\n      break;\n    }\n\n    //\n    // Item lista\n    //\n    if (\n      insideSection &&\n      trimmed.startsWith('- ')\n    ) {\n      values.push(\n        trimmed.substring(2).trim()\n      );\n    }\n  }\n\n  return values;\n}\n\nfunction extractMultilineText(\n  block,\n  sectionName\n) {\n\n  const lines = block.split('\\n');\n\n  const values = [];\n\n  let insideSection = false;\n\n  for (const line of lines) {\n\n    const trimmed = line.trim();\n\n    if (\n      trimmed.toLowerCase() ===\n      `${sectionName.toLowerCase()}:`\n    ) {\n      insideSection = true;\n      continue;\n    }\n\n    if (\n      insideSection &&\n      /^[a-zA-Z_]+:\\s*/.test(trimmed)\n    ) {\n      break;\n    }\n\n    if (insideSection) {\n\n      if (\n        trimmed &&\n        !trimmed.startsWith('- ')\n      ) {\n        values.push(trimmed);\n      }\n    }\n  }\n\n  return values.join(' ').trim();\n}\n\n//\n// ======================================================\n// DIVIDIR POR CONCEPTOS\n// ======================================================\n//\n\nconst rawSections = normalized.split(\n  /^##\\s+/gm\n);\n\nconst concepts = [];\n\nfor (const section of rawSections) {\n\n  let block = section.trim();\n\n  if (!block) {\n    continue;\n  }\n\n  //\n  // Ignorar cabecera global\n  //\n  if (\n    block.startsWith('# Home Insurance Ontology') ||\n    block.includes('OntologyType:')\n  ) {\n    continue;\n  }\n\n  //\n  // Limpieza\n  //\n  block = block\n    .replace(/---+/g, '')\n    .trim();\n\n  const lines = block.split('\\n');\n\n  const conceptId =\n    (lines[0] || '').trim();\n\n  if (!conceptId) {\n    continue;\n  }\n\n  //\n  // ======================================================\n  // EXTRAER CAMPOS\n  // ======================================================\n  //\n  \n  const riskField =\n    extractSingleValue(\n      block,\n      'risk_field'\n    );\n\n  const dataType =\n    extractSingleValue(\n      block,\n      'data_type'\n    );\n\n  const meaning =\n    extractSingleValue(\n      block,\n      'meaning'\n    ) ||\n    extractMultilineText(\n      block,\n      'meaning'\n    );\n\n  const interpretation =\n    extractMultilineText(\n      block,\n      'interpretation'\n    );\n\n  const aliases =\n    extractSectionList(\n      block,\n      'aliases'\n    );\n\n  const contractualExamples =\n    extractSectionList(\n      block,\n      'contractual_examples'\n    );\n\n  //\n  // ======================================================\n  // TEXTO PARA EMBEDDINGS\n  // ======================================================\n  //\n\n  const searchableParts = [\n\n    ...(aliases || []),\n\n    ...(contractualExamples || []),\n\n    meaning || '',\n\n    interpretation || ''\n\n  ];\n\n  const searchableText =\n    searchableParts\n      .filter(Boolean)\n      .join('\\n')\n      .trim();\n\n  //\n  // Estadísticas\n  //\n  const wordCount =\n    searchableText\n      .split(/\\s+/)\n      .filter(Boolean)\n      .length;\n\n  concepts.push({\n    json: {\n\n      //\n      // Identificación\n      //\n      concept_id: conceptId,\n      concept_key:\n        `${ontologyType}:${conceptId}`,\n      ontology_type:\n        ontologyType,\n\n      //\n      // Metadatos\n      //\n      risk_field:\n        riskField,\n\n      data_type:\n        dataType,\n\n      aliases,\n\n      contractual_examples:\n        contractualExamples,\n\n      meaning,\n\n      interpretation,\n\n      //\n      // Textos\n      //\n      ontology_raw:\n        block,\n\n      searchable_text:\n        searchableText,\n\n      //\n      // Compatibilidad\n      // (puedes mantenerlo\n      // mientras migras)\n      //\n      ontology_text:\n        searchableText,\n\n      //\n      // Métricas\n      //\n      concept_words:\n        wordCount,\n\n      concept_length:\n        searchableText.length\n\n    }\n  });\n}\n\n//\n// ======================================================\n// ORDEN CONSISTENTE\n// ======================================================\n//\n\nconcepts.sort((a, b) =>\n  a.json.concept_id.localeCompare(\n    b.json.concept_id\n  )\n);\n\nreturn concepts;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        592,
-        -256
+        1232,
+        32
       ],
-      "id": "a27192f2-d18d-4196-ae62-6400c6a9eaec",
+      "id": "07e347bf-27db-4168-979e-0511bb342790",
       "name": "Ontology Splitter"
     },
     {
@@ -63,10 +63,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -448,
-        -32
+        192,
+        256
       ],
-      "id": "25adff86-1bb3-4cbc-a51f-717d22331aa4",
+      "id": "edba3abd-1ee7-45bd-abfc-d6b120fdc935",
       "name": "Check collection",
       "onError": "continueRegularOutput"
     },
@@ -97,10 +97,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.3,
       "position": [
-        -240,
-        -32
+        400,
+        256
       ],
-      "id": "c9d24fd2-9908-4bef-92b6-481ff7daab5a",
+      "id": "641e7ace-2820-4cee-bb0b-539997149173",
       "name": "Must create collection"
     },
     {
@@ -115,10 +115,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        -16,
-        -112
+        624,
+        176
       ],
-      "id": "a4700fba-5300-4be4-a842-e78f3d0b09ea",
+      "id": "7cbfcc70-279d-48c7-abe9-c0878e372ebd",
       "name": "Create collection"
     },
     {
@@ -128,10 +128,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        224,
-        -256
+        864,
+        32
       ],
-      "id": "68aa0052-2e29-400e-b99d-11e561c7041d",
+      "id": "f3c6d054-b99a-4249-bdab-a6cf3350baf8",
       "name": "Merge"
     },
     {
@@ -141,10 +141,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -16,
-        32
+        624,
+        368
       ],
-      "id": "1480bb22-d9a9-4bf3-ae61-a687e8e37454",
+      "id": "19232542-1c8e-4482-9bef-066af7723fec",
       "name": "Edit Fields"
     },
     {
@@ -160,7 +160,7 @@
             },
             {
               "name": "prompt",
-              "value": "={{ $json.ontology_text }}"
+              "value": "={{ $json.searchable_text }}"
             }
           ]
         },
@@ -176,24 +176,24 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        800,
-        -256
+        1440,
+        32
       ],
-      "id": "dc462614-3c2a-4911-a74b-d8702182e9da",
+      "id": "a56588df-9557-43f4-9edb-8f222b853a85",
       "name": "Generate Embedding"
     },
     {
       "parameters": {
         "mode": "runOnceForEachItem",
-        "jsCode": "const splitter = $('Ontology Splitter').item.json;\n\nconst conceptId = splitter.concept_id;\nconst ontologyType = splitter.ontology_type;\nconst ontologyText = splitter.ontology_text;\n\nconst embedding = $json.embedding;\n\nfunction deterministicId(str) {\n  let hash = 0;\n\n  for (let i = 0; i < str.length; i++) {\n    hash = ((hash << 5) - hash) + str.charCodeAt(i);\n    hash |= 0;\n  }\n\n  return Math.abs(hash);\n}\n\nconst conceptKey = `${ontologyType}:${conceptId}`;\nconst pointId = deterministicId(conceptKey);\n\nreturn {\n  json: {\n    points: [\n      {\n        id: pointId,\n        vector: embedding,\n        payload: {\n          concept_key: conceptKey,\n          concept_id: conceptId,\n          ontology_type: ontologyType,\n          ontology_text: ontologyText,\n          searchable_text: ontologyText,\n          concept_words: splitter.concept_words,\n          concept_length: splitter.concept_length\n        }\n      }\n    ]\n  }\n};"
+        "jsCode": "const splitter = $('Ontology Splitter').item.json;\n\nconst conceptId = splitter.concept_id;\nconst ontologyType = splitter.ontology_type;\n\nconst embedding = $json.embedding;\n\nfunction deterministicId(str) {\n  let hash = 0;\n\n  for (let i = 0; i < str.length; i++) {\n    hash = ((hash << 5) - hash) + str.charCodeAt(i);\n    hash |= 0;\n  }\n\n  return Math.abs(hash);\n}\n\nconst conceptKey = `${ontologyType}:${conceptId}`;\nconst pointId = deterministicId(conceptKey);\n\nreturn {\n  json: {\n    points: [\n      {\n        id: pointId,\n\n        vector: embedding,\n\n        payload: {\n\n          // ==================================================\n          // IDENTIFICACIÓN\n          // ==================================================\n\n          concept_key: conceptKey,\n          concept_id: conceptId,\n          ontology_type: ontologyType,\n\n          // ==================================================\n          // METADATOS ESTRUCTURADOS\n          // ==================================================\n\n          risk_field:\n            splitter.risk_field || null,\n\n          data_type:\n            splitter.data_type || null,\n\n          aliases:\n            splitter.aliases || [],\n\n          contractual_examples:\n            splitter.contractual_examples || [],\n\n          meaning:\n            splitter.meaning || null,\n\n          interpretation:\n            splitter.interpretation || null,\n\n          // ==================================================\n          // TEXTOS\n          // ==================================================\n\n          // Bloque completo original\n          ontology_raw:\n            splitter.ontology_raw || null,\n\n          // Texto optimizado para embeddings\n          searchable_text:\n            splitter.searchable_text || null,\n\n          // Texto exacto utilizado para generar el embedding\n          embedding_source_text:\n            splitter.searchable_text || null,\n\n          // Compatibilidad con versiones anteriores\n          ontology_text:\n            splitter.searchable_text || null,\n\n          // ==================================================\n          // MÉTRICAS\n          // ==================================================\n\n          concept_words:\n            splitter.concept_words || 0,\n\n          concept_length:\n            splitter.concept_length || 0\n        }\n      }\n    ]\n  }\n};"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        992,
-        -256
+        1632,
+        32
       ],
-      "id": "0b04057d-d28c-4737-a2e5-d2c4e1c420bb",
+      "id": "8f0e5307-60ef-4792-9384-00b80ab71a4e",
       "name": "Build Qdrant Point"
     },
     {
@@ -208,10 +208,10 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1200,
-        -256
+        1840,
+        32
       ],
-      "id": "6f9e9cb2-48cc-4293-8306-466b2ba0184d",
+      "id": "89d805ff-aec9-4c0d-94f4-9540d73c979d",
       "name": "Upsert en Qdrant"
     }
   ],
@@ -345,10 +345,10 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "a35cb9d4-73eb-4dae-a04a-915a93667420",
+  "versionId": "49f195ba-ead6-419f-9dce-6bb3bb659306",
   "meta": {
-    "instanceId": "094d843aba98a408460a52abbcf3251e1f006878716356a4b46e28a891d979c3"
+    "instanceId": "d906b4d995d0061aace5abceada4a582e267a94c9532d9da0c783a6f1f611af3"
   },
-  "id": "FQKkeruU3Gofeqqz",
+  "id": "XbUpAq55phBMb2VU",
   "tags": []
 }
