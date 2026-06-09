@@ -17,5 +17,8 @@ data/
 # Logs
 *.log
 
+# Procesados de condicionados generales
+ggcc_outputs/
+
 # Other
 Posibles mejoras.txt

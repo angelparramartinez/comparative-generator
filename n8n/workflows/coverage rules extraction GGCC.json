@@ -33,11 +33,11 @@
       "typeVersion": 2.5,
       "position": [
         -432,
-        176
+        256
       ],
-      "id": "a08f4482-4669-4647-bc1e-f4b0cb66d78c",
+      "id": "22edc558-abf2-4642-9735-eb9fd3469500",
       "name": "On form submission",
-      "webhookId": "a0d3e145-0030-48f9-8cc8-8405c3516824"
+      "webhookId": "d4105827-97b9-4814-bdaf-d6252db85ee2"
     },
     {
       "parameters": {
@@ -102,9 +102,9 @@
       "typeVersion": 4.4,
       "position": [
         -176,
-        176
+        256
       ],
-      "id": "2458f638-2dbb-47ad-a6f4-ce2b57ddfd13",
+      "id": "2a6d3179-2e57-4393-bc4b-0d8553f70308",
       "name": "Convert"
     },
     {
@@ -115,9 +115,9 @@
       "typeVersion": 2,
       "position": [
         -176,
-        384
+        464
       ],
-      "id": "17e591c8-eb60-4a9d-a2d1-20db6043efff",
+      "id": "b235da86-3673-4a0f-a984-aefa531d7b85",
       "name": "ast walker"
     },
     {
@@ -130,9 +130,9 @@
       "typeVersion": 1.1,
       "position": [
         0,
-        -80
+        0
       ],
-      "id": "b5239705-969a-42af-87e5-977139b8b81d",
+      "id": "8600ac98-71bc-4c1b-8802-901332afdd18",
       "name": "Extract from File"
     },
     {
@@ -143,9 +143,9 @@
       "typeVersion": 2,
       "position": [
         400,
-        -80
+        0
       ],
-      "id": "40cb65dd-3d0b-4237-82cc-8600e3b05d55",
+      "id": "62fb367e-e363-456b-a070-0c51f76739db",
       "name": "clean data"
     },
     {
@@ -158,9 +158,9 @@
       "typeVersion": 3.2,
       "position": [
         480,
-        368
+        448
       ],
-      "id": "4f2335b5-aa38-42e0-8261-4674d0cdb35f",
+      "id": "5d3382d2-a503-4a28-af77-fff0f5d5d0e5",
       "name": "Merge chuncks with embeddings"
     },
     {
@@ -199,9 +199,9 @@
       "typeVersion": 4.4,
       "position": [
         624,
-        528
+        608
       ],
-      "id": "8a362781-2f8e-40bc-b60c-d7fa738650e7",
+      "id": "8fda50c8-1f69-42c3-8586-a3eb8ff8a35e",
       "name": "Qdrant Search"
     },
     {
@@ -214,9 +214,9 @@
       "typeVersion": 3.2,
       "position": [
         768,
-        368
+        448
       ],
-      "id": "1b3cba8c-12c8-457b-aef7-dbb3113d8f3d",
+      "id": "3b15a565-f390-40b3-a18a-bfd7e8f83d80",
       "name": "Merge"
     },
     {
@@ -227,9 +227,9 @@
       "typeVersion": 2,
       "position": [
         -176,
-        576
+        656
       ],
-      "id": "6cb5f80a-1d7c-4bce-b6cc-30849d8ecc93",
+      "id": "3ef1d9bb-ea0f-45df-8011-9990d8bb3e34",
       "name": "cleanup"
     },
     {
@@ -240,9 +240,9 @@
       "typeVersion": 2,
       "position": [
         -176,
-        768
+        848
       ],
-      "id": "fc76f126-3ed3-4322-ac7f-65147f45b5e0",
+      "id": "96163420-1659-414b-9f93-46e22be604af",
       "name": "Hierarchy Builder"
     },
     {
@@ -253,9 +253,9 @@
       "typeVersion": 2,
       "position": [
         -176,
-        976
+        1056
       ],
-      "id": "35b861c5-75c1-4dfc-9655-dc6b17c26d06",
+      "id": "2a7c8730-0ec1-45e8-84b0-2d0f7ac16618",
       "name": "Semantic Assembler"
     },
     {
@@ -266,9 +266,9 @@
       "typeVersion": 2,
       "position": [
         -176,
-        1184
+        1264
       ],
-      "id": "f9462e7c-b529-491b-88bd-9054a5c5eda6",
+      "id": "9797ce26-e946-4fea-b9da-eb06e8d6a75c",
       "name": "Ontology Embedding Builder"
     },
     {
@@ -296,9 +296,9 @@
       "typeVersion": 4.4,
       "position": [
         304,
-        528
+        608
       ],
-      "id": "e2fc6912-460c-4779-b008-5d709ee942be",
+      "id": "f53834f6-cf65-453d-932c-cb0ff16f5dde",
       "name": "Generate chunks embeddings"
     },
     {
@@ -310,9 +310,9 @@
       "typeVersion": 1,
       "position": [
         192,
-        176
+        256
       ],
-      "id": "758ff2bb-02d6-4fa5-bcff-1ec3d3faccd1",
+      "id": "41f20f0d-d4cb-4eb0-9c1a-2121fadf020d",
       "name": "Split Out"
     },
     {
@@ -323,22 +323,22 @@
       "typeVersion": 2,
       "position": [
         1232,
-        592
+        672
       ],
-      "id": "14ffb0b3-90f5-48cf-b9ea-6aa643dcaf27",
+      "id": "2fe606a9-9f78-49a6-91fb-3c1f5e8c6dc4",
       "name": "Rule Chunker"
     },
     {
       "parameters": {
-        "jsCode": "const DEBUG_MODE = false;\n\nconst DEBUG_IDS = [\n  'su_00003', // límite puro con continent/content\n\n  'su_00016', // \"cuando se asegure el continente\"\n  'su_00017', // \"cuando se asegure el continente\" + siempre que\n\n  'su_00023', // caso mixto continent > 0 / continent = 0\n\n  'su_00025', // exclusión compleja con housingRegime\n\n  'su_00027', // exclusión parecida a su_00025 pero con housingUse vs housingRegime\n\n  'su_00028', // exclusiones largas con medidas de seguridad declaradas\n\n  'su_00050',\n  'su_00097',\n  'su_00099',\n\n  'su_00122',\n  'su_00125',\n  'su_00128',\n  'su_00132',\n  'su_00138',\n\n  'su_00154',\n  'su_00161',\n  'su_00166',\n  'su_00171',\n  'su_00175'\n];\n\nif (!DEBUG_MODE) {\n  return items;\n}\n\nreturn items.filter(item => {\n  const id =\n    item.json.semantic_unit?.id ||\n    item.json.id;\n\n  return DEBUG_IDS.includes(id);\n});"
+        "jsCode": "const DEBUG_MODE = false;\n\nconst DEBUG_IDS = [\n  'su_00003', // límite puro con continent/content\n\n  'su_00016', // \"cuando se asegure el continente\"\n  'su_00017' // \"cuando se asegure el continente\" + siempre que\n\n  \n];\n\nif (!DEBUG_MODE) {\n  return items;\n}\n\nreturn items.filter(item => {\n  const id =\n    item.json.semantic_unit?.id ||\n    item.json.id;\n\n  return DEBUG_IDS.includes(id);\n});"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
         416,
-        160
+        240
       ],
-      "id": "2ddc16d4-25b3-4276-8b6f-702ded18fa6f",
+      "id": "29567508-e1a2-4691-a764-8680757b3516",
       "name": "Debug Filter"
     },
     {
@@ -350,9 +350,9 @@
       "typeVersion": 2,
       "position": [
         976,
-        368
+        448
       ],
-      "id": "74b0116d-59c5-44c9-a2e6-efcd8a3771c0",
+      "id": "b28725bf-d07b-4c88-9ba2-7761a1e02bc8",
       "name": "Ontology Relevance Filter"
     },
     {
@@ -363,9 +363,9 @@
       "typeVersion": 2,
       "position": [
         1232,
-        176
+        256
       ],
-      "id": "881f348f-1556-4726-b489-e781c0c28fba",
+      "id": "ae576128-da1c-42b5-b5c1-bb0c984de462",
       "name": "Coverage Dependency Candidate Detector"
     },
     {
@@ -376,9 +376,9 @@
       "typeVersion": 2,
       "position": [
         1232,
-        400
+        480
       ],
-      "id": "ed7b8bee-2831-432d-b94e-5b08ca498917",
+      "id": "2339dbb4-c14f-4754-8b08-8aafbfa928b9",
       "name": "Should call llm filter"
     },
     {
@@ -389,9 +389,9 @@
       "typeVersion": 2,
       "position": [
         1600,
-        576
+        656
       ],
-      "id": "f882be5b-c4d6-46a3-a045-c3ba87b44b5c",
+      "id": "4f6b34df-038f-4afa-bed2-e65f17dd4a43",
       "name": "Prepare Dependency Extractor Input"
     },
     {
@@ -402,10 +402,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.3,
       "position": [
-        2064,
-        768
+        2208,
+        976
       ],
-      "id": "08221e01-da63-4aba-be5e-de52723b7f31",
+      "id": "1d03c671-3927-4bf6-a51b-feee9beb4728",
       "name": "Structured Output Parser1",
       "alwaysOutputData": false
     },
@@ -425,10 +425,10 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
       "position": [
-        1920,
-        912
+        2064,
+        960
       ],
-      "id": "a04b8e45-c8d5-4d54-9057-16c74537ba0c",
+      "id": "28872878-91bb-461f-b222-2e5f45c341b6",
       "name": "Anthropic Chat Model",
       "credentials": {
         "anthropicApi": {
@@ -447,12 +447,126 @@
       "type": "@n8n/n8n-nodes-langchain.chainLlm",
       "typeVersion": 1.9,
       "position": [
-        1920,
-        576
+        2064,
+        784
       ],
-      "id": "7cf2847f-b664-49e2-a44b-8f42181c11a6",
+      "id": "0ea1be78-e277-4d6c-83a0-19fc2be9c0d9",
       "name": "Coverage Dependency Extractor1",
       "retryOnFail": false
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1808,
+        656
+      ],
+      "id": "c32044c7-ef3e-4984-be90-362554e4778e",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "amount": 2
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2416,
+        784
+      ],
+      "id": "17e73885-fcbc-43c0-8000-97472ea2d8a6",
+      "name": "Wait",
+      "webhookId": "23c635c6-8a5b-4cb0-b515-4dc99323be88"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2080,
+        496
+      ],
+      "id": "837ec689-037d-46c2-8a32-d951e8c6187e",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const context = $json.coverage_context || {};\n\nconst sourceText = ($json.chunks || [])\n  .map(chunk => chunk.text)\n  .join(\"\\n\\n\");\n\nreturn {\n  json: {\n\n    schema_version: \"1.0\",\n\n    semantic_unit_id:\n      $json.semantic_unit_id,\n\n    article:\n      context.article || null,\n\n    section:\n      context.section || null,\n\n    semantic_type:\n      context.semantic_type || null,\n\n    coverage_path:\n      context.coverage_path || [],\n\n    coverage_key:\n      (context.coverage_path || [])\n        .join(\" > \"),\n\n    lineage:\n      context.lineage || [],\n\n    source_text:\n      sourceText,\n\n    coverage_dependencies:\n      $json.output?.coverage_dependencies || [],\n\n    has_dependencies:\n      ($json.output?.coverage_dependencies || []).length > 0,\n\n    dependency_count:\n      ($json.output?.coverage_dependencies || []).length\n\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2288,
+        496
+      ],
+      "id": "5e1a0585-8031-40f2-ba8e-3e66c6a02303",
+      "name": "Build Coverage Dependency Artifact"
+    },
+    {
+      "parameters": {
+        "jsCode": "const artifacts = items\n  .map(item => item.json)\n  .filter(artifact =>\n    artifact.has_dependencies === true\n  );\n\nconst totalSemanticUnits = items.length;\n\nreturn [{\n  json: {\n\n    schema_version: \"1.0\",\n\n    generated_at:\n      new Date().toISOString(),\n\n    total_semantic_units:\n      totalSemanticUnits,\n\n    artifact_count:\n      artifacts.length,\n\n    artifacts\n\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2496,
+        496
+      ],
+      "id": "84df0021-2386-41ff-8241-4ae60867887e",
+      "name": "Build Coverage Matcher Contract"
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "format": true,
+          "fileName": "={{$json.filename}}"
+        }
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        2912,
+        496
+      ],
+      "id": "7550fd1c-da75-4e47-a436-ee395340a093",
+      "name": "Convert to File"
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/ggcc_outputs/{{$binary.data.fileName}}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        3136,
+        496
+      ],
+      "id": "0629bd26-56df-4f2b-a749-7726bc560772",
+      "name": "Read/Write Files from Disk"
+    },
+    {
+      "parameters": {
+        "jsCode": "const timestamp = new Date()\n  .toISOString()\n  .replace(/[:.]/g, '-');\n\nreturn [{\n  json: {\n    ...$json,\n    filename: `coverage_matcher_contract_${timestamp}.json`\n  }\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2704,
+        496
+      ],
+      "id": "4e8352e1-b1e1-42a0-99b7-d71c697c39c7",
+      "name": "Generate file name"
     }
   ],
   "pinData": {},
@@ -618,13 +732,7 @@
     },
     "clean data": {
       "main": [
-        [
-          {
-            "node": "Debug Filter",
-            "type": "main",
-            "index": 0
-          }
-        ]
+        []
       ]
     },
     "Debug Filter": {
@@ -700,12 +808,113 @@
     },
     "Prepare Dependency Extractor Input": {
       "main": [
-        []
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ],
+        [
+          {
+            "node": "Coverage Dependency Extractor1",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     },
     "Coverage Dependency Extractor1": {
       "main": [
-        []
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Build Coverage Dependency Artifact",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Coverage Dependency Artifact": {
+      "main": [
+        [
+          {
+            "node": "Build Coverage Matcher Contract",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Coverage Matcher Contract": {
+      "main": [
+        [
+          {
+            "node": "Generate file name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to File": {
+      "main": [
+        [
+          {
+            "node": "Read/Write Files from Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate file name": {
+      "main": [
+        [
+          {
+            "node": "Convert to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
       ]
     }
   },
@@ -714,11 +923,10 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "6ea6482e-6d8a-4a6f-98cd-e89d4e20caef",
+  "versionId": "fed2668a-82b2-4bf7-bca6-ed8936cbdcb3",
   "meta": {
-    "templateCredsSetupCompleted": true,
     "instanceId": "d906b4d995d0061aace5abceada4a582e267a94c9532d9da0c783a6f1f611af3"
   },
-  "id": "u8s1J5zEv2D1Ubh2",
+  "id": "Fyg6CIcyCYas4trX",
   "tags": []
 }
