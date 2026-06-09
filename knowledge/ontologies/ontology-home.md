@@ -1,4 +1,4 @@
-# Home Insurance Ontology v1.3
+# Home Insurance Ontology v1.4
 
 OntologyType: home
 
@@ -245,21 +245,15 @@ aliases:
 
 ---
 
-## jewelry
-risk_field: jewelry
-data_type: derived
-aliases:
-- joyas
-- alhajas
-- relojes de valor
-
----
-
 ## jewelryInSafeBox
 risk_field: jewelryInSafeBox
 data_type: integer
 aliases:
 - joyas en caja fuerte
+- joyas y relojes de valor en caja fuerte
+- relojes de valor en caja fuerte
+- joyas depositadas en caja fuerte
+- alhajas en caja fuerte
 
 ---
 
@@ -268,15 +262,10 @@ risk_field: jewelryOutSafeBox
 data_type: integer
 aliases:
 - joyas fuera de caja fuerte
-
----
-
-## safeBox
-risk_field: safeBox
-data_type: boolean
-aliases:
-- caja fuerte
-- caja de seguridad
+- joyas y relojes de valor fuera de caja fuerte
+- relojes de valor fuera de caja fuerte
+- joyas no depositadas en caja fuerte
+- alhajas fuera de caja fuerte
 
 ---
 
@@ -285,8 +274,11 @@ risk_field: specialValueObjects
 data_type: integer
 aliases:
 - objetos especiales
+- bienes especiales
 - bienes de valor
+- objetos de valor especial
 - obras de arte
+- colecciones
 - antigüedades
 
 ---
@@ -312,35 +304,6 @@ aliases:
 contractual_examples:
 - siempre que exista alarma
 - cuando la vivienda disponga de alarma
-
----
-
-## hasSafeBox
-risk_field: safeBox
-data_type: derived_boolean
-aliases:
-- existe caja fuerte
-- dispone de caja fuerte
-- caja fuerte homologada
-contractual_examples:
-- siempre que exista caja fuerte
-- cuando las joyas estén depositadas en caja fuerte
-
----
-
-## hasSecurityMeasures
-risk_field: derived
-data_type: derived_boolean
-aliases:
-- medidas de seguridad
-- sistemas de protección
-- medios de protección
-- protecciones de seguridad
-contractual_examples:
-- siempre que existan medidas de seguridad
-- viviendas protegidas adecuadamente
-interpretation:
-Represents the existence of one or more security controls.
 
 ---
 
