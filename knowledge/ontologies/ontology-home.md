@@ -45,9 +45,14 @@ aliases:
 - capital de contenido
 - ajuar doméstico
 - enseres
+- mobiliario
+- mobiliario asegurado
+- mobiliario y enseres
+- capital de mobiliario
 contractual_examples:
 - siempre que exista contenido asegurado
 - cuando se asegure el contenido
+- cuando se asegure el mobiliario
 interpretation:
 Contents capital declared by the insured.
 
