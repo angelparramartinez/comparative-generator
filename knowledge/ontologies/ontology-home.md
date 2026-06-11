@@ -131,7 +131,7 @@ risk_field: floorArea
 data_type: integer
 aliases:
 - metros cuadrados
-- superficie
+- superficie de la vivienda
 - superficie construida
 
 ---
