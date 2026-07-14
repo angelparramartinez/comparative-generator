@@ -81,6 +81,9 @@ aliases:
 contractual_examples:
 - en segundas residencias
 - cuando la vivienda permanezca desocupada
+- vivienda destinada a alquiler vacacional
+- inmueble destinado a uso turístico
+- vivienda ocupada únicamente por temporadas
 
 ---
 
@@ -92,9 +95,6 @@ aliases:
 - inquilino
 - arrendatario
 - vivienda alquilada
-- alquiler
-- arrendamiento
-- cesión en alquiler
 
 ---
 
@@ -143,6 +143,9 @@ aliases:
 - habitaciones
 - estancias
 - cuartos
+contractual_examples:
+- viviendas con más de cinco habitaciones
+- cuando la vivienda disponga de cuatro cuartos
 
 ---
 
@@ -285,6 +288,10 @@ aliases:
 - obras de arte
 - colecciones
 - antigüedades
+contractual_examples:
+- cuando existan bienes especiales asegurados
+- si se declaran obras de arte
+- cuando se aseguren antigüedades
 
 ---
 
