@@ -20,5 +20,8 @@ data/
 # Procesados de condicionados generales
 ggcc_outputs/
 
+# Ejemplos
+examples/
+
 # Other
 Posibles mejoras.txt
