@@ -620,6 +620,40 @@
       ],
       "id": "4508a472-4ca3-4c58-bac2-25c5d9b62ade",
       "name": "Legal Cue Pre-Filter"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://pdf-watermark-cleaner:8000/v1/clean",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "parameterType": "formBinaryData",
+              "name": "file",
+              "inputDataFieldName": "Condicionado_general"
+            }
+          ]
+        },
+        "options": {
+          "timeout": 120000,
+          "response": {
+            "response": {
+              "responseFormat": "file",
+              "outputPropertyName": "Condicionado_general"
+            }
+          }
+        }
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -380,
+        256
+      ],
+      "id": "31eadaab-317d-416a-90a1-ee06290024f1",
+      "name": "Clean Watermark"
     }
   ],
   "pinData": {},
@@ -628,7 +662,7 @@
       "main": [
         [
           {
-            "node": "Convert",
+            "node": "Clean Watermark",
             "type": "main",
             "index": 0
           }
@@ -1008,6 +1042,17 @@
         [
           {
             "node": "Rule Chunker",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean Watermark": {
+      "main": [
+        [
+          {
+            "node": "Convert",
             "type": "main",
             "index": 0
           }
