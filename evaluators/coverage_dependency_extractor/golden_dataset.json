@@ -7,7 +7,8 @@
     "actual_coverage_dependencies": "Lo que produjo realmente el LLM en la ejecucion persistida (baseline a corregir).",
     "expected_coverage_dependencies": "Lo que deberia producir tras aplicar las correcciones del plan.",
     "must_not_contain_risk_fields": "Cualquier coverage_dependencies final con uno de estos risk_field indica que la correccion no funciono (o que el guardrail de la Fase 1 no lo cazo, en el caso de 'guardrail_catches: false').",
-    "expected_unverified_evidence": "Solo aplica a la categoria evidence_grounding_regression. Lista de los textos de 'evidence' (de entre los de actual_coverage_dependencies) que el guardrail debe marcar como no verificables -- es decir, evidence que no aparece como substring literal (tras normalizar espacios) en el source_text reconstruido a partir de chunks.text. Hallado el 2026-07-16 al revisar a mano coverage_matcher_contract_2026-07-16T12-41-12-969Z.json tras la generalizacion de cleanup/ast walker -- no relacionado con esos cambios, es un patron nuevo del propio LLM extractor."
+    "expected_unverified_evidence": "Solo aplica a la categoria evidence_grounding_regression. Lista de los textos de 'evidence' (de entre los de actual_coverage_dependencies) que el guardrail debe marcar como no verificables -- es decir, evidence que no aparece como substring literal (tras normalizar espacios) en el source_text reconstruido a partir de chunks.text. Hallado el 2026-07-16 al revisar a mano coverage_matcher_contract_2026-07-16T12-41-12-969Z.json tras la generalizacion de cleanup/ast walker -- no relacionado con esos cambios, es un patron nuevo del propio LLM extractor.",
+    "expected_rejected_by_value_type": "Solo aplica a la categoria value_type_regression. Lista de risk_field de entre los de actual_coverage_dependencies cuyo 'value' tiene un tipo incompatible con el data_type real del campo (p.ej. un alias de texto usado como valor de un campo integer) -- el guardrail v4 debe rechazarlos con rejection_reason 'value_type_incompatible_with_data_type', independientemente de si el operador en si es valido. Hallado el 2026-07-17 en un caso real de Santalucia (coverage_matcher_contract_2026-07-17T08-26-45-100Z.json, su_00077): 'colecciones' -- un alias de specialValueObjects -- usado como value en vez de una cantidad numerica."
   },
   "cases": [
     {
@@ -630,6 +631,31 @@
         "Impago de rentas (solo en Vivienda arrendada)"
       ],
       "notes": "La evidencia citada es literalmente el encabezado de seccion (coverage_path/coverage_key: '2. Impago de rentas (solo en Vivienda arrendada)'), que viaja en el mismo payload como coverage_context.section/article -- no en chunks[].text del propio chunk. El LLM cito contexto estructural, no el cuerpo del texto que se le paso. La dependencia (housingRegime = arrendada) es probablemente correcta segun el propio encabezado, pero no es verificable contra el texto real de la clausula."
+    },
+    {
+      "id": "GD-TYPE-001",
+      "category": "value_type_regression",
+      "semantic_unit_ref": "su_00077",
+      "article": "Artículo 11. DETERMINACIÓN DE LA INDEMNIZACIÓN",
+      "source_text": "Para las garantías contratadas a primer riesgo, la pérdida será indemnizada hasta el importe máximo asegurado por dicho concepto, no siendo de aplicación lo indicado en los apartados 3 y 4 anteriores. Para objetos que formen parte de juegos, colecciones o conjuntos, el Asegurador indemnizará sólo el valor del objeto o de la parte del objeto siniestrado, no indemnizándose la depreciación que, a causa de su descabalamiento, haya podido sufrir el juego, colección o conjunto de objetos asegurados al quedar incompleto.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "primer riesgo",
+          "evidence": "Para las garantías contratadas a primer riesgo, la pérdida será indemnizada hasta el importe máximo asegurado por dicho concepto, no siendo de aplicación lo indicado en los apartados 3 y 4 anteriores."
+        },
+        {
+          "risk_field": "specialValueObjects",
+          "operator": "=",
+          "value": "colecciones",
+          "evidence": "Para objetos que formen parte de juegos, colecciones o conjuntos, el Asegurador indemnizará sólo el valor del objeto o de la parte del objeto siniestrado, no indemnizándose la depreciación que, a causa de su descabalamiento, haya podido sufrir el juego, colección o conjunto de objetos asegurados al quedar incompleto."
+        }
+      ],
+      "expected_rejected_by_value_type": [
+        "specialValueObjects"
+      ],
+      "notes": "Caso real de Santalucia (2026-07-17). 'specialValueObjects' es data_type integer (capital/importe), pero el LLM uso 'colecciones' -- que es literalmente un alias de ese risk_field en la ontologia -- como si fuera un valor de categoria en vez de una cantidad numerica. El operador '=' es valido para integer, asi que el chequeo de compatibilidad operador/data_type (v1) no lo detecta; hace falta el chequeo de tipo del value (v4). 'capitalInsuranceType = \"primer riesgo\"' en el mismo caso es correcto (enum, valor de texto) y debe seguir aceptandose sin cambios."
     }
   ]
 }

@@ -6,6 +6,7 @@
 //   node run_offline_eval.js              -> corre todos los checks disponibles
 //   node run_offline_eval.js --chunking   -> solo el check de chunking_boundary
 //   node run_offline_eval.js --hallucination -> solo el check de risk_field invalidos/guardrail
+//   node run_offline_eval.js --value-type -> solo el check de tipo de "value" vs data_type (Guardrail v4)
 //   node run_offline_eval.js --ontology   -> solo el check de alias_match / negative_aliases
 //   node run_offline_eval.js --chunk-matching -> solo el check de matching por chunk (Fase 4)
 //   node run_offline_eval.js --cost-prefilter -> solo el check de la garantia del pre-filtro de coste (Fase 5)
@@ -17,6 +18,12 @@
 //   - chunking: valida Rule Chunker contra los casos chunking_boundary (documenta el bug conocido de la Fase 3)
 //   - hallucination: valida actual_coverage_dependencies contra valid_risk_fields.json,
 //     y contra el nodo "Coverage Dependency Risk Field Guardrail" si ya existe en el workflow (Fase 1)
+//   - value-type: verifica que "Coverage Dependency Risk Field Guardrail" (v4) rechaza
+//     dependencias cuyo "value" tiene un tipo incompatible con el data_type real del
+//     campo (p.ej. un alias de texto usado como valor de un campo integer), algo que
+//     el chequeo de operador/data_type de la v1 no detecta porque el operador en si
+//     puede ser valido -- hallado el 2026-07-17 en un caso real de Santalucia
+//     ("specialValueObjects = colecciones")
 //   - ontology: parsea knowledge/ontologies/ontology-home.md con el codigo real de
 //     "Ontology Splitter" (n8n/workflows/ontology indexing.json) y ejecuta
 //     "Ontology Relevance Filter" contra alias_match_expectations del golden set (Fase 2)
@@ -195,6 +202,54 @@ function checkHallucination(workflow, golden, validRiskFields) {
   }
 
   return invalidFound;
+}
+
+function checkValueTypeValidation(workflow, golden) {
+  console.log("\n=== Check: value_type_regression (nodo Coverage Dependency Risk Field Guardrail v4) ===");
+
+  const cases = golden.cases.filter(c => c.category === "value_type_regression");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "value_type_incompatible_with_data_type")
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_by_value_type || [];
+
+    const ok =
+      rejectedFields.length === expectedRejected.length &&
+      expectedRejected.every(f => rejectedFields.includes(f));
+
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados_por_tipo=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)})`
+    );
+
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const shouldStillAccept = (c.actual_coverage_dependencies || [])
+      .map(d => d.risk_field)
+      .filter(f => !expectedRejected.includes(f));
+    const acceptOk = shouldStillAccept.every(f => acceptedFields.includes(f));
+
+    if (!acceptOk) {
+      failures++;
+      console.log(`  FAIL adicional: se esperaba que ${JSON.stringify(shouldStillAccept)} siguiera aceptado, aceptados=${JSON.stringify(acceptedFields)}`);
+    }
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
 }
 
 function checkEvidenceGrounding(workflow, golden) {
@@ -533,6 +588,10 @@ function main() {
 
   if (runAll || args.includes("--hallucination")) {
     checkHallucination(workflow, golden, validRiskFields);
+  }
+
+  if (runAll || args.includes("--value-type")) {
+    exitCode += checkValueTypeValidation(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--ontology")) {
