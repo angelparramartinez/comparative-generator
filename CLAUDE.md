@@ -323,11 +323,13 @@ condiciones compuestas en ese formato exacto — y el caso que las necesitaría
   código desplegado coincide byte a byte con el local.
 - **Acceso a n8n**: vía su API REST pública (`X-N8N-API-KEY`), no vía MCP — no hay
   conector oficial de n8n en el directorio de Anthropic a día de hoy. Variables de
-  entorno esperadas (rellenar en tu entorno, no commitear):
+  entorno esperadas:
   ```
   N8N_API_URL=http://<host>:<puerto>/api/v1
   N8N_API_KEY=<tu api key de Settings > n8n API>
   ```
+  **Ya están rellenas en `.env` en la raíz del proyecto** (gitignored, no commitear).
+  Antes de pedirlas al usuario, cargar con `set -a; source .env; set +a`.
   Nota: la API pública de n8n permite leer/actualizar workflows completos y lanzar
   ejecuciones, pero no parece tener una operación de "ejecutar solo un nodo" — eso
   sigue siendo función de la UI (pin data). Confirmar en

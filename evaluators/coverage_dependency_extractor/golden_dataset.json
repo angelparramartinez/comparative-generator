@@ -6,7 +6,8 @@
     "ontology_matches_stub": "Reconstruido a mano verificando que match.aliases aparece como substring literal (case-insensitive) en source_text -- replica exactamente la logica real de Ontology Relevance Filter (.includes()). No es una captura real de produccion (ese dato intermedio no se persiste en el artefacto final), asi que solo se incluye para los casos donde hace falta para validar Fase 2 (D.3, negative_aliases).",
     "actual_coverage_dependencies": "Lo que produjo realmente el LLM en la ejecucion persistida (baseline a corregir).",
     "expected_coverage_dependencies": "Lo que deberia producir tras aplicar las correcciones del plan.",
-    "must_not_contain_risk_fields": "Cualquier coverage_dependencies final con uno de estos risk_field indica que la correccion no funciono (o que el guardrail de la Fase 1 no lo cazo, en el caso de 'guardrail_catches: false')."
+    "must_not_contain_risk_fields": "Cualquier coverage_dependencies final con uno de estos risk_field indica que la correccion no funciono (o que el guardrail de la Fase 1 no lo cazo, en el caso de 'guardrail_catches: false').",
+    "expected_unverified_evidence": "Solo aplica a la categoria evidence_grounding_regression. Lista de los textos de 'evidence' (de entre los de actual_coverage_dependencies) que el guardrail debe marcar como no verificables -- es decir, evidence que no aparece como substring literal (tras normalizar espacios) en el source_text reconstruido a partir de chunks.text. Hallado el 2026-07-16 al revisar a mano coverage_matcher_contract_2026-07-16T12-41-12-969Z.json tras la generalizacion de cleanup/ast walker -- no relacionado con esos cambios, es un patron nuevo del propio LLM extractor."
   },
   "cases": [
     {
@@ -22,7 +23,9 @@
           "data_type": "enum",
           "score": 0.62,
           "alias_match": true,
-          "matched_aliases": ["propietario"]
+          "matched_aliases": [
+            "propietario"
+          ]
         }
       ],
       "actual_coverage_dependencies": [
@@ -34,9 +37,14 @@
         }
       ],
       "expected_coverage_dependencies": [],
-      "must_not_contain_risk_fields": ["housingRegime"],
+      "must_not_contain_risk_fields": [
+        "housingRegime"
+      ],
       "alias_match_expectations": [
-        { "risk_field": "housingRegime", "expected_alias_match": false }
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": false
+        }
       ],
       "notes": "Falso amigo lexico: el alias 'propietario' matchea en 'comunidad de propietarios' / 'junta de copropietarios', que describe pertenencia a la comunidad del edificio, no el regimen de tenencia del asegurado. CLAUDE.md §5.1. Se corrige con negative_aliases en housingRegime (Fase 2/D.3)."
     },
@@ -53,7 +61,9 @@
           "data_type": "integer",
           "score": 0.58,
           "alias_match": true,
-          "matched_aliases": ["renovación"]
+          "matched_aliases": [
+            "renovación"
+          ]
         }
       ],
       "actual_coverage_dependencies": [
@@ -65,10 +75,18 @@
         }
       ],
       "expected_coverage_dependencies": [],
-      "must_not_contain_risk_fields": ["lastReformYear"],
+      "must_not_contain_risk_fields": [
+        "lastReformYear"
+      ],
       "alias_match_expectations": [
-        { "risk_field": "lastReformYear", "expected_alias_match": false },
-        { "risk_field": "housingRegime", "expected_alias_match": true }
+        {
+          "risk_field": "lastReformYear",
+          "expected_alias_match": false
+        },
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": true
+        }
       ],
       "notes": "Falso amigo lexico: el alias 'renovación' matchea en 'cláusula de renovación' de un contrato de alquiler, sin relación con la reforma de la vivienda. CLAUDE.md §5.1. El texto real de esta semantic unit tiene 17 chunks segun la validacion offline del Punto 1 (CLAUDE.md §5.2); aqui se incluye solo la frase relevante como fixture minimo para Fase 2/D.3. Se corrige con negative_aliases en lastReformYear. housingRegime SI debe seguir matchando aqui (via 'inquilinos', alias legitimo) -- sirve de contraejemplo de no-regresion."
     },
@@ -85,7 +103,10 @@
           "data_type": "integer",
           "score": 0.71,
           "alias_match": true,
-          "matched_aliases": ["continente", "capital de continente"]
+          "matched_aliases": [
+            "continente",
+            "capital de continente"
+          ]
         },
         {
           "concept_id": "capitalInsuranceType",
@@ -132,7 +153,10 @@
       "subtype": "invented_risk_field",
       "semantic_unit_ref": "su_00059",
       "article": "Artículo 5º Garantías adicionales",
-      "coverage_path": ["1. Ampliación Hogar completo", "1.1. Daños por calor"],
+      "coverage_path": [
+        "1. Ampliación Hogar completo",
+        "1.1. Daños por calor"
+      ],
       "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda.",
       "actual_coverage_dependencies": [
         {
@@ -144,7 +168,10 @@
         {
           "risk_field": "property_use",
           "operator": "IN",
-          "value": ["Vivienda principal", "Vivienda secundaria"],
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
@@ -158,11 +185,17 @@
         {
           "risk_field": "housingUse",
           "operator": "IN",
-          "value": ["vivienda principal", "vivienda secundaria"],
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
-      "must_not_contain_risk_fields": ["property_use", "property_type"],
+      "must_not_contain_risk_fields": [
+        "property_use",
+        "property_type"
+      ],
       "guardrail_catches": true,
       "notes": "risk_field inventado ('property_use' no existe en la ontologia). Causa raiz: housingUse no tiene los alias literales 'vivienda principal'/'vivienda secundaria' -- el guardrail de la Fase 1 rechaza esto por catalogo invalido, pero la correccion real es cerrar el hueco de alias en la Fase 2/D.2."
     },
@@ -172,7 +205,10 @@
       "subtype": "invented_risk_field",
       "semantic_unit_ref": "su_00080",
       "article": "Artículo 5º Garantías adicionales",
-      "coverage_path": ["2. Ampliación Hogar singular", "2.9. Alimentos refrigerados por salto de diferencial"],
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.9. Alimentos refrigerados por salto de diferencial"
+      ],
       "source_text": "Hasta 150 euros, cuando se contrate capital de Mobiliario, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos previstos en el punto anterior cuando sean debidos a un salto de diferencial. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda.",
       "actual_coverage_dependencies": [
         {
@@ -184,7 +220,10 @@
         {
           "risk_field": "property_type",
           "operator": "IN",
-          "value": ["main_residence", "secondary_residence"],
+          "value": [
+            "main_residence",
+            "secondary_residence"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
@@ -198,11 +237,17 @@
         {
           "risk_field": "housingUse",
           "operator": "IN",
-          "value": ["vivienda principal", "vivienda secundaria"],
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
-      "must_not_contain_risk_fields": ["property_use", "property_type"],
+      "must_not_contain_risk_fields": [
+        "property_use",
+        "property_type"
+      ],
       "guardrail_catches": true,
       "notes": "Misma frase real del PDF que GD-HALLUC-001 ('Vivienda principal o Vivienda secundaria'), pero en otra semantic unit el LLM invento un risk_field DISTINTO ('property_type', valores en ingles) -- confirma que no hay memoria entre llamadas y que el problema es sistematico, no un caso aislado."
     },
@@ -217,7 +262,10 @@
         {
           "risk_field": "content",
           "operator": "IN",
-          "value": ["vivienda principal", "vivienda secundaria"],
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
@@ -225,7 +273,10 @@
         {
           "risk_field": "housingUse",
           "operator": "IN",
-          "value": ["vivienda principal", "vivienda secundaria"],
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
@@ -243,7 +294,10 @@
         {
           "risk_field": "content",
           "operator": "IN",
-          "value": ["Vivienda principal", "Vivienda secundaria"],
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
@@ -251,7 +305,10 @@
         {
           "risk_field": "housingUse",
           "operator": "IN",
-          "value": ["vivienda principal", "vivienda secundaria"],
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
         }
       ],
@@ -269,13 +326,21 @@
         {
           "risk_field": "specialValueObjects",
           "operator": "NOT_IN",
-          "value": ["antigüedades"],
+          "value": [
+            "antigüedades"
+          ],
           "evidence": "Se entenderán por cosas muebles exclusivamente los objetos de decoración y mobiliarios (salvo antigüedades)"
         },
         {
           "risk_field": "content",
           "operator": "IN",
-          "value": ["objetos de decoración", "mobiliarios", "aparatos electrodomésticos", "efectos personales", "alimentos"],
+          "value": [
+            "objetos de decoración",
+            "mobiliarios",
+            "aparatos electrodomésticos",
+            "efectos personales",
+            "alimentos"
+          ],
           "evidence": "Se entenderán por cosas muebles exclusivamente los objetos de decoración y mobiliarios (salvo antigüedades), aparatos electrodomésticos, efectos personales y alimentos"
         }
       ],
@@ -295,7 +360,12 @@
         {
           "risk_field": "content",
           "operator": "NOT_IN",
-          "value": ["vivienda arrendada", "vivienda de uso turístico", "vivienda de alquiler vacacional", "vivienda sin ocupación"],
+          "value": [
+            "vivienda arrendada",
+            "vivienda de uso turístico",
+            "vivienda de alquiler vacacional",
+            "vivienda sin ocupación"
+          ],
           "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación."
         }
       ],
@@ -303,7 +373,12 @@
         {
           "risk_field": "housingUse",
           "operator": "NOT_IN",
-          "value": ["arrendada", "uso turístico", "alquiler vacacional", "sin ocupación"],
+          "value": [
+            "arrendada",
+            "uso turístico",
+            "alquiler vacacional",
+            "sin ocupación"
+          ],
           "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación."
         }
       ],
@@ -326,13 +401,19 @@
         {
           "risk_field": "housingUse",
           "operator": "IN",
-          "value": ["uso turístico", "alquiler vacacional"],
+          "value": [
+            "uso turístico",
+            "alquiler vacacional"
+          ],
           "evidence": "Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios"
         }
       ],
       "expected_coverage_dependencies": "same_as_actual",
       "alias_match_expectations": [
-        { "risk_field": "housingRegime", "expected_alias_match": true }
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": true
+        }
       ],
       "notes": "Caso correcto de referencia: 'housingRegime=propietario' aqui SI es correcto (contexto real de titularidad, no falso amigo), y 'housingUse IN [uso turistico, alquiler vacacional]' acierta porque esos alias SI estan literalmente en housingUse. Contiene tambien la frase 'comunidad de propietarios' sin que el LLM la confunda esta vez -- util para medir que negative_aliases (Fase 2/D.3) no introduzca un falso negativo aqui. IMPORTANTE: la primera implementacion de negative_aliases (sin proximidad) SI rompia este caso -- corregido antes de desplegar exigiendo que TODAS las apariciones del alias esten cerca de un negative_alias para suprimir, no solo que ambas frases coexistan en el texto."
     },
@@ -363,7 +444,10 @@
         {
           "risk_field": "housingUse",
           "operator": "IN",
-          "value": ["alquiler vacacional", "uso turístico"],
+          "value": [
+            "alquiler vacacional",
+            "uso turístico"
+          ],
           "evidence": "se garantiza la indemnización por la pérdida de los ingresos por alquiler a consecuencia de la inhabitabilidad temporal de la vivienda"
         }
       ],
@@ -380,7 +464,9 @@
         {
           "risk_field": "housingRegime",
           "operator": "IN",
-          "value": ["arrendada"],
+          "value": [
+            "arrendada"
+          ],
           "evidence": "Impago de rentas (solo en Vivienda arrendada)"
         }
       ],
@@ -403,7 +489,10 @@
       ],
       "expected_coverage_dependencies": "same_as_actual",
       "alias_match_expectations": [
-        { "risk_field": "housingRegime", "expected_alias_match": true }
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": true
+        }
       ],
       "notes": "Caso correcto con operador '=' sobre un valor escalar (no lista). Contiene tambien la palabra 'propietario' en 'cedido por el propietario' sin que el LLM la confunda como condicion del asegurado -- otro caso util para medir que negative_aliases no rompa esto."
     },
@@ -417,7 +506,9 @@
         {
           "risk_field": "capitalInsuranceType",
           "operator": "NOT_IN",
-          "value": ["primer riesgo"],
+          "value": [
+            "primer riesgo"
+          ],
           "evidence": "La compensación de capitales no será de aplicación sobre las garantías o capitales asegurados bajo la modalidad de contratación a primer riesgo."
         }
       ],
@@ -441,6 +532,104 @@
       "source_text": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra en los que se incurra derivados de localizar la causa de los daños y reparar o sustituir la tubería o pieza averiada, a condición de que sean conducciones fijas y privativas que pertenezcan a la vivienda asegurada y sean causantes de daños en bienes asegurados o de terceros. No obstante, cuando se descubra corrosión, amianto o deterioro generalizado de las conducciones o instalaciones de agua de la vivienda, la obligación de la compañía quedará limitada a indemnizar el coste de reparación del tramo causante, con un máximo de 300 euros, quedando totalmente excluidos siniestros posteriores con origen en la misma causa.",
       "max_expected_chunks": 2,
       "notes": "Contraejemplo de no-sobrefragmentacion para la Fase 3, revisado tras implementar el fix: el fix real (distinctCueTypes.size<=1 en isStandaloneLegalBullet) parte este texto en 2 chunks, no 1 -- el limite original de 'max_expected_chunks:1' resulto ser un criterio demasiado estricto fijado en la Fase 0 sin haber probado el fix todavia. Se revisó el split real: separa limpiamente en el conector adversativo 'No obstante' (clausula base 'a condicion de que sean conducciones fijas...' vs. excepcion/limite 'cuando se descubra corrosion... con un maximo de 300 euros'), un límite de clausula genuino, no una fragmentacion arbitraria. Ademas, en la topologia actual (antes de la Fase 4), Prepare Dependency Extractor Input agrupa TODOS los chunks de una unidad en una unica llamada LLM ('NO explota un item por chunk'), asi que dividir en 2 chunks aqui no reduce el contexto que ve el LLM -- solo añade metadatos de cue mas finos por chunk. Lo que este caso debe seguir vigilando es que NO se sobrefragmente en mas de 2 chunks (evitar cortes espurios frase a frase)."
+    },
+    {
+      "id": "GD-EVID-001",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00043",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "source_text": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra en los que se incurra derivados de localizar la causa de los daños y reparar o sustituir la tubería o pieza averiada, a condición de que sean conducciones fijas y privativas que pertenezcan a la vivienda asegurada y sean causantes de daños en bienes asegurados o de terceros.\n\nNo obstante, cuando se descubra corrosión, amianto o deterioro generalizado de las conducciones o instalaciones de agua de la vivienda, la obligación de la compañía quedará limitada a indemnizar el coste de reparación del tramo causante, con un máximo de 300 euros, quedando totalmente excluidos siniestros posteriores con origen en la misma causa.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra..."
+        }
+      ],
+      "expected_unverified_evidence": [
+        "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra..."
+      ],
+      "notes": "El LLM trunca la cita con '...' en vez de citar un tramo literal completo, violando la instruccion del prompt ('Utiliza evidencia textual directa'). La dependencia (continent > 0) es plausible, pero la evidencia no es un substring literal del texto -- el guardrail debe marcarla como unverified_evidence, no rechazarla (la dependencia en si no esta necesariamente mal)."
+    },
+    {
+      "id": "GD-EVID-002",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00090",
+      "article": "Artículo 5º Garantías adicionales",
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 500 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_unverified_evidence": [
+        "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+      ],
+      "notes": "El LLM une con '...' dos frases NO contiguas del texto (aparecen en distintos puntos del parrafo) como si fueran una sola cita literal. Ambas frases apuntan al mismo risk_field/value, asi que la dependencia en si es probablemente correcta -- es un problema de formato de la evidencia, no de la extraccion. La segunda dependencia (NOT_IN ['otros usos']) SI tiene evidencia literal y pasa el check de grounding, pero 'otros usos' no es un valor real del enum housingUse -- gap distinto (validacion de valores de enum), fuera de alcance de este check, ver conversacion 2026-07-16."
+    },
+    {
+      "id": "GD-EVID-003",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00104",
+      "article": "Artículo 5º Garantías adicionales",
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 1.000 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_unverified_evidence": [
+        "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+      ],
+      "notes": "Mismo patron que GD-EVID-002 (misma garantia, variante 'Hogar singular' en vez de 'Hogar completo')."
+    },
+    {
+      "id": "GD-EVID-004",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00145",
+      "article": "Artículo 6º Garantías adicionales específicas para la vivienda arrendada, de uso turístico o de alquiler vacacional",
+      "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia). No obstante, el asegurador renuncia a aplicar este plazo de carencia cuando la póliza se emite en reemplazo de otra que hubiese garantizado el impago para la misma vivienda e inquilino.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "arrendada",
+          "evidence": "Impago de rentas (solo en Vivienda arrendada)"
+        }
+      ],
+      "expected_unverified_evidence": [
+        "Impago de rentas (solo en Vivienda arrendada)"
+      ],
+      "notes": "La evidencia citada es literalmente el encabezado de seccion (coverage_path/coverage_key: '2. Impago de rentas (solo en Vivienda arrendada)'), que viaja en el mismo payload como coverage_context.section/article -- no en chunks[].text del propio chunk. El LLM cito contexto estructural, no el cuerpo del texto que se le paso. La dependencia (housingRegime = arrendada) es probablemente correcta segun el propio encabezado, pero no es verificable contra el texto real de la clausula."
     }
   ]
 }
