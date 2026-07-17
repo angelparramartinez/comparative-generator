@@ -11,6 +11,7 @@
 //   node run_offline_eval.js --cost-prefilter -> solo el check de la garantia del pre-filtro de coste (Fase 5)
 //   node run_offline_eval.js --evidence-grounding -> solo el check de evidence literal (Guardrail v3)
 //   node run_offline_eval.js --hierarchy -> solo el check de deteccion de "article" (nivel 1)
+//   node run_offline_eval.js --watermark -> solo el check de eliminacion de marca de agua fusionada (ast walker)
 //
 // Checks disponibles hoy (antes de aplicar ninguna fase del plan):
 //   - chunking: valida Rule Chunker contra los casos chunking_boundary (documenta el bug conocido de la Fase 3)
@@ -32,6 +33,12 @@
 //     ninguna "Articulo" y numera sus divisiones principales de forma simple, tipo
 //     "7. Titulo" (Occident) -- hallado el 2026-07-16 al probar Occident (article=None
 //     en todas las unidades)
+//   - watermark: verifica que "ast walker" elimina, por repeticion (>=3 bloques),
+//     fragmentos de una marca de agua de borrador fusionada linea a linea con el
+//     texto real via \r\n -- hallado el 2026-07-17 en Occident (persiste igual con
+//     dlparse_v4 y con pypdfium2, no es un problema del pdf_backend). Sin lista de
+//     literales hardcodeados: la señal es solo repeticion + mayusculas, generico
+//     para cualquier compania con un artefacto similar.
 
 const fs = require("fs");
 const path = require("path");
@@ -309,6 +316,82 @@ function checkHierarchyArticleDetection(workflow) {
   return failures;
 }
 
+function checkWatermarkStripping(workflow) {
+  console.log("\n=== Check: eliminacion de marca de agua fusionada (nodo ast walker) ===");
+
+  if (!findNode(workflow, "ast walker")) {
+    console.log("Nodo 'ast walker' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  // Caso A: marca de agua "SIN VALIDEZ CONTRACTUAL" fusionada linea a linea
+  // (via \r\n) con el texto real, repetida en >=3 bloques del mismo
+  // documento -- patron real hallado en Occident el 2026-07-17 (independiente
+  // del pdf_backend usado: persiste igual con dlparse_v4 y con pypdfium2).
+  const [casoWatermark] = runNode(workflow, "ast walker", [
+    {
+      json_content: {
+        texts: [
+          { text: "SIN VALIDEZ\r\nCONTRACTUAL\r\nSe entiende por valor de nuevo la cantidad que exigiría la adquisición de uno nuevo.", label: "text", content_layer: "body" },
+          { text: "SIN VALIDEZ\r\nCONTRACTUAL\r\nLa vivienda deberá estar registrada ante las administraciones correspondientes.", label: "text", content_layer: "body" },
+          { text: "Quedan excluidos los daños producidos por la acción continuada del humo.\r\nSIN VALIDEZ\r\nCONTRACTUAL", label: "text", content_layer: "body" }
+        ]
+      }
+    }
+  ]);
+
+  const watermarkGone = casoWatermark.chunks.every(
+    c => !c.content.includes("SIN VALIDEZ") && !c.content.includes("CONTRACTUAL")
+  );
+  console.log(`${watermarkGone ? "PASS" : "FAIL"} fragmentos de "SIN VALIDEZ CONTRACTUAL" repetidos (>=3 bloques) se eliminan de los 3 chunks`);
+  if (!watermarkGone) failures++;
+
+  const realContentKept =
+    casoWatermark.chunks[0].content.includes("exigiría la adquisición de uno nuevo") &&
+    casoWatermark.chunks[1].content.includes("administraciones correspondientes") &&
+    casoWatermark.chunks[2].content.includes("acción continuada del humo");
+  console.log(`${realContentKept ? "PASS" : "FAIL"} el contenido real de los 3 bloques se conserva integro`);
+  if (!realContentKept) failures++;
+
+  // Caso B: un token corto en mayusculas que aparece una unica vez (p.ej.
+  // una sigla real como "CCS") no debe eliminarse -- el umbral de repeticion
+  // (>=3) es la unica señal, sin lista de literales hardcodeados.
+  const [casoSigla] = runNode(workflow, "ast walker", [
+    {
+      json_content: {
+        texts: [
+          { text: "El pago de la indemnización corresponde al CCS\r\nen caso de riesgo extraordinario.", label: "text", content_layer: "body" }
+        ]
+      }
+    }
+  ]);
+
+  const siglaKept = casoSigla.chunks[0].content.includes("CCS");
+  console.log(`${siglaKept ? "PASS" : "FAIL"} una sigla real de aparicion unica ("CCS") no se elimina por falso positivo`);
+  if (!siglaKept) failures++;
+
+  // Caso C: documento sin ningun \r\n (caso normal, p.ej. Generali/Axa) no
+  // debe verse afectado en absoluto por este check.
+  const [casoNormal] = runNode(workflow, "ast walker", [
+    {
+      json_content: {
+        texts: [
+          { text: "Texto normal de condiciones generales sin ninguna marca de agua.", label: "text", content_layer: "body" }
+        ]
+      }
+    }
+  ]);
+
+  const normalUnaffected = casoNormal.chunks[0].content === "Texto normal de condiciones generales sin ninguna marca de agua.";
+  console.log(`${normalUnaffected ? "PASS" : "FAIL"} documento sin \\r\\n no se ve afectado`);
+  if (!normalUnaffected) failures++;
+
+  console.log(`Resultado: ${4 - failures}/4 expectativas cumplidas.`);
+  return failures;
+}
+
 function checkOntology(workflow, golden) {
   console.log("\n=== Check: alias_match / negative_aliases (nodo Ontology Relevance Filter) ===");
 
@@ -470,6 +553,10 @@ function main() {
 
   if (runAll || args.includes("--hierarchy")) {
     exitCode += checkHierarchyArticleDetection(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--watermark")) {
+    exitCode += checkWatermarkStripping(workflow) > 0 ? 1 : 0;
   }
 
   process.exit(exitCode);
