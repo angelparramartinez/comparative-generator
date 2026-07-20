@@ -20,6 +20,14 @@ services:
     depends_on:
       - docling
       - qdrant
+      - pdf-watermark-cleaner
+
+  pdf-watermark-cleaner:
+    build: ./services/pdf_watermark_cleaner
+    restart: unless-stopped
+
+    ports:
+      - "${PDF_WATERMARK_CLEANER_PORT}:8000"
 
   docling:
     image: quay.io/docling-project/docling-serve:latest

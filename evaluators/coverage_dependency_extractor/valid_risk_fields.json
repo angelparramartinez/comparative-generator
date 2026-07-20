@@ -1,0 +1,32 @@
+{
+  "source": "knowledge/ontologies/ontology-home.md",
+  "generated_manually_on": "2026-07-15",
+  "note": "Lista de risk_field unicos derivada leyendo los bloques '## ' de ontology-home.md (25 bloques -> 25 risk_field unicos; housingUse y alarm aparecen en dos bloques cada uno -- ver Fase 2/D.1 del plan -- pero comparten el mismo risk_field). Regenerar a mano si se anaden/quitan conceptos en la ontologia, hasta que exista un generador automatico (ver riesgo de la Fase 1 sobre mantener este catalogo sincronizado).",
+  "valid_risk_fields": [
+    "address",
+    "alarm",
+    "buildQuality",
+    "buildingType",
+    "capitalInsuranceType",
+    "closedUrbanization",
+    "constructionYear",
+    "content",
+    "continent",
+    "dangerousDogs",
+    "floorArea",
+    "housingRegime",
+    "housingUse",
+    "isReformed",
+    "jewelryInSafeBox",
+    "jewelryOutSafeBox",
+    "lastReformYear",
+    "location",
+    "materials",
+    "principalDoorSecurity",
+    "rooms",
+    "secondaryDoorsSecurity",
+    "securityGuard",
+    "specialValueObjects",
+    "windowSecurity"
+  ]
+}

@@ -1,4 +1,4 @@
-# Home Insurance Ontology v1.4
+# Home Insurance Ontology v1.5
 
 OntologyType: home
 
@@ -71,6 +71,7 @@ aliases:
 ## housingUse
 risk_field: housingUse
 data_type: enum
+meaning: Usage category of the insured dwelling (main residence, secondary residence, seasonal/tourist use, vacant, etc).
 aliases:
 - segunda residencia
 - vivienda vacía
@@ -78,12 +79,30 @@ aliases:
 - uso turístico
 - alquiler vacacional
 - vivienda de temporada
+- vivienda habitual
+- residencia principal
+- domicilio habitual
+- vivienda principal
+- vivienda secundaria
 contractual_examples:
 - en segundas residencias
 - cuando la vivienda permanezca desocupada
 - vivienda destinada a alquiler vacacional
 - inmueble destinado a uso turístico
 - vivienda ocupada únicamente por temporadas
+- siempre que constituya vivienda habitual
+- cuando se trate de residencia principal
+- cuando se trate de Vivienda principal o Vivienda secundaria
+- esta cobertura solo se aplica cuando se trate de vivienda principal
+interpretation:
+Unifica el concepto general de uso de la vivienda con el concepto derivado
+"vivienda habitual/residencia principal" (antes duplicado en un bloque
+separado `isMainResidence`, mismo risk_field). Consolidado en la Fase 2
+del plan de mejora de extracción de condiciones tras confirmarse que las
+frases reales "vivienda principal"/"vivienda secundaria" del condicionado
+no tenian alias literal, lo que provocaba que el LLM extractor inventara
+risk_field como "property_use"/"property_type" o reutilizara "content" de
+forma incorrecta (casos su_00059, su_00080, su_00064, su_00071).
 
 ---
 
@@ -95,6 +114,15 @@ aliases:
 - inquilino
 - arrendatario
 - vivienda alquilada
+negative_aliases:
+- comunidad de propietarios
+- junta de propietarios
+- junta de copropietarios
+interpretation:
+Los negative_aliases excluyen el uso mas frecuente de "propietario" en el
+condicionado de Hogar: pertenencia a la comunidad de vecinos del edificio,
+que no tiene relacion con el regimen de tenencia de la vivienda del
+asegurado. Ver caso real su_00161 (CLAUDE.md §5.1).
 
 ---
 
@@ -114,6 +142,13 @@ aliases:
 - reforma integral
 - rehabilitación
 - renovación
+negative_aliases:
+- cláusula de renovación
+- sin cláusula de renovación
+interpretation:
+El negative_alias excluye el sentido de "renovación" como renovación de un
+contrato de alquiler, sin relacion con reformar la vivienda. Ver caso real
+su_00196 (CLAUDE.md §5.1).
 
 ---
 
@@ -191,15 +226,28 @@ aliases:
 ## alarm
 risk_field: alarm
 data_type: enum
+meaning: Home alarm/security system installed and its status.
 aliases:
 - alarma
 - alarma conectada
 - sistema de alarma
 - CRA
 - central receptora de alarmas
+- existe alarma
+- dispone de alarma
+- vivienda con alarma
+- sistema de alarma instalado
+- alarma operativa
 contractual_examples:
 - siempre que exista alarma conectada
 - viviendas protegidas mediante alarma
+- siempre que exista alarma
+- cuando la vivienda disponga de alarma
+interpretation:
+Unifica el concepto general de alarma con el concepto derivado "existe
+alarma" (antes duplicado en un bloque separado `hasAlarm`, mismo
+risk_field). Consolidado en la Fase 2 del plan de mejora de extracción de
+condiciones (mismo motivo que housingUse/isMainResidence).
 
 ---
 
@@ -301,33 +349,3 @@ data_type: integer
 aliases:
 - PPP
 - perros potencialmente peligrosos
-
----
-
-## hasAlarm
-risk_field: alarm
-data_type: derived_boolean
-aliases:
-- existe alarma
-- dispone de alarma
-- vivienda con alarma
-- sistema de alarma instalado
-- alarma operativa
-contractual_examples:
-- siempre que exista alarma
-- cuando la vivienda disponga de alarma
-
----
-
-## isMainResidence
-risk_field: housingUse
-data_type: derived_boolean
-aliases:
-- vivienda habitual
-- residencia principal
-- domicilio habitual
-contractual_examples:
-- siempre que constituya vivienda habitual
-- cuando se trate de residencia principal
-interpretation:
-Derived concept representing MainResidence.

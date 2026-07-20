@@ -1,0 +1,661 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_dependency_extractor_golden_v1",
+  "description": "Golden set propio del flujo coverage_rules_extraction_GGCC, alineado al esquema real del nodo Coverage Dependency Extractor (risk_field/operator/value/evidence) y a los risk_field reales de knowledge/ontologies/ontology-home.md. No reutiliza el esquema ni los conceptos sinteticos de evaluators/legal_rule_extractor (rama descartada, ver CLAUDE.md). Fuente de los casos reales: ggcc_outputs/coverage_matcher_contract_2026-06-12T12-03-35-891Z.json.",
+  "schema_notes": {
+    "ontology_matches_stub": "Reconstruido a mano verificando que match.aliases aparece como substring literal (case-insensitive) en source_text -- replica exactamente la logica real de Ontology Relevance Filter (.includes()). No es una captura real de produccion (ese dato intermedio no se persiste en el artefacto final), asi que solo se incluye para los casos donde hace falta para validar Fase 2 (D.3, negative_aliases).",
+    "actual_coverage_dependencies": "Lo que produjo realmente el LLM en la ejecucion persistida (baseline a corregir).",
+    "expected_coverage_dependencies": "Lo que deberia producir tras aplicar las correcciones del plan.",
+    "must_not_contain_risk_fields": "Cualquier coverage_dependencies final con uno de estos risk_field indica que la correccion no funciono (o que el guardrail de la Fase 1 no lo cazo, en el caso de 'guardrail_catches: false').",
+    "expected_unverified_evidence": "Solo aplica a la categoria evidence_grounding_regression. Lista de los textos de 'evidence' (de entre los de actual_coverage_dependencies) que el guardrail debe marcar como no verificables -- es decir, evidence que no aparece como substring literal (tras normalizar espacios) en el source_text reconstruido a partir de chunks.text. Hallado el 2026-07-16 al revisar a mano coverage_matcher_contract_2026-07-16T12-41-12-969Z.json tras la generalizacion de cleanup/ast walker -- no relacionado con esos cambios, es un patron nuevo del propio LLM extractor.",
+    "expected_rejected_by_value_type": "Solo aplica a la categoria value_type_regression. Lista de risk_field de entre los de actual_coverage_dependencies cuyo 'value' tiene un tipo incompatible con el data_type real del campo (p.ej. un alias de texto usado como valor de un campo integer) -- el guardrail v4 debe rechazarlos con rejection_reason 'value_type_incompatible_with_data_type', independientemente de si el operador en si es valido. Hallado el 2026-07-17 en un caso real de Santalucia (coverage_matcher_contract_2026-07-17T08-26-45-100Z.json, su_00077): 'colecciones' -- un alias de specialValueObjects -- usado como value en vez de una cantidad numerica."
+  },
+  "cases": [
+    {
+      "id": "GD-FP-001",
+      "category": "false_positive_regression",
+      "semantic_unit_ref": "su_00161",
+      "article": "Artículo 8º Defensa jurídica",
+      "source_text": "-La reclamación de la obligación de reparar el origen de los daños causados por un tercero cuando exista riesgo de que se vuelvan a producir si este no pone los medios oportunos para evitarlo.\n\nLos conflictos con sus inmediatos vecinos por cuestiones de servidumbres legales de paso, luces, vistas, distancias, lindes, medianerías o plantaciones.\n\nLa defensa de su responsabilidad penal en procesos seguidos por imprudencia, impericia o negligencia, como miembro de la junta de copropietarios del edificio en que se halle la vivienda asegurada.\n\nLa defensa y reclamación de sus intereses frente a la comunidad de propietarios, siempre que estuviese al corriente de pago de las cuotas legalmente acordadas.",
+      "ontology_matches_stub": [
+        {
+          "concept_id": "housingRegime",
+          "risk_field": "housingRegime",
+          "data_type": "enum",
+          "score": 0.62,
+          "alias_match": true,
+          "matched_aliases": [
+            "propietario"
+          ]
+        }
+      ],
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "propietario",
+          "evidence": "La defensa y reclamación de sus intereses frente a la comunidad de propietarios, siempre que estuviese al corriente de pago de las cuotas legalmente acordadas."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": [
+        "housingRegime"
+      ],
+      "alias_match_expectations": [
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": false
+        }
+      ],
+      "notes": "Falso amigo lexico: el alias 'propietario' matchea en 'comunidad de propietarios' / 'junta de copropietarios', que describe pertenencia a la comunidad del edificio, no el regimen de tenencia del asegurado. CLAUDE.md §5.1. Se corrige con negative_aliases en housingRegime (Fase 2/D.3)."
+    },
+    {
+      "id": "GD-FP-002",
+      "category": "false_positive_regression",
+      "semantic_unit_ref": "su_00196",
+      "article": "Artículo 8º Defensa jurídica",
+      "source_text": "Las reclamaciones a inquilinos por arrendamientos de temporada o de duración inferior a un año sin cláusula de renovación, subarrendamientos y arrendamientos comerciales o rústicos.",
+      "ontology_matches_stub": [
+        {
+          "concept_id": "lastReformYear",
+          "risk_field": "lastReformYear",
+          "data_type": "integer",
+          "score": 0.58,
+          "alias_match": true,
+          "matched_aliases": [
+            "renovación"
+          ]
+        }
+      ],
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "lastReformYear",
+          "operator": "!=",
+          "value": null,
+          "evidence": "Las reclamaciones a inquilinos por arrendamientos de temporada o de duración inferior a un año sin cláusula de renovación"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": [
+        "lastReformYear"
+      ],
+      "alias_match_expectations": [
+        {
+          "risk_field": "lastReformYear",
+          "expected_alias_match": false
+        },
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": true
+        }
+      ],
+      "notes": "Falso amigo lexico: el alias 'renovación' matchea en 'cláusula de renovación' de un contrato de alquiler, sin relación con la reforma de la vivienda. CLAUDE.md §5.1. El texto real de esta semantic unit tiene 17 chunks segun la validacion offline del Punto 1 (CLAUDE.md §5.2); aqui se incluye solo la frase relevante como fixture minimo para Fase 2/D.3. Se corrige con negative_aliases en lastReformYear. housingRegime SI debe seguir matchando aqui (via 'inquilinos', alias legitimo) -- sirve de contraejemplo de no-regresion."
+    },
+    {
+      "id": "GD-FP-003",
+      "category": "false_positive_regression",
+      "semantic_unit_ref": "su_00233",
+      "article": "Artículo 12.º Normas de tasación de daños e indemnización de siniestros",
+      "source_text": "En los casos en que los capitales asegurados sean inferiores al valor de los bienes en el momento de producirse el siniestro, existe un infraseguro, y la Ley establece que el seguro solo responde del siniestro en proporción a la parte asegurada, siendo a cargo del asegurado la parte proporcional no asegurada. Sin embargo, no se aplicará esta regla proporcional en el primer siniestro ocurrido en el que se detecte el infraseguro, cuando la diferencia entre el valor de nuevo y dicho capital sea inferior al 15%, o bien la cuantía de los daños, cubiertos o no, sea inferior a 2.000 euros. A continuación, el asegurado deberá adecuar los capitales a la realidad. A partir del segundo siniestro, si procede, se aplicará la regla proporcional. Tampoco se aplicará si el asegurador renuncia a la aplicación de la regla proporcional en caso de un siniestro que afecte a continente, cuando el asegurado ha aceptado el capital de continente propuesto por el asegurador en función de los metros cuadrados de superficie construida y características de la vivienda que le ha declarado, o bien ha contratado un capital superior, siempre que estos datos sean correctos, aunque el capital sea inferior a valor a nuevo de reconstrucción del inmueble en el momento del siniestro. Para esta renuncia a la aplicación de la regla proporcional es necesario que en la póliza se esté aplicando la revalorización automática de los capitales asegurados. En capitales a primer riesgo, no procede la regla proporcional.",
+      "ontology_matches_stub": [
+        {
+          "concept_id": "continent",
+          "risk_field": "continent",
+          "data_type": "integer",
+          "score": 0.71,
+          "alias_match": true,
+          "matched_aliases": [
+            "continente",
+            "capital de continente"
+          ]
+        },
+        {
+          "concept_id": "capitalInsuranceType",
+          "risk_field": "capitalInsuranceType",
+          "data_type": "enum",
+          "score": 0.55,
+          "alias_match": true,
+          "matched_aliases": []
+        }
+      ],
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "primer_riesgo",
+          "evidence": "En capitales a primer riesgo, no procede la regla proporcional."
+        },
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Tampoco se aplicará si el asegurador renuncia a la aplicación de la regla proporcional en caso de un siniestro que afecte a continente, cuando el asegurado ha aceptado el capital de continente propuesto por el asegurador en función de los metros cuadrados de superficie construida y características de la vivienda que le ha declarado, o bien ha contratado un capital superior, siempre que estos datos sean correctos, aunque el capital sea inferior a valor a nuevo de reconstrucción del inmueble en el momento del siniestro. Para esta renuncia a la aplicación de la regla proporcional es necesario que en la póliza se esté aplicando la revalorización automática de los capitales asegurados."
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "primer_riesgo",
+          "evidence": "En capitales a primer riesgo, no procede la regla proporcional."
+        },
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "cuando el asegurado ha aceptado el capital de continente propuesto por el asegurador... o bien ha contratado un capital superior"
+        }
+      ],
+      "notes": "Doble sentido del alias 'continente' en el mismo bloque: 'siniestro que afecte a continente' (objeto danado, NO dependencia) vs 'capital de continente' (condicion real de la renuncia a regla proporcional). La dependencia de continent hoy existe pero su evidence mezcla ambos sentidos en un solo bloque de texto sin subdividir (bug isStandaloneLegalBullet, Fase 3). No es un falso positivo de risk_field, es evidence/chunking incorrecto -- CLAUDE.md §5.1 y §5.2 (Punto 1 confirmado sin mejora en este caso). chunking_boundary companero: GD-CHUNK-001."
+    },
+    {
+      "id": "GD-HALLUC-001",
+      "category": "hallucination_regression",
+      "subtype": "invented_risk_field",
+      "semantic_unit_ref": "su_00059",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "1. Ampliación Hogar completo",
+        "1.1. Daños por calor"
+      ],
+      "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "=",
+          "value": "Mobiliario",
+          "evidence": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición"
+        },
+        {
+          "risk_field": "property_use",
+          "operator": "IN",
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "=",
+          "value": "Mobiliario",
+          "evidence": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición"
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "must_not_contain_risk_fields": [
+        "property_use",
+        "property_type"
+      ],
+      "guardrail_catches": true,
+      "notes": "risk_field inventado ('property_use' no existe en la ontologia). Causa raiz: housingUse no tiene los alias literales 'vivienda principal'/'vivienda secundaria' -- el guardrail de la Fase 1 rechaza esto por catalogo invalido, pero la correccion real es cerrar el hueco de alias en la Fase 2/D.2."
+    },
+    {
+      "id": "GD-HALLUC-002",
+      "category": "hallucination_regression",
+      "subtype": "invented_risk_field",
+      "semantic_unit_ref": "su_00080",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.9. Alimentos refrigerados por salto de diferencial"
+      ],
+      "source_text": "Hasta 150 euros, cuando se contrate capital de Mobiliario, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos previstos en el punto anterior cuando sean debidos a un salto de diferencial. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0,
+          "evidence": "cuando se contrate capital de Mobiliario"
+        },
+        {
+          "risk_field": "property_type",
+          "operator": "IN",
+          "value": [
+            "main_residence",
+            "secondary_residence"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0,
+          "evidence": "cuando se contrate capital de Mobiliario"
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "must_not_contain_risk_fields": [
+        "property_use",
+        "property_type"
+      ],
+      "guardrail_catches": true,
+      "notes": "Misma frase real del PDF que GD-HALLUC-001 ('Vivienda principal o Vivienda secundaria'), pero en otra semantic unit el LLM invento un risk_field DISTINTO ('property_type', valores en ingles) -- confirma que no hay memoria entre llamadas y que el problema es sistematico, no un caso aislado."
+    },
+    {
+      "id": "GD-HALLUC-003",
+      "category": "hallucination_regression",
+      "subtype": "wrong_field_misuse",
+      "semantic_unit_ref": "su_00064",
+      "article": "Artículo 5º Garantías adicionales",
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 500 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "guardrail_catches": true,
+      "notes": "Hallazgo de la Fase 0: aqui el LLM no invento un risk_field, uso uno VALIDO ('content') pero semanticamente incorrecto. La correccion real es la Fase 2/D.2 (cierra el hueco de alias de housingUse). ACTUALIZADO tras revisar una ejecucion real post-Fase-4: 'content' es data_type integer, e IN/NOT_IN con una lista de categorias es incompatible con ese data_type -- se amplio el guardrail (v2) para rechazar tambien esta clase de error (operator_incompatible_with_data_type), no solo risk_field inventados. Ahora guardrail_catches=true."
+    },
+    {
+      "id": "GD-HALLUC-004",
+      "category": "hallucination_regression",
+      "subtype": "wrong_field_misuse",
+      "semantic_unit_ref": "su_00071",
+      "article": "Artículo 5º Garantías adicionales",
+      "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "IN",
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria. No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "guardrail_catches": true,
+      "notes": "Cuarto caso real con la misma frase 'Vivienda principal o Vivienda secundaria', tercer risk_field distinto usado por el LLM para el mismo hueco de alias. Ver GD-HALLUC-003 -- misma actualizacion tras ampliar el guardrail a v2 (operator_incompatible_with_data_type)."
+    },
+    {
+      "id": "GD-HALLUC-005",
+      "category": "hallucination_regression",
+      "subtype": "operator_data_type_mismatch",
+      "semantic_unit_ref": "su_00166",
+      "article": "Artículo 8º Defensa jurídica",
+      "source_text": "La reclamación en litigios sobre incumplimiento de contratos que tengan por objeto cosas muebles, en los que el asegurado sea parte, tales como los de compraventa, depósito, permuta, pignoración y otros análogos. Se entenderán por cosas muebles exclusivamente los objetos de decoración y mobiliarios (salvo antigüedades), aparatos electrodomésticos, efectos personales y alimentos, siempre que tales bienes sean de su propiedad y los utilice para su uso personal.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "specialValueObjects",
+          "operator": "NOT_IN",
+          "value": [
+            "antigüedades"
+          ],
+          "evidence": "Se entenderán por cosas muebles exclusivamente los objetos de decoración y mobiliarios (salvo antigüedades)"
+        },
+        {
+          "risk_field": "content",
+          "operator": "IN",
+          "value": [
+            "objetos de decoración",
+            "mobiliarios",
+            "aparatos electrodomésticos",
+            "efectos personales",
+            "alimentos"
+          ],
+          "evidence": "Se entenderán por cosas muebles exclusivamente los objetos de decoración y mobiliarios (salvo antigüedades), aparatos electrodomésticos, efectos personales y alimentos"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": [],
+      "guardrail_catches": true,
+      "notes": "Hallazgo detectado revisando una ejecucion real post-Fase-4 (comparativa contra la ejecucion anterior). El texto es puramente definitorio ('se entenderan por cosas muebles...'), el antipatron 'objeto de la cobertura' que el prompt ya prohibe -- no deberia generar NINGUNA dependencia. Ambas dependencias usan risk_field VALIDOS (specialValueObjects, content) pero con operador IN/NOT_IN sobre un data_type integer (capital), incompatible por definicion. 'specialValueObjects NOT_IN [antiguedades]' aparecio de forma identica en las 3 ejecuciones reales disponibles (recurrente, no un azar); 'content IN [...]' solo en la ultima. Motivo por el que se amplio el guardrail a v2: catalogo-only no bastaba, hacia falta validar tambien compatibilidad operador/data_type."
+    },
+    {
+      "id": "GD-HALLUC-006",
+      "category": "hallucination_regression",
+      "subtype": "operator_data_type_mismatch",
+      "semantic_unit_ref": "su_00025",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "source_text": "En anexos de la vivienda: Hasta el 10% del capital contratado para Mobiliario y enseres con un máximo de 1.500 euros por objeto, por robos o expoliaciones dentro de trasteros, garajes y otras dependencias anexas, siempre que sean de uso privativo, dispongan de cierre individual y no tengan zonas al aire libre o al descubierto, se encuentren en el mismo edificio o finca que la vivienda asegurada o en otra situación que haya sido expresamente declarada en las condiciones particulares. Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "NOT_IN",
+          "value": [
+            "vivienda arrendada",
+            "vivienda de uso turístico",
+            "vivienda de alquiler vacacional",
+            "vivienda sin ocupación"
+          ],
+          "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación."
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "arrendada",
+            "uso turístico",
+            "alquiler vacacional",
+            "sin ocupación"
+          ],
+          "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación."
+        }
+      ],
+      "guardrail_catches": true,
+      "notes": "Mismo patron que GD-HALLUC-003/004: risk_field valido ('content', integer) pero mal aplicado con NOT_IN + lista de categorias -- deberia ser 'housingUse'. Confirmado en la ejecucion post-Fase-4 mas reciente que el pipeline YA lo corrige solo (housingUse NOT_IN [...]), sin depender del guardrail -- pero se deja aqui como regresion permanente por si vuelve a aparecer en unidades nuevas."
+    },
+    {
+      "id": "GD-REF-001",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00127",
+      "article": "Artículo 7º Garantías de Responsabilidad Civil",
+      "source_text": "La responsabilidad del punto anterior se extiende a los daños corporales y materiales derivados de la propiedad asegurada causados involuntariamente a los inquilinos o huéspedes turísticos, mientras habiten la vivienda en virtud de un contrato legal según el tipo de alquiler, cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional. Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios donde está la vivienda por hechos involuntarios derivados por el uso de sus instalaciones y mobiliario, con un límite máximo de 30.000 euros, y sin perjuicio de reserva de derecho de repetición contra otro seguro que cubra los mismos hechos.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "propietario",
+          "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "uso turístico",
+            "alquiler vacacional"
+          ],
+          "evidence": "Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios"
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "alias_match_expectations": [
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": true
+        }
+      ],
+      "notes": "Caso correcto de referencia: 'housingRegime=propietario' aqui SI es correcto (contexto real de titularidad, no falso amigo), y 'housingUse IN [uso turistico, alquiler vacacional]' acierta porque esos alias SI estan literalmente en housingUse. Contiene tambien la frase 'comunidad de propietarios' sin que el LLM la confunda esta vez -- util para medir que negative_aliases (Fase 2/D.3) no introduzca un falso negativo aqui. IMPORTANTE: la primera implementacion de negative_aliases (sin proximidad) SI rompia este caso -- corregido antes de desplegar exigiendo que TODAS las apariciones del alias esten cerca de un negative_alias para suprimir, no solo que ambas frases coexistan en el texto."
+    },
+    {
+      "id": "GD-REF-002",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00016",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "source_text": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra en los que se incurra derivados de localizar la causa de los daños y reparar o sustituir la tubería o pieza averiada, a condición de que sean conducciones fijas y privativas que pertenezcan a la vivienda asegurada y sean causantes de daños en bienes asegurados o de terceros. No obstante, cuando se descubra corrosión, amianto o deterioro generalizado de las conducciones o instalaciones de agua de la vivienda, la obligación de la compañía quedará limitada a indemnizar el coste de reparación del tramo causante, con un máximo de 300 euros, quedando totalmente excluidos siniestros posteriores con origen en la misma causa.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra..."
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "notes": "Caso correcto de referencia con operador '>'. Es tambien contraejemplo de chunking (ver GD-CHUNK-002): el texto es un unico bloque largo con multiples cues del MISMO tipo (condicion), no debe empezar a fragmentarse tras el fix de la Fase 3."
+    },
+    {
+      "id": "GD-REF-004",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00039",
+      "article": "Artículo 3º Garantías de daños consecuenciales",
+      "source_text": "Hasta la cantidad contratada en las condiciones particulares, con máximo de un mes, y siempre que se acredite la existencia de reservas turísticas o haya un contrato de alquiler vacacional, se garantiza la indemnización por la pérdida de los ingresos por alquiler a consecuencia de la inhabitabilidad temporal de la vivienda, durante el tiempo que se precise para la reparación de los daños cubiertos en esta póliza.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "alquiler vacacional",
+            "uso turístico"
+          ],
+          "evidence": "se garantiza la indemnización por la pérdida de los ingresos por alquiler a consecuencia de la inhabitabilidad temporal de la vivienda"
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "notes": "Caso correcto con operador IN, orden de valores distinto a su_00127 (irrelevante para IN)."
+    },
+    {
+      "id": "GD-REF-005",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00120",
+      "article": "Artículo 6º Garantías adicionales específicas para la vivienda arrendada, de uso turístico o de alquiler vacacional",
+      "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia).",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "IN",
+          "value": [
+            "arrendada"
+          ],
+          "evidence": "Impago de rentas (solo en Vivienda arrendada)"
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "notes": "Caso correcto, operador IN con lista de un solo elemento."
+    },
+    {
+      "id": "GD-REF-006",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00128",
+      "article": "Artículo 7º Garantías de Responsabilidad Civil",
+      "source_text": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad por los daños que pueda sufrir la vivienda en elementos del continente o del mobiliario que forme parte del equipamiento cedido por el propietario, siempre que dichos daños deriven de incendio y sus efectos, explosión e implosión o daños por agua como consecuencia del uso negligente de las instalaciones o con origen en bienes muebles asegurados y propiedad del asegurado.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "inquilino",
+          "evidence": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad"
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "alias_match_expectations": [
+        {
+          "risk_field": "housingRegime",
+          "expected_alias_match": true
+        }
+      ],
+      "notes": "Caso correcto con operador '=' sobre un valor escalar (no lista). Contiene tambien la palabra 'propietario' en 'cedido por el propietario' sin que el LLM la confunda como condicion del asegurado -- otro caso util para medir que negative_aliases no rompa esto."
+    },
+    {
+      "id": "GD-REF-007",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00234",
+      "article": "Artículo 12.º Normas de tasación de daños e indemnización de siniestros",
+      "source_text": "De tener que aplicarse la regla proporcional, si en el momento del siniestro existiese un exceso de capital asegurado para el Continente o para el Mobiliario, tal exceso podrá aplicarse al concepto que resultase insuficientemente asegurado, siempre que la prima resultante no exceda de la satisfecha en la anualidad en curso. La compensación de capitales no será de aplicación sobre las garantías o capitales asegurados bajo la modalidad de contratación a primer riesgo.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "NOT_IN",
+          "value": [
+            "primer riesgo"
+          ],
+          "evidence": "La compensación de capitales no será de aplicación sobre las garantías o capitales asegurados bajo la modalidad de contratación a primer riesgo."
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "notes": "Caso correcto con operador NOT_IN sobre capitalInsuranceType, distinto de su_00233 (mismo risk_field, operador '=')."
+    },
+    {
+      "id": "GD-CHUNK-001",
+      "category": "chunking_boundary",
+      "expected_split": "multiple",
+      "semantic_unit_ref": "su_00233",
+      "source_text": "En los casos en que los capitales asegurados sean inferiores al valor de los bienes en el momento de producirse el siniestro, existe un infraseguro, y la Ley establece que el seguro solo responde del siniestro en proporción a la parte asegurada, siendo a cargo del asegurado la parte proporcional no asegurada. Sin embargo, no se aplicará esta regla proporcional en el primer siniestro ocurrido en el que se detecte el infraseguro, cuando la diferencia entre el valor de nuevo y dicho capital sea inferior al 15%, o bien la cuantía de los daños, cubiertos o no, sea inferior a 2.000 euros. A continuación, el asegurado deberá adecuar los capitales a la realidad. A partir del segundo siniestro, si procede, se aplicará la regla proporcional. Tampoco se aplicará si el asegurador renuncia a la aplicación de la regla proporcional en caso de un siniestro que afecte a continente, cuando el asegurado ha aceptado el capital de continente propuesto por el asegurador en función de los metros cuadrados de superficie construida y características de la vivienda que le ha declarado, o bien ha contratado un capital superior, siempre que estos datos sean correctos, aunque el capital sea inferior a valor a nuevo de reconstrucción del inmueble en el momento del siniestro. Para esta renuncia a la aplicación de la regla proporcional es necesario que en la póliza se esté aplicando la revalorización automática de los capitales asegurados. En capitales a primer riesgo, no procede la regla proporcional.",
+      "min_expected_chunks": 2,
+      "notes": "Hoy Rule Chunker deja este parrafo como UN unico chunk (bug isStandaloneLegalBullet, CLAUDE.md §5.2 -- 'sin ninguna mejora' en la validacion offline del Punto 1). Tras el fix de la Fase 3, debe partirse en >=2 chunks, separando el sentido 'objeto danado' ('siniestro que afecte a continente') del sentido 'condicion de capital' ('capital de continente propuesto... o contratado un capital superior')."
+    },
+    {
+      "id": "GD-CHUNK-002",
+      "category": "chunking_boundary",
+      "expected_split": "single_or_clean_double",
+      "semantic_unit_ref": "su_00016",
+      "source_text": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra en los que se incurra derivados de localizar la causa de los daños y reparar o sustituir la tubería o pieza averiada, a condición de que sean conducciones fijas y privativas que pertenezcan a la vivienda asegurada y sean causantes de daños en bienes asegurados o de terceros. No obstante, cuando se descubra corrosión, amianto o deterioro generalizado de las conducciones o instalaciones de agua de la vivienda, la obligación de la compañía quedará limitada a indemnizar el coste de reparación del tramo causante, con un máximo de 300 euros, quedando totalmente excluidos siniestros posteriores con origen en la misma causa.",
+      "max_expected_chunks": 2,
+      "notes": "Contraejemplo de no-sobrefragmentacion para la Fase 3, revisado tras implementar el fix: el fix real (distinctCueTypes.size<=1 en isStandaloneLegalBullet) parte este texto en 2 chunks, no 1 -- el limite original de 'max_expected_chunks:1' resulto ser un criterio demasiado estricto fijado en la Fase 0 sin haber probado el fix todavia. Se revisó el split real: separa limpiamente en el conector adversativo 'No obstante' (clausula base 'a condicion de que sean conducciones fijas...' vs. excepcion/limite 'cuando se descubra corrosion... con un maximo de 300 euros'), un límite de clausula genuino, no una fragmentacion arbitraria. Ademas, en la topologia actual (antes de la Fase 4), Prepare Dependency Extractor Input agrupa TODOS los chunks de una unidad en una unica llamada LLM ('NO explota un item por chunk'), asi que dividir en 2 chunks aqui no reduce el contexto que ve el LLM -- solo añade metadatos de cue mas finos por chunk. Lo que este caso debe seguir vigilando es que NO se sobrefragmente en mas de 2 chunks (evitar cortes espurios frase a frase)."
+    },
+    {
+      "id": "GD-EVID-001",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00043",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "source_text": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra en los que se incurra derivados de localizar la causa de los daños y reparar o sustituir la tubería o pieza averiada, a condición de que sean conducciones fijas y privativas que pertenezcan a la vivienda asegurada y sean causantes de daños en bienes asegurados o de terceros.\n\nNo obstante, cuando se descubra corrosión, amianto o deterioro generalizado de las conducciones o instalaciones de agua de la vivienda, la obligación de la compañía quedará limitada a indemnizar el coste de reparación del tramo causante, con un máximo de 300 euros, quedando totalmente excluidos siniestros posteriores con origen en la misma causa.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra..."
+        }
+      ],
+      "expected_unverified_evidence": [
+        "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra..."
+      ],
+      "notes": "El LLM trunca la cita con '...' en vez de citar un tramo literal completo, violando la instruccion del prompt ('Utiliza evidencia textual directa'). La dependencia (continent > 0) es plausible, pero la evidencia no es un substring literal del texto -- el guardrail debe marcarla como unverified_evidence, no rechazarla (la dependencia en si no esta necesariamente mal)."
+    },
+    {
+      "id": "GD-EVID-002",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00090",
+      "article": "Artículo 5º Garantías adicionales",
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 500 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_unverified_evidence": [
+        "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+      ],
+      "notes": "El LLM une con '...' dos frases NO contiguas del texto (aparecen en distintos puntos del parrafo) como si fueran una sola cita literal. Ambas frases apuntan al mismo risk_field/value, asi que la dependencia en si es probablemente correcta -- es un problema de formato de la evidencia, no de la extraccion. La segunda dependencia (NOT_IN ['otros usos']) SI tiene evidencia literal y pasa el check de grounding, pero 'otros usos' no es un valor real del enum housingUse -- gap distinto (validacion de valores de enum), fuera de alcance de este check, ver conversacion 2026-07-16."
+    },
+    {
+      "id": "GD-EVID-003",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00104",
+      "article": "Artículo 5º Garantías adicionales",
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 1.000 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_unverified_evidence": [
+        "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+      ],
+      "notes": "Mismo patron que GD-EVID-002 (misma garantia, variante 'Hogar singular' en vez de 'Hogar completo')."
+    },
+    {
+      "id": "GD-EVID-004",
+      "category": "evidence_grounding_regression",
+      "semantic_unit_ref": "su_00145",
+      "article": "Artículo 6º Garantías adicionales específicas para la vivienda arrendada, de uso turístico o de alquiler vacacional",
+      "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia). No obstante, el asegurador renuncia a aplicar este plazo de carencia cuando la póliza se emite en reemplazo de otra que hubiese garantizado el impago para la misma vivienda e inquilino.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "arrendada",
+          "evidence": "Impago de rentas (solo en Vivienda arrendada)"
+        }
+      ],
+      "expected_unverified_evidence": [
+        "Impago de rentas (solo en Vivienda arrendada)"
+      ],
+      "notes": "La evidencia citada es literalmente el encabezado de seccion (coverage_path/coverage_key: '2. Impago de rentas (solo en Vivienda arrendada)'), que viaja en el mismo payload como coverage_context.section/article -- no en chunks[].text del propio chunk. El LLM cito contexto estructural, no el cuerpo del texto que se le paso. La dependencia (housingRegime = arrendada) es probablemente correcta segun el propio encabezado, pero no es verificable contra el texto real de la clausula."
+    },
+    {
+      "id": "GD-TYPE-001",
+      "category": "value_type_regression",
+      "semantic_unit_ref": "su_00077",
+      "article": "Artículo 11. DETERMINACIÓN DE LA INDEMNIZACIÓN",
+      "source_text": "Para las garantías contratadas a primer riesgo, la pérdida será indemnizada hasta el importe máximo asegurado por dicho concepto, no siendo de aplicación lo indicado en los apartados 3 y 4 anteriores. Para objetos que formen parte de juegos, colecciones o conjuntos, el Asegurador indemnizará sólo el valor del objeto o de la parte del objeto siniestrado, no indemnizándose la depreciación que, a causa de su descabalamiento, haya podido sufrir el juego, colección o conjunto de objetos asegurados al quedar incompleto.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "primer riesgo",
+          "evidence": "Para las garantías contratadas a primer riesgo, la pérdida será indemnizada hasta el importe máximo asegurado por dicho concepto, no siendo de aplicación lo indicado en los apartados 3 y 4 anteriores."
+        },
+        {
+          "risk_field": "specialValueObjects",
+          "operator": "=",
+          "value": "colecciones",
+          "evidence": "Para objetos que formen parte de juegos, colecciones o conjuntos, el Asegurador indemnizará sólo el valor del objeto o de la parte del objeto siniestrado, no indemnizándose la depreciación que, a causa de su descabalamiento, haya podido sufrir el juego, colección o conjunto de objetos asegurados al quedar incompleto."
+        }
+      ],
+      "expected_rejected_by_value_type": [
+        "specialValueObjects"
+      ],
+      "notes": "Caso real de Santalucia (2026-07-17). 'specialValueObjects' es data_type integer (capital/importe), pero el LLM uso 'colecciones' -- que es literalmente un alias de ese risk_field en la ontologia -- como si fuera un valor de categoria en vez de una cantidad numerica. El operador '=' es valido para integer, asi que el chequeo de compatibilidad operador/data_type (v1) no lo detecta; hace falta el chequeo de tipo del value (v4). 'capitalInsuranceType = \"primer riesgo\"' en el mismo caso es correcto (enum, valor de texto) y debe seguir aceptandose sin cambios."
+    }
+  ]
+}

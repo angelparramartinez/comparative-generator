@@ -1,0 +1,4 @@
+fastapi==0.139.2
+uvicorn[standard]==0.34.0
+pikepdf==10.10.0
+python-multipart==0.0.20
