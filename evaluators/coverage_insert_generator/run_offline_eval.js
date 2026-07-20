@@ -17,17 +17,24 @@
 //   --tuning          valida el matcher texto-Excel -> tuning_key
 //   --value-matching  valida el matcher de valor espanol -> valor enum ingles
 //                      (paso previo a generator.translateToSpel para enums)
+//   --excel-fixture   valida los adaptadores Sheet limpio -> fixture de
+//                      matcher.js y agrupacion de bullets por modalidad
+//                      (nodos A6/A16 del diseno de Fase 4)
+//   --review-assembly valida los guardrails y el ensamblado del JSON
+//                      intermedio revisable por humano (nodos A13/A19/A21/B3
+//                      del diseno de Fase 4)
 //   (sin flags)       ejecuta todos los checks
 //
-// Nota sobre "grounding": se intento un check de solape lexico evidencia (PDF)
-// vs texto del Excel y se descarto -- no tiene base solida, el Excel es muy
-// telegrafico (solo nombres/limites) y no hay razon para esperar solape con
-// una frase legal completa incluso en matches correctos (a diferencia del
-// grounding real del flujo 2, que compara evidencia contra el MISMO
-// documento). Un guardrail de grounding con sentido para este matcher
-// necesitaria que el LLM real (Fase 2/4) devuelva su propia justificacion
-// citando texto literal del Excel -- eso si se puede verificar por substring.
-// Diferido a cuando se diseñe el prompt real del matcher.
+// Nota sobre "grounding" del matcher lexico (matcher.js): se intento un check
+// de solape lexico evidencia (PDF) vs texto del Excel y se descarto -- no
+// tiene base solida, el Excel es muy telegrafico (solo nombres/limites) y no
+// hay razon para esperar solape con una frase legal completa incluso en
+// matches correctos (a diferencia del grounding real del flujo 2, que compara
+// evidencia contra el MISMO documento). El guardrail de grounding con sentido
+// (que la LLM real devuelva su propia cita literal del Excel, verificable por
+// substring) ya esta implementado, pero para el LLM de DECISION del diseno de
+// Fase 4 (Coverage Match Decision Agent), no para matcher.js -- ver
+// review_assembly.js (applyGroundingGuardrail) y su check --review-assembly.
 
 const path = require("path");
 const fs = require("fs");
@@ -37,10 +44,14 @@ const DATASET_PATH = path.join(__dirname, "golden_dataset.json");
 const GENERATOR_DATASET_PATH = path.join(__dirname, "generator_golden_dataset.json");
 const TUNING_DATASET_PATH = path.join(__dirname, "tuning_key_golden_dataset.json");
 const VALUE_MATCHER_DATASET_PATH = path.join(__dirname, "value_matcher_golden_dataset.json");
+const EXCEL_FIXTURE_DATASET_PATH = path.join(__dirname, "excel_fixture_builder_golden_dataset.json");
+const REVIEW_ASSEMBLY_DATASET_PATH = path.join(__dirname, "review_assembly_golden_dataset.json");
 const matcher = require("./matcher");
 const generator = require("./generator");
 const tuningMatcher = require("./tuning_matcher");
 const valueMatcher = require("./value_matcher");
+const excelFixtureBuilder = require("./excel_fixture_builder");
+const reviewAssembly = require("./review_assembly");
 
 function loadGoldenDataset() {
   return JSON.parse(fs.readFileSync(DATASET_PATH, "utf8"));
@@ -56,6 +67,14 @@ function loadTuningGoldenDataset() {
 
 function loadValueMatcherGoldenDataset() {
   return JSON.parse(fs.readFileSync(VALUE_MATCHER_DATASET_PATH, "utf8"));
+}
+
+function loadExcelFixtureGoldenDataset() {
+  return JSON.parse(fs.readFileSync(EXCEL_FIXTURE_DATASET_PATH, "utf8"));
+}
+
+function loadReviewAssemblyGoldenDataset() {
+  return JSON.parse(fs.readFileSync(REVIEW_ASSEMBLY_DATASET_PATH, "utf8"));
 }
 
 // Compara el nivel de confianza esperado (etiqueta manual, ver schema_notes)
@@ -261,6 +280,94 @@ function checkValueMatching(golden) {
   return failures === 0 ? 0 : 1;
 }
 
+function checkExcelFixture(golden) {
+  console.log("\n=== --excel-fixture ===");
+  let failures = 0;
+  let total = 0;
+
+  for (const c of golden.fixture_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.buildExcelFixtureForMatcher(c.cleaned_modality_covers, c.cleaned_optional_covers);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected_fixture);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected_fixture)}`}`);
+  }
+
+  for (const c of golden.bullet_group_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.buildBulletGroupsForCover(c.cover_id, c.cover_name, c.modalities);
+    const checks = [
+      ["homogeneous", got.homogeneous, c.expected.homogeneous],
+      ["defaultBullets", JSON.stringify(got.defaultBullets), JSON.stringify(c.expected.defaultBullets)],
+      ["perModalityBullets", JSON.stringify(got.perModalityBullets), JSON.stringify(c.expected.perModalityBullets)]
+    ];
+    if (c.expected.warning_present) checks.push(["warning_present", !!got.warning, true]);
+    const mismatches = checks.filter(([, g, e]) => g !== e);
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
+  }
+
+  console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
+function checkReviewAssembly(golden) {
+  console.log("\n=== --review-assembly ===");
+  let failures = 0;
+  let total = 0;
+
+  for (const c of golden.grounding_cases || []) {
+    total++;
+    const got = reviewAssembly.applyGroundingGuardrail(c.llm_decision, c.candidates);
+    const checks = [
+      ["grounding_ok", got.grounding_ok, c.expected.grounding_ok],
+      ["confidence", got.confidence, c.expected.confidence],
+      ["degradation_reason", got.degradation_reason ?? null, c.expected.degradation_reason]
+    ];
+    const mismatches = checks.filter(([, g, e]) => g !== e);
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
+  }
+
+  for (const c of golden.tuning_key_cases || []) {
+    total++;
+    const tuningDictionary = {};
+    for (const key of c.tuning_dictionary_keys || []) tuningDictionary[key] = {};
+    const got = reviewAssembly.applyTuningKeyGuardrail(c.tuning_key, tuningDictionary);
+    const checks = [
+      ["tuning_key", got.tuning_key, c.expected.tuning_key],
+      ["valid", got.valid, c.expected.valid]
+    ];
+    if (c.expected.reason) checks.push(["reason", got.reason, c.expected.reason]);
+    const mismatches = checks.filter(([, g, e]) => g !== e);
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
+  }
+
+  for (const c of golden.review_status_cases || []) {
+    total++;
+    const got = reviewAssembly.computeEntryReviewStatus(c.entry);
+    const pass = got.review_status === c.expected.review_status &&
+      JSON.stringify(got.review_reasons) === JSON.stringify(c.expected.review_reasons);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.completeness_cases || []) {
+    total++;
+    const got = reviewAssembly.validateReviewCompleteness(c.review_json);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  console.log(`--review-assembly: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
@@ -268,6 +375,8 @@ function main() {
   const generatorGolden = loadGeneratorGoldenDataset();
   const tuningGolden = loadTuningGoldenDataset();
   const valueMatcherGolden = loadValueMatcherGoldenDataset();
+  const excelFixtureGolden = loadExcelFixtureGoldenDataset();
+  const reviewAssemblyGolden = loadReviewAssemblyGoldenDataset();
 
   let exitCode = 0;
   if (runAll || args.includes("--matching")) {
@@ -281,6 +390,12 @@ function main() {
   }
   if (runAll || args.includes("--value-matching")) {
     exitCode = Math.max(exitCode, checkValueMatching(valueMatcherGolden));
+  }
+  if (runAll || args.includes("--excel-fixture")) {
+    exitCode = Math.max(exitCode, checkExcelFixture(excelFixtureGolden));
+  }
+  if (runAll || args.includes("--review-assembly")) {
+    exitCode = Math.max(exitCode, checkReviewAssembly(reviewAssemblyGolden));
   }
   process.exit(exitCode);
 }

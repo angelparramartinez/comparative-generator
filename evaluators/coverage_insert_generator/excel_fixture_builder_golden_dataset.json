@@ -1,0 +1,104 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_excel_fixture_builder_golden_set",
+  "description": "Casos reales extraidos directamente de examples/Plantilla Comparativa Hogar.xlsx (hoja 'Coberturas por modalidad', COVER_ID 18 'Danos por agua' y COVER_ID 16 'Robo') para validar buildExcelFixtureForMatcher (A6) y buildBulletGroupsForCover (A16) del diseno de Fase 4.",
+  "schema_notes": {
+    "fixture_cases": "Un caso por buildExcelFixtureForMatcher(cleanedModalityCovers, cleanedOptionalCovers) -- valida la construccion del indice de candidatos para matcher.js a partir de la salida real de 'Clean covers and modalities'.",
+    "bullet_group_cases": "Un caso por buildBulletGroupsForCover(coverId, coverName, modalitiesMap) -- valida la deteccion de bullets compartidos vs. por-modalidad, incl. el caso real heterogeneo (Robo, numero de bullets distinto entre modalidades) que se documenta como limitacion conocida (homogeneous: false), no se fuerza alineacion."
+  },
+  "fixture_cases": [
+    {
+      "id": "EFB-FIX-001",
+      "description": "COVER_ID 18 'Danos por agua', 2 modalidades reales (5571/5572) con 1 bullet que difiere (Fontaneria) -- dedup debe conservar ambas variantes.",
+      "cleaned_modality_covers": [
+        {
+          "cover_id": 18,
+          "cover_name": "Daños por agua",
+          "modalities": {
+            "5571": "Daños por agua\n   Escapes de agua -100%\n   Localización y reparación -100%\n   Fontanería sin daños – 300€",
+            "5572": "Daños por agua\n   Escapes de agua -100%\n   Localización y reparación -100%\n   Fontanería sin daños – 600€"
+          }
+        }
+      ],
+      "cleaned_optional_covers": [
+        { "epigrafe": "Defensa jurídica", "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada", "text_content": "- Actos de vandalismo por el ocupante ilegal 100%" }
+      ],
+      "expected_fixture": {
+        "covers_por_modalidad": [
+          {
+            "cover_id": 18,
+            "cover_name": "Daños por agua",
+            "sample_text_bullets": ["Escapes de agua -100%", "Localización y reparación -100%", "Fontanería sin daños – 300€", "Fontanería sin daños – 600€"]
+          }
+        ],
+        "coberturas_opcionales": [
+          { "epigrafe": "Defensa jurídica", "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada", "text_content": "- Actos de vandalismo por el ocupante ilegal 100%" }
+        ]
+      }
+    }
+  ],
+  "bullet_group_cases": [
+    {
+      "id": "EFB-GROUP-001",
+      "description": "COVER_ID 18 'Danos por agua', 2 modalidades homogeneas (mismo numero de bullets), 1 bullet difiere.",
+      "cover_id": 18,
+      "cover_name": "Daños por agua",
+      "modalities": {
+        "5571": "Daños por agua\n   Escapes de agua -100%\n   Localización y reparación -100%\n   Fontanería sin daños – 300€",
+        "5572": "Daños por agua\n   Escapes de agua -100%\n   Localización y reparación -100%\n   Fontanería sin daños – 600€"
+      },
+      "expected": {
+        "homogeneous": true,
+        "defaultBullets": ["Escapes de agua -100%", "Localización y reparación -100%"],
+        "perModalityBullets": [
+          { "modalityId": "5571", "text": "Fontanería sin daños – 300€" },
+          { "modalityId": "5572", "text": "Fontanería sin daños – 600€" }
+        ]
+      }
+    },
+    {
+      "id": "EFB-GROUP-002",
+      "description": "COVER_ID 16 'Robo', subconjunto real de 2 modalidades homogeneas (5571/5572), 1 bullet difiere (joyas y relojes de valor).",
+      "cover_id": 16,
+      "cover_name": "Robo",
+      "modalities": {
+        "5571": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 10% (máx. 5.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5572": "Robo y Vandalismo\n  Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 20% (máx. 20.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)"
+      },
+      "expected": {
+        "homogeneous": true,
+        "defaultBullets": [
+          "Robo y Vandalismo",
+          "Robo de continente y daños - 100%",
+          "Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)",
+          "Robo de mobiliario y enseres - 100%",
+          "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+          "Actos de vandalismo – 100%",
+          "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)"
+        ],
+        "perModalityBullets": [
+          { "modalityId": "5571", "text": "Robo joyas y relojes de valor - 10% (máx. 5.000€)" },
+          { "modalityId": "5572", "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)" }
+        ]
+      },
+      "notes": "Solo la posicion 4 (joyas y relojes de valor) difiere entre modalidades; el resto de posiciones (identicas tras trim) van a defaultBullets aunque esten despues de la divergencia -- el algoritmo compara posicion a posicion, no se detiene en la primera diferencia."
+    },
+    {
+      "id": "EFB-GROUP-003",
+      "description": "COVER_ID 16 'Robo', 3 modalidades reales con NUMERO DE BULLETS DISTINTO (5571: 8 bullets, 5577: 6 bullets, 5580: 5 bullets) -- caso real heterogeneo, limitacion conocida deliberada (no se fuerza alineacion).",
+      "cover_id": 16,
+      "cover_name": "Robo",
+      "modalities": {
+        "5571": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 10% (máx. 5.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5577": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5580": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%   "
+      },
+      "expected": {
+        "homogeneous": false,
+        "defaultBullets": [],
+        "perModalityBullets": [],
+        "warning_present": true
+      }
+    }
+  ]
+}
