@@ -29,7 +29,9 @@ vive indexada por separado en Qdrant (flujo `ontology indexing.json`, ver secci�
 | Fichero | Contenido |
 |---|---|
 | `knowledge/Modelo comparativa de coberturas - AI ready.md` | Modelo de datos objetivo del flujo 3: tablas, semántica SPEL (`FILTER_EXPR`/`HIRING_STATUS_EXPR`/`VALUE_EXPR`/`TEXT_EXPR`), criterio de granularidad `ENTRY`/`LINES` y decisión de alcance sobre `covers` — ver sección 3 |
-| `knowledge/ontologies/ontology-home.md` | Ontología del riesgo de Hogar: mapea vocabulario del condicionado a campos de `insurance.risk` (aliases, `negative_aliases` por concepto) |
+| `knowledge/ontologies/ontology-home.md` | Ontología del riesgo de Hogar: mapea vocabulario del condicionado a campos de `insurance.risk` (aliases, `negative_aliases` por concepto; `values`/`known_limitations` por valor de enum en los campos que ya tienen dependencias reales extraídas — ver `evaluators/coverage_insert_generator/value_matcher.js`) |
+| `knowledge/risks/datos_riesgo_hogar.json` | Catálogo real de campos de `insurance.risk` de Hogar (tipo, restricciones, codificación de valores) aportado por el usuario — no sustituye a `ontology-home.md` (esa mapea texto→concepto para el flujo 2; este da tipo/restricciones, ausentes en la ontología) |
+| `evaluators/coverage_insert_generator/` | Golden sets + arnés de evaluación offline del flujo 3 (matcher dependencia→cobertura, generador SPEL/SQL, matcher texto→tuning_key, matcher de valor enum español→inglés) |
 | `example/condiciones generales Generali Hogar.pdf` | Condicionado general de ejemplo (162 páginas) — fuente de las reglas/dependencias no explícitas en el Excel |
 | `example/Plantilla Comparativa Hogar.xlsx` | Excel de coberturas por modalidad de Generali. Hoja **"Coberturas por modalidad"**: col. A = `COVER_ID`, col. B = nombre de cobertura, cabeceras numéricas = `PRODUCT_COMPANY_MODALITY_ID`, celdas = texto libre de lo que cubre esa cobertura en esa modalidad (13 coberturas × 11 modalidades). Hoja **"Coberturas opcionales"**: 16 textos adicionales que se insertan dentro de un epígrafe ya existente |
 | `evaluators/coverage_dependency_extractor/` | Golden set propio + arnés de evaluación offline del flujo 2 (ver sección 5) |
@@ -96,9 +98,12 @@ Tres flujos:
    extrae del condicionado las dependencias de cada cobertura respecto a los
    datos del riesgo.
 3. **Generación de INSERTs** (sin construir todavía): a partir de 1+2, genera
-   primero un JSON revisable por humano y después las sentencias INSERT. El
-   modelo de datos/semántica que alimentará este flujo ya está definido (ver
-   sección 3 y `knowledge/Modelo comparativa de coberturas - AI ready.md`).
+   primero un JSON revisable por humano y después las sentencias INSERT. Se
+   dispara una vez por `PRODUCT_COMPANY_ID`, con el Excel de coberturas
+   completo como entrada (más los artefactos JSON que dejó el flujo 2 para ese
+   condicionado). El modelo de datos/semántica que alimentará este flujo ya
+   está definido (ver sección 3 y
+   `knowledge/Modelo comparativa de coberturas - AI ready.md`).
 
 ### 4.1 Flujo 2 — topología actual
 
@@ -314,16 +319,25 @@ condiciones compuestas en ese formato exacto — y el caso que las necesitaría
    producción. Sigue pendiente: confirmar con un ejemplo real de producción si
    `VALUE_EXPR` se deja `NULL` (hipótesis actual) o usa algún placeholder cuando
    el bloque no tiene valor propio que mostrar.
-3. **[Sin empezar]** Diseñar el flujo 3 (pipeline n8n): generación de INSERTs
-   con un JSON intermedio revisable por humano. El modelo de datos/semántica que
-   lo alimentará ya está definido (puntos 1-2 de este backlog); decisión de
-   alcance ya tomada: v1 sin soporte a `covers` (formato de respuesta de
-   compañía heterogéneo por ejecución, sin normalizar todavía) — solo
+3. **[En curso]** Diseñar y construir el flujo 3 (pipeline n8n): generación de
+   INSERTs con un JSON intermedio revisable por humano. El modelo de
+   datos/semántica ya está definido (puntos 1-2); decisión de alcance ya
+   tomada: v1 sin soporte a `covers` (formato de respuesta de compañía
+   heterogéneo por ejecución, sin normalizar todavía) — solo
    productos/coberturas cuyas expresiones dependen únicamente de
-   `insurance`/`tuning`.
-4. **[Opcional, menor]** Normalizar valores extraídos (mayúsculas, `IN` de 1
-   elemento vs. `=`) antes de persistir, si se detecta que afecta a la
-   generación de SQL/SPEL (ver 5.9).
+   `insurance`/`tuning`. Validado offline (sin workflow n8n real todavía) en
+   `evaluators/coverage_insert_generator/`: matcher dependencia→`COVER_ID`,
+   generador `ENTRY`/`LINES`/SQL, matcher texto→`tuning_key`, y matcher de
+   valor enum español→inglés (`value_matcher.js` — traduce el texto libre en
+   español que extrae el flujo 2 al valor real del enum, p. ej. "vivienda
+   principal" → `MainResidence`; alcance limitado a los enums con dependencias
+   reales ya extraídas: `housingUse`, `housingRegime`,
+   `capitalInsuranceType`).
+4. **[Parcialmente cubierto]** Normalizar valores extraídos (mayúsculas, `IN` de 1
+   elemento vs. `=`) antes de persistir (ver 5.9). La inconsistencia de
+   mayúsculas/acentos ya no afecta al matcher de valor enum (normaliza antes de
+   comparar); sigue sin resolver la preferencia `IN` de 1 elemento vs. `=`
+   (ambas formas son equivalentes en SPEL, no bloqueante).
 5. **[Opcional, menor]** Preservar separadores de bullet/salto de línea en
    `Semantic Assembler` para que `Rule Chunker` pueda subdividir mejor prosa con
    listas largas (ver 5.9) — solo si aparecen más casos como `su_00196` que lo

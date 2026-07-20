@@ -1,0 +1,1005 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_matcher_golden_set",
+  "description": "Golden set del matcher dependencia(flujo 2) -> COVER_ID/bullet del Excel de coberturas, para el flujo 3 (generacion de INSERTs). Basado en un unico condicionado real (Generali Hogar) cruzado a mano contra examples/Plantilla Comparativa Hogar.xlsx, clasificado y corregido por el usuario en sesion de diseño (20/07).",
+  "source_run": "ggcc_outputs/coverage_matcher_contract_2026-07-15T14-05-42-683Z.json",
+  "source_excel": "examples/Plantilla Comparativa Hogar.xlsx",
+  "schema_notes": {
+    "expected_cover_id": "COVER_ID del Excel al que deberia emparejarse esta dependencia, o null si no aplica a ninguna cobertura concreta.",
+    "expected_bullet_match": "Texto del bullet especifico del Excel (dentro del COVER_ID) al que aplica la condicion -- null cuando el match es a nivel de cobertura completa (via hoja Coberturas opcionales, o cuando no hay bullets desglosados) en vez de a un bullet interno.",
+    "expected_confidence": "alta | media | baja -- refleja cuanta certeza hay en la clasificacion manual, no una salida del matcher. Los casos \"media\"/\"baja\" son los que en produccion deberian caer en el fallback de revision humana por baja confianza.",
+    "expected_reason": "match | out_of_scope_product (la garantia no esta comercializada en este Excel/producto) | general_policy_rule (regla transversal de poliza, no ligada a una cobertura).",
+    "excel_fixture": "Ver excel_fixture al final del fichero: extracto normalizado de ambas hojas del Excel real, para no depender de leer el .xlsx en el arnes offline."
+  },
+  "cases": [
+    {
+      "id": "GD-MATCH-001",
+      "semantic_unit_id": "su_00016",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "coverage_path": [
+        "3. Daños por agua",
+        "3.2. Localización y reparación"
+      ],
+      "source_text": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra en los que se incurra derivados de localizar la causa de los daños y reparar o sustituir la tubería o pieza averiada, a condición de que sean conducciones fijas y privativas que pertenezcan a la vivienda asegurada y sean causantes de daños en bienes asegurados o de terceros.\n\nNo obstante, cuando se descubra corrosión, amianto o deterioro generalizado de las conducciones o instalaciones de agua de la vivienda, la obligación de la compañía quedará limitada a indemnizar el coste de reparación del tramo causante, con un máximo de 300 euros, quedando totalmente excluidos siniestros posteriores con origen en la misma causa.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Cuando se asegure el continente, el importe correspondiente a los gastos de materiales y mano de obra..."
+        }
+      ],
+      "expected_cover_id": 18,
+      "expected_bullet_match": "Localización y reparación -100%",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "coverage_path hoja coincide casi literal con el bullet del Excel"
+    },
+    {
+      "id": "GD-MATCH-002",
+      "semantic_unit_id": "su_00017",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "coverage_path": [
+        "3. Daños por agua",
+        "3.3. Fontanería sin daños"
+      ],
+      "source_text": "Cuando se asegure el continente y hasta 300 euros por siniestro y anualidad se indemnizarán los gastos en los que incurra el asegurado para localizar y reparar instalaciones de agua causantes de fugas accidentales que no lleguen a producir daños en bienes asegurados o de terceros, siempre que existan evidencias objetivas de la fuga: charcos o un exceso de consumo anómalo y no justificado por otro motivo o por el movimiento continuado del contador incluso con todos los grifos y llaves de paso cerrados.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Cuando se asegure el continente y hasta 300 euros por siniestro y anualidad se indemnizarán los gastos"
+        }
+      ],
+      "expected_cover_id": 18,
+      "expected_bullet_match": "Fontanería sin daños – 300€",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "coverage_path hoja coincide casi literal con el bullet del Excel"
+    },
+    {
+      "id": "GD-MATCH-003",
+      "semantic_unit_id": "su_00025",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "coverage_path": [
+        "5. Robo en la vivienda y Vandalismo",
+        "5.2. Robo y expoliación de contenido"
+      ],
+      "source_text": "-Mobiliario y enseres: Hasta el 100% del capital contratado para esta partida.\n\n-Joyas y relojes de valor fuera de caja fuerte:\n\nHasta el 100% del capital contratado para esta partida, con un límite máximo de indemnización por pieza o pareja de 6.000 euros, salvo para las joyas y relojes que figuren expresamente declarados en las condiciones particulares con un valor concreto, el cual será su límite de indemnización.\n\n-Joyas y relojes de valor en caja fuerte:\n\nHasta el 100% del capital contratado para esta partida, con un límite máximo de indemnización por pieza o pareja de 6.000 euros, salvo para las joyas y relojes que figuren expresamente declarados en las condiciones particulares con un valor concreto, el cual será su límite de indemnización.\n\n-Bienes especiales (Obras de arte y objetos de valor especial):\n\nHasta el 100% del capital contratado para esta partida, con un límite máximo de indemnización por pieza o colección de 6.000 euros, salvo para los bienes que figuren expresamente declarados en las condiciones particulares con un valor concreto, el cual será su límite de indemnización.\n\nEn anexos de la vivienda:\n\nHasta el 10% del capital contratado para Mobiliario y enseres con un máximo de 1.500 euros por objeto, por robos o expoliaciones dentro de trasteros, garajes y otras dependencias anexas, siempre que sean de uso privativo, dispongan de cierre individual y no tengan zonas al aire libre o al descubierto, se encuentren en el mismo edificio o finca que la vivienda asegurada o en otra situación que haya sido expresamente declarada en las condiciones particulares. Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "Vivienda arrendada",
+            "Vivienda de uso turístico",
+            "Vivienda de alquiler vacacional",
+            "Vivienda sin ocupación"
+          ],
+          "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación."
+        }
+      ],
+      "expected_cover_id": 16,
+      "expected_bullet_match": "Robo de mobiliario y enseres - 100%",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "coverage_path raiz \"Robo... y Vandalismo\" == cover_name+cabecera de celda; hoja \"expoliación de contenido\" ~ \"mobiliario y enseres\""
+    },
+    {
+      "id": "GD-MATCH-004",
+      "semantic_unit_id": "su_00027",
+      "article": "Artículo 2º Garantías principales para la vivienda",
+      "coverage_path": [
+        "5. Robo en la vivienda y Vandalismo",
+        "5.4. Reposición de llaves y cerraduras"
+      ],
+      "source_text": "Hasta el 2% del capital contratado para Contenido, con un máximo de 600 euros por siniestro, el importe de los gastos necesarios para la reposición de las llaves y cerraduras de las puertas de acceso a la vivienda asegurada por otras de similares características, como consecuencia de robo, expoliación o hurto de las llaves legítimas. Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "uso turístico",
+            "alquiler vacacional",
+            "sin ocupación"
+          ],
+          "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación."
+        }
+      ],
+      "expected_cover_id": 16,
+      "expected_bullet_match": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "bullet literal en el Excel"
+    },
+    {
+      "id": "GD-MATCH-005",
+      "semantic_unit_id": "su_00039",
+      "article": "Artículo 3º Garantías de daños consecuenciales",
+      "coverage_path": [
+        "3. Pérdida de alquileres por inhabitabilidad temporal",
+        "3.2. En vivienda de uso turístico o alquiler vacacional"
+      ],
+      "source_text": "Hasta la cantidad contratada en las condiciones particulares, con máximo de un mes, y siempre que se acredite la existencia de reservas turísticas o haya un contrato de alquiler vacacional, se garantiza la indemnización por la pérdida de los ingresos por alquiler a consecuencia de la inhabitabilidad temporal de la vivienda, durante el tiempo que se precise para la reparación de los daños cubiertos en esta póliza. La consideración y duración de la inhabitabilidad serán establecidas por el perito o peritos intervinientes. En todo caso, debe impedir completamente el acceso a la vivienda o a la cocina o el uso de la totalidad de los baños de la vivienda.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "alquiler vacacional",
+            "uso turístico"
+          ],
+          "evidence": "En vivienda de uso turístico o alquiler vacacional"
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Pérdida de alquileres por inhabitabilidad temporal\" no aparece en ningún sitio del Excel (buscado literalmente)"
+    },
+    {
+      "id": "GD-MATCH-006",
+      "semantic_unit_id": "su_00045",
+      "article": "Artículo 3º Garantías de daños consecuenciales",
+      "coverage_path": [
+        "5. Recuperación de la vivienda ocupada por allanamiento de morada",
+        "5.1. Actos de vandalismo por el ocupante ilegal (allanador)"
+      ],
+      "source_text": "Siempre que esté contratada la garantía Robo en la vivienda y Vandalismo (Artículo 2º Garantías principales para la vivienda, apartado 5 de estas Condiciones Generales), hasta el 100% de los capitales contratados para Continente y/o Contenido, la indemnización por los gastos en que deba incurrir el asegurado para reparar los daños materiales causados en los bienes asegurados como consecuencia directa de actos malintencionados, que, con ánimo de destruir, hayan podido ser cometidos por las personas que hubieran allanado la vivienda asegurada descrita en esta póliza, cuando sea su morada, una vez recuperada. Se incluye el cambio de la cerradura de la puerta o puertas de acceso a la vivienda y la limpieza de esta.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Siempre que esté contratada la garantía Robo en la vivienda y Vandalismo (Artículo 2º Garantías principales para la vivienda, apartado 5 de estas Condiciones Generales), hasta el 100% de los capitales contratados para Continente y/o Contenido"
+        }
+      ],
+      "expected_cover_id": 23,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "Match via hoja Coberturas opcionales: cover_name exacto \"Recuperación de la vivienda ocupada por allanamiento de morada\" -> EPÍGRAFE \"Defensa jurídica\""
+    },
+    {
+      "id": "GD-MATCH-007",
+      "semantic_unit_id": "su_00059",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "1. Ampliación Hogar completo",
+        "1.1. Daños por calor"
+      ],
+      "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "resto de usos de vivienda"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Ampliación Hogar completo\" no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-008",
+      "semantic_unit_id": "su_00064",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "1. Ampliación Hogar completo",
+        "1.6. Alimentos refrigerados"
+      ],
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 500 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Ampliación Hogar completo\" no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-009",
+      "semantic_unit_id": "su_00065",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "1. Ampliación Hogar completo",
+        "1.7. Alimentos refrigerados por salto de diferencial"
+      ],
+      "source_text": "Hasta 150 euros, cuando se contrate capital de Mobiliario, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos previstos en el punto anterior cuando sean debidos a un salto de diferencial. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.\n\n1.8. Rotura de cristal de placa vitrocerámica o inducción Hasta el 100% del capital de Mobiliario, la indemnización por los gastos relativos a los daños previstos en el punto 4.2 c) del artículo 2º Garantías principales, con sus mismas condiciones y exclusiones.\n\n1.9. Rotura de cristales de electrodomésticos Hasta el 100% del capital de Mobiliario, la indemnización por los gastos de reparación o reposición por resquebrajamiento o fragmentación accidental de los cristales de electrodomésticos.\n\n1.10. Rotura de encimeras y tapas de mármol, granito y piedra artificial\n\nHasta el 100% de los capitales contratados para el Continente y/o Mo- biliario, la indemnización por gastos relativos a los daños previstos en los puntos 4.1 d) y 4.2 d) del artículo 2º Garantías principales, con sus mismas condiciones y exclusiones.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Hasta 150 euros, cuando se contrate capital de Mobiliario"
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Ampliación Hogar completo\" no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-010",
+      "semantic_unit_id": "su_00069",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "1. Ampliación Hogar completo",
+        "1.14. Reposición de llaves y cerraduras por extravío"
+      ],
+      "source_text": "Hasta el 2% del capital contratado para Contenido, con un máximo de 600 euros por siniestro, la indemnización por los gastos necesarios para la reposición de las llaves y cerraduras de las puertas de acceso a la vivienda asegurada por otras de similares características, como consecuencia de extravío de las llaves legítimas. Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "uso turístico",
+            "alquiler vacacional"
+          ],
+          "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "media",
+      "expected_reason": "out_of_scope_product",
+      "notes": "\"Reposición de llaves...\" existe como bullet de COVER_ID 16 (robo) pero aquí el contexto es \"extravío\" dentro de un paquete no comercializado (\"Ampliación Hogar completo\") - se descarta, pero marcado dudoso"
+    },
+    {
+      "id": "GD-MATCH-011",
+      "semantic_unit_id": "su_00071",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.1. Daños por calor"
+      ],
+      "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "resto de usos de vivienda"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Ampliación Hogar singular\" no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-012",
+      "semantic_unit_id": "su_00074",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.4. Exceso de consumo de agua"
+      ],
+      "source_text": "Hasta 1.000 euros a primer riesgo por siniestro y anualidad de seguro, siempre que se haya contratado capital para Continente, la indemnización por los gastos derivados de un exceso de consumo de agua como consecuencia de un siniestro cubierto en la garantía de Daños por agua (apartado 3, artículo 2º Garantías principales). Este exceso se calculará por la diferencia entre el importe de la factura del suministrador de agua correspondiente a la fecha en la que se produzca el siniestro y el promedio de consumo de la anualidad anterior con lecturas reales. Se considerará exceso de consumo de agua cuando esta factura supere en un 30% dicho consumo promedio.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "siempre que se haya contratado capital para Continente"
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "media",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Conceptualmente similar a \"Fontanería sin daños\" (COVER_ID 18) pero pertenece al paquete no comercializado \"Ampliación Hogar singular\" - descartado, marcado dudoso"
+    },
+    {
+      "id": "GD-MATCH-013",
+      "semantic_unit_id": "su_00078",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.8. Alimentos refrigerados"
+      ],
+      "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 1.000 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "principal",
+            "secundaria"
+          ],
+          "evidence": "siempre que se trate de su vivienda principal o secundaria"
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Ampliación Hogar singular\" no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-014",
+      "semantic_unit_id": "su_00080",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.9. Alimentos refrigerados por salto de diferencial"
+      ],
+      "source_text": "Hasta 150 euros, cuando se contrate capital de Mobiliario, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos previstos en el punto anterior cuando sean debidos a un salto de diferencial. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Hasta 150 euros, cuando se contrate capital de Mobiliario"
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Paquete \"Ampliación Hogar singular\" no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-015",
+      "semantic_unit_id": "su_00088",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.17. Infidelidad de empleados domésticos"
+      ],
+      "source_text": "Hasta el 25% del capital contratado para Contenido con máximo de 3.000 euros, la indemnización por el hurto de cualquier bien de la vivienda asegurada por su personal doméstico legalmente a su servicio, y siempre que este hurto motive el despido del empleado que lo cometió. Límite parcial dinero (cheques dinero en efectivo, cheques bancarios y otros documentos que representen un valor en dinero):\n\n300 euros Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ],
+          "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ],
+          "evidence": "No se aplica en resto de usos de vivienda."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "media",
+      "expected_reason": "out_of_scope_product",
+      "notes": "\"empleados domésticos\" aparece en COVER_ID 15 (RC patronal) pero es un concepto distinto (infidelidad vs responsabilidad patronal); pertenece a paquete no comercializado"
+    },
+    {
+      "id": "GD-MATCH-016",
+      "semantic_unit_id": "su_00091",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "2. Ampliación Hogar singular",
+        "2.20. Reposición de llaves y cerraduras por extravío"
+      ],
+      "source_text": "Hasta el 2% del capital contratado para Contenido, con un máximo de 1.000 euros por siniestro, la indemnización por los gastos necesarios para la reposición de las llaves y cerraduras de las puertas de acceso a la vivienda asegurada por otras de similares características, como consecuencia de extravío de las llaves legítimas, además de su robo, expoliación o hurto. Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "uso turístico",
+            "alquiler vacacional"
+          ],
+          "evidence": "Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "media",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Mismo caso que su_00069"
+    },
+    {
+      "id": "GD-MATCH-017",
+      "semantic_unit_id": "su_00101",
+      "article": "Artículo 5º Garantías adicionales",
+      "coverage_path": [
+        "3.3. Cargador de vehículo eléctrico o híbrido"
+      ],
+      "source_text": "Hasta la cantidad indicada en las condiciones particulares por siniestro y anualidad, a primer riesgo, la indemnización por los daños en el cargador de vehículo eléctrico o híbrido de su propiedad, siempre que esté instalado de forma fija y permanente al continente asegurado, exclusivamente a consecuencia de:\n\n-Incendio, explosión y caída del rayo.\n\n-Daños de origen eléctrico.\n\n-Robo y vandalismo, siempre que se encuentren dentro de garajes privados y con cerramiento individual. Serán de aplicación las condiciones establecidas para estas garantías en el artículo 2º Garantías principales. Esta cobertura será en defecto o en exceso de cualquier otro seguro que cubra el cargador por el mismo hecho.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "siempre que esté instalado de forma fija y permanente al continente asegurado"
+        },
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "primer riesgo",
+          "evidence": "a primer riesgo, la indemnización por los daños en el cargador"
+        }
+      ],
+      "expected_cover_id": 105,
+      "expected_bullet_match": "Cargador vehículo eléctrico o híbrido",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "Match via hoja Coberturas opcionales: cover_name \"Cargador vehículo eléctrico o híbrido\" -> EPÍGRAFE \"Vehículos/maq. autopropulsada en reposo.\""
+    },
+    {
+      "id": "GD-MATCH-018",
+      "semantic_unit_id": "su_00120",
+      "article": "Artículo 6º Garantías adicionales específicas para la vivienda arrendada, de uso turístico o de alquiler vacacional",
+      "coverage_path": [
+        "2. Impago de rentas (solo en Vivienda arrendada)",
+        "2.1. Reembolso de los alquileres impagados"
+      ],
+      "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia). No obstante, el asegurador renuncia a aplicar este plazo de carencia cuando la póliza se emite en reemplazo de otra que hubiese garantizado el impago para la misma vivienda e inquilino.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "arrendada",
+          "evidence": "Impago de rentas (solo en Vivienda arrendada)"
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "out_of_scope_product",
+      "notes": "\"Impago de rentas\" (línea de negocio vivienda arrendada) no aparece en el Excel"
+    },
+    {
+      "id": "GD-MATCH-019",
+      "semantic_unit_id": "su_00125",
+      "article": "Artículo 7º Garantías de Responsabilidad Civil",
+      "coverage_path": [],
+      "source_text": "Incendio y sus efectos, explosión e implosión.\n\nDerrame accidental e imprevisto de agua.\n\nLa realización en la vivienda de obras menores y trabajos de conservación o reparación. Cuando la obra o los trabajos sean a cargo de una empresa o profesional, esta responsabilidad será subsidiaria de la que les corresponda a ellos.\n\nEl desprendimiento de elementos del continente asegurado de la vivienda, y aunque no forman parte del mismo, la caída de árboles o partes de ellos que sean de su propiedad, siempre que se haya contratado capital de Continente.\n\nDaños provocados por placas solares u otras instalaciones de energía renovable, siempre que exista capital contratado para estas instalaciones en la garantía de Daños a placas solares y otros sistemas de energía renovable.\n\nDaños provocados por cargadores de vehículos, siempre que se haya contratado la garantía Cargador de vehículo eléctrico o híbrido.\n\nDaños provocados por instalaciones eléctricas privadas exteriores a la vivienda que discurran por zonas comunes del edificio o urbanización donde se ubica, con entrada o salida en ella o en sus dependencias anexas, siempre",
+      "coverage_dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "El desprendimiento de elementos del continente asegurado de la vivienda, y aunque no forman parte del mismo, la caída de árboles o partes de ellos que sean de su propiedad, siempre que se haya contratado capital de Continente."
+        }
+      ],
+      "expected_cover_id": 15,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "article ya es literalmente \"Garantías de Responsabilidad Civil\"; coverage_path vacío en este caso"
+    },
+    {
+      "id": "GD-MATCH-020",
+      "semantic_unit_id": "su_00127",
+      "article": "Artículo 7º Garantías de Responsabilidad Civil",
+      "coverage_path": [
+        "Responsabilidad civil del arrendador frente al inquilino"
+      ],
+      "source_text": "La responsabilidad del punto anterior se extiende a los daños corporales y materiales derivados de la propiedad asegurada causados involuntariamente a los inquilinos o huéspedes turísticos, mientras habiten la vivienda en virtud de un contrato legal según el tipo de alquiler, cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional. Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios donde está la vivienda por hechos involuntarios derivados por el uso de sus instalaciones y mobiliario, con un límite máximo de 30.000 euros, y sin perjuicio de reserva de derecho de repetición contra otro seguro que cubra los mismos hechos. Dentro de la responsabilidad como usuario, además, se cubre:",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "uso turístico",
+            "alquiler vacacional"
+          ],
+          "evidence": "Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios"
+        },
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "propietario",
+          "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
+        }
+      ],
+      "expected_cover_id": 15,
+      "expected_bullet_match": "Responsabilidad Civil de la vivienda / Como propietario",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "RC del arrendador -> cobertura RC general"
+    },
+    {
+      "id": "GD-MATCH-021",
+      "semantic_unit_id": "su_00128",
+      "article": "Artículo 7º Garantías de Responsabilidad Civil",
+      "coverage_path": [
+        "Responsabilidad civil del arrendador frente al inquilino",
+        "Responsabilidad civil del inquilino frente al arrendador (locativa)"
+      ],
+      "source_text": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad por los daños que pueda sufrir la vivienda en elementos del continente o del mobiliario que forme parte del equipamiento cedido por el propietario, siempre que dichos daños deriven de incendio y sus efectos, explosión e implosión o daños por agua como consecuencia del uso negligente de las instalaciones o con origen en bienes muebles asegurados y propiedad del asegurado.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "=",
+          "value": "inquilino",
+          "evidence": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad"
+        }
+      ],
+      "expected_cover_id": 15,
+      "expected_bullet_match": "Como inquilino frente al arrendador (locativa)",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "bullet literal en el Excel"
+    },
+    {
+      "id": "GD-MATCH-022",
+      "semantic_unit_id": "su_00138",
+      "article": "Artículo 7º Garantías de Responsabilidad Civil",
+      "coverage_path": [
+        "Responsabilidad civil por estancias temporales fuera del hogar"
+      ],
+      "source_text": "Siempre que se haya hecho constar en las condiciones particulares, por el plazo temporal indicado en las mismas y dentro de la vigencia del seguro, se extiende la Responsabilidad civil de la vida privada del punto anterior a la derivada por estancias temporales fuera del hogar que realicen el asegurado o los miembros de la unidad familiar con fines privados. Se incluyen los daños causados involuntariamente como inquilino o huésped turístico en la vivienda en la que se habite durante esta estancia temporal.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "IN",
+          "value": [
+            "inquilino",
+            "huésped"
+          ],
+          "evidence": "Se incluyen los daños causados involuntariamente como inquilino o huésped turístico en la vivienda en la que se habite durante esta estancia temporal."
+        }
+      ],
+      "expected_cover_id": 15,
+      "expected_bullet_match": "Estancias temporales en el extranjero (3 meses)",
+      "expected_confidence": "media",
+      "expected_reason": "match",
+      "notes": "Excel dice \"en el extranjero\" (más estrecho) vs \"fuera del hogar\" (más amplio) en el texto real - posible variante de alcance"
+    },
+    {
+      "id": "GD-MATCH-023",
+      "semantic_unit_id": "su_00166",
+      "article": "Artículo 8º Defensa jurídica",
+      "coverage_path": [
+        "Artículo 8º Defensa jurídica",
+        "2.6. Reclamación en contratos sobre bienes muebles."
+      ],
+      "source_text": "La reclamación en litigios sobre incumplimiento de contratos que tengan por objeto cosas muebles, en los que el asegurado sea parte, tales como los de compraventa, depósito, permuta, pignoración y otros análogos. Se entenderán por cosas muebles exclusivamente los objetos de decoración y mobiliarios (salvo antigüedades), aparatos electrodomésticos, efectos personales y alimentos, siempre que tales bienes sean de su propiedad y los utilice para su uso personal.",
+      "coverage_dependencies": [],
+      "expected_cover_id": 23,
+      "expected_bullet_match": "Reclamación en contratos sobre bienes muebles",
+      "expected_confidence": "alta",
+      "expected_reason": "match",
+      "notes": "bullet literal en el Excel bajo Defensa jurídica"
+    },
+    {
+      "id": "GD-MATCH-024",
+      "semantic_unit_id": "su_00196",
+      "article": "Artículo 8º Defensa jurídica",
+      "coverage_path": [
+        "Artículo 8º Defensa jurídica",
+        "4. Defensa jurídica del arrendador",
+        "4.8. Asistencia en la redacción y revisión de contratos de arrendamiento"
+      ],
+      "source_text": "Hechos anteriores a la vigencia de la póliza y los que, aun pudiendo haber tenido cobertura, sean declarados después de transcurrir dos años desde la fecha de rescisión o anulación de este contrato, salvo en materia fiscal en la que el plazo será de cinco años.\n\nLa defensa por actos dolosos o la mala fe por parte del asegurado.\n\nReclamaciones que tengan su origen o estén relacionadas con el proyecto, construcción, transformación o derribo del inmueble o instalaciones donde se halle ubicado el inmueble, así como los relacionados con canteras, explotaciones mineras e instalaciones fabriles.\n\nReclamaciones contra el asegurado por la no realización de las obras necesarias de conservación del inmueble objeto del seguro.\n\nLos litigios sobre cuestiones de propiedad intelectual o industrial, así como los procedimientos judiciales en materia de urbanismo, concentración parcelaria y expropiación o que dimanen de contratos sobre cesión de derechos a su favor.\n\nReclamaciones a personas sin responsabilidad legal que se hallen de forma permanente o temporal bajo control o vigilancia del asegurado o de las personas que convivan con el asegurado.\n\nReclamaciones a propietarios de cosas o animales que por cualquier razón se hallen en su poder o bajo su responsabilidad o de la de personas de las que el asegurado deba responder\n\nLos relacionados con el uso y circulación de vehículos a motor, sus remolques y de embarcaciones náuticas, salvo cuando el asegurado actúe como peatón u ocupante de uno de estos vehículos que no sean de su propiedad ni estén bajo su control.\n\nLos relacionados con el uso y circulación de vehículos personales ligeros, salvo cuando el asegurado actúe como peatón.\n\nLas reclamaciones a inquilinos por arrendamientos de temporada o de duración inferior a un año sin cláusula de renovación, subarrendamientos y arrendamientos comerciales o rústicos.\n\nLas reclamaciones por impagos de alquileres legitimados por disposición de algún tipo de autoridad competente o causados por inhabitabilidad o problemas estructurales del inmueble.\n\nEl cumplimiento de las obligaciones que le sean impuestas al asegurado por sentencia o resolución administrativa.\n\nLos gastos originados por una acumulación o reconvención judicial, cuando se refieran a materias no garantizadas por la presente póliza.\n\nLos gastos que no hayan sido comunicados previamente y aquellos para los que no se hubiera obtenido la correspondiente autorización.\n\nEl propio importe de los daños o pérdidas objeto de la reclamación.\n\nEl pago de multas y la indemnización de cualquier gasto originado por sanciones impuestas al asegurado por las autoridades administrativas o judiciales.\n\nLos impuestos y otros pagos de carácter fiscal, dimanantes de la presentación de documentos públicos o privados ante los organismos oficiales.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "housingRegime",
+          "operator": "NOT_IN",
+          "value": [
+            "temporada",
+            "duración inferior a un año sin cláusula de renovación",
+            "subarrendamiento",
+            "comercial",
+            "rústico"
+          ],
+          "evidence": "Las reclamaciones a inquilinos por arrendamientos de temporada o de duración inferior a un año sin cláusula de renovación, subarrendamientos y arrendamientos comerciales o rústicos."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "baja",
+      "expected_reason": "out_of_scope_product",
+      "notes": "Sub-punto \"Defensa jurídica del arrendador... contratos de arrendamiento\" no está literal en el Excel (solo \"contratos civiles\"); probable parte de la línea \"vivienda arrendada\" no comercializada - marcado dudoso, revisar"
+    },
+    {
+      "id": "GD-MATCH-025",
+      "semantic_unit_id": "su_00222",
+      "article": "Artículo 9.º Asistencia",
+      "coverage_path": [
+        "Artículo 9.º Asistencia"
+      ],
+      "source_text": "Actuaciones frente a plagas no incluidas expresamente la cobertura de esta garantía, así como tratamientos fitosanitarios o actuaciones sobre animales domésticos.\n\nRecogida de animales muertos anteriores a la intervención o plagas anteriores a la entrada en vigor de esta póliza de seguro.\n\nReparación de daños materiales causados por plagas en estructuras, mobiliario, materiales o contenido interior del inmueble.\n\nObras o reformas necesarias para acceder a focos de infestación ocultos.\n\nEn caso de detectarse deficiencias estructurales o higiénicas que puedan actuar como vectores de infestación, estas se comunicarán al asegurado para su resolución. La no subsanación exime al asegurador de prestar cualquier servicio preventivo o correctivo relacionado.\n\nNidos de avispas no accesibles, ocultos o situados a más de 2 metros de altura.\n\nEl compromiso de la eliminación de la plaga en un plazo determinado.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "=",
+          "value": 0,
+          "evidence": "Reparación de daños materiales causados por plagas en estructuras, mobiliario, materiales o contenido interior del inmueble."
+        }
+      ],
+      "expected_cover_id": 104,
+      "expected_bullet_match": "Control de plagas",
+      "expected_confidence": "media",
+      "expected_reason": "match",
+      "notes": "CORREGIDO tras revisión del usuario: el título \"Artículo 9º Asistencia\" sugiere COVER_ID 22, pero el texto real es sobre control de plagas -> match real via hoja Coberturas opcionales (\"Control de plagas\" -> EPÍGRAFE \"Otras garantías / Extensión garantías.\", COVER_ID 104). Ejemplo de por qué no basta con matching por título/coverage_path, hay que verificar el texto real (evidence/source_text)."
+    },
+    {
+      "id": "GD-MATCH-026",
+      "semantic_unit_id": "su_00223",
+      "article": "Artículo 10º Exclusiones generales para todas las garantías",
+      "coverage_path": [],
+      "source_text": "Además de lo especificado en cada una de las garantías, no quedan cubiertos en este seguro con carácter general:\n\nLos daños y perjuicios derivados de garantías y coberturas no incluidas expresamente en las Condiciones Particulares de la póliza o distintos de\n\nlos definidos en las presentes Condiciones Generales o expresamente excluidos en cualquiera de estas Condiciones.\n\nLos siniestros ocurridos antes de la fecha de efecto de la póliza sean o no conocidos por el asegurado.\n\nLas pérdidas indirectas de cualquier clase que no estén expresamente aseguradas.\n\nLa destrucción o deterioro de los bienes asegurados fuera del lugar descrito en las Condiciones Particulares como situación del riesgo, excepto en los supuestos expresamente previstos en estas Condiciones Generales.\n\nLos daños y accidentes producidos intencionadamente, como autores, cómplices o encubridores, por el tomador, el asegurado, miembros de su familia, empleados domésticos legalmente a su servicio u otras personas que convivan en la vivienda. En el caso de los empleados domésticos, con excepción de lo expresamente cubierto en Infidelidad de empleados domésticos, cuando esté contratada.\n\nLos siniestros producidos por negligencia inexcusable y por la falta o ejecución defectuosa de reparación, conservación o mantenimiento de la vivienda y sus instalaciones, imputable total o parcialmente al tomador o al asegurado.\n\nLos siniestros en inmuebles en construcción o sin cédula de habitabilidad, licencia de ocupación u otro documento administrativo establecido en la legislación vigente.\n\nLos daños en inmuebles en estado ruinoso.\n\nLos daños propios y los causados a terceros a consecuencia del desarrollo de una actividad comercial, industrial o profesional o cualquier otra impropia en una vivienda.\n\nDaños en viviendas destinadas al alquiler de habitaciones o al realquiler.\n\nLos daños producidos durante la realización de obras de reparación, remodelación o reconstrucción de la vivienda. No tendrán tal consideración las reparaciones domésticas o trabajos de conservación de la vivienda asegurada, siempre que tengan la calificación administrativa de obras menores y no sean realizadas por terceras personas con las que medie remuneración.\n\nEl pago de multas y sanciones de cualquier clase.\n\nDaños o pérdidas ocasionados, directa o indirectamente, por sucesos ocurridos a través o como consecuencia de guerra, invasión, actos de enemigos extranjeros, hostilidades (haya precedido o no la declaración de guerra), guerra civil, rebelión, revolución, insurrección, poder militar o usurpado, terrorismo, así como confiscación, nacionalización, requisa o destrucción de bienes o daños a los mismos por o bajo la orden de cualquier gobierno o autoridad pública o local, en presencia de los eventos anteriores.\n\nLos siniestros producidos por erupciones volcánicas, huracanes, ciclones, terremotos, maremotos, embates de mar, inundaciones a consecuencia de la acción directa de las aguas de los ríos, capilaridad, subidas de nivel freático y/o colapso de los bienes asegurados por la pérdida de resistencia mecánica, fatiga de materiales, asentamientos, temblores o movimientos de la tierra.\n\nLos siniestros producidos por ablandamiento, hundimiento, desprendimiento o corrimiento del terreno, excepto cuando se produzcan a consecuencia de hechos expresamente cubiertos por este contrato.\n\nLos daños derivados de fermentación, oxidación, error de diseño, vicio propio o defecto conocido de construcción o fabricación de las instalaciones y bienes garantizados.\n\nSiniestros ocasionados directamente por efectos mecánicos, térmicos o radioactivos debidos a transmutaciones o reacciones nucleares, cualquiera que sea la causa que las produzca.\n\nLos gastos de descontaminación, búsqueda y recuperación de los isótopos radiactivos, así como los daños producidos por contaminación, polución o corrosión, daños nucleares, así como los causados por radiaciones ionizantes y contaminación radiactiva.\n\nLos daños por hechos o fenómenos que se encuentren cubiertos por el Consorcio de Compensación de Seguros según la legislación vigente en cada momento, o cuando dicho Organismo no admita la efectividad del derecho de los asegurados por incumplimiento de alguna de las normas establecidas en su Reglamento y Disposiciones Complementarias vigentes en la fecha de su ocurrencia.\n\nLos daños producidos con ocasión o a consecuencia de siniestros que, teniendo carácter extraordinario, resulten rechazados por el Consorcio de Compensación de Seguros por incumplimiento de las normas establecidas en el Reglamento y disposiciones complementarias del mismo, así como la diferencia entre los daños producidos y las cantidades indemnizadas en razón de la aplicación de franquicias, detracciones, infraseguro, alteraciones estéticas u otras, por los siniestros que son de incumbencia de este organismo público.\n\nLos siniestros calificados por el poder público de catástrofe o calamidad nacional.\n\nLa expropiación, confiscación, nacionalización, requisa o daños en los bienes asegurados por imperativo de cualquier gobierno o autoridad (de hecho o de derecho).\n\nEl software y los pro gramas informáticos en general, incluso los sistemas electrónicos de protección de paquetes de software (llaves de seguridad).",
+      "coverage_dependencies": [],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "general_policy_rule",
+      "notes": "Exclusiones generales para todas las garantías - regla transversal, no vinculada a una cobertura"
+    },
+    {
+      "id": "GD-MATCH-027",
+      "semantic_unit_id": "su_00233",
+      "article": "Artículo 12.º Normas de tasación de daños e indemnización de siniestros",
+      "coverage_path": [
+        "2. Determinación de la indemnización",
+        "2.2. Normas para el cálculo de la indemnización",
+        "a) Regla proporcional"
+      ],
+      "source_text": "En los casos en que los capitales asegurados sean inferiores al valor de los bienes en el momento de producirse el siniestro, existe un infraseguro, y la Ley establece que el seguro solo responde del siniestro en proporción a la parte asegurada, siendo a cargo del asegurado la parte proporcional no asegurada.\n\nSin embargo, no se aplicará esta regla proporcional en el primer siniestro ocurrido en el que se detecte el infraseguro, cuando la diferencia entre el valor de nuevo y dicho capital sea inferior al 15%, o bien la cuantía de los daños, cubiertos o no, sea inferior a 2.000 euros. A continuación, el asegurado deberá adecuar los capitales a la realidad. A partir del segundo siniestro, si procede, se aplicará la regla proporcional. Tampoco se aplicará si el asegurador renuncia a la aplicación de la regla proporcional en caso de un siniestro que afecte a continente, cuando el asegurado ha aceptado el capital de continente propuesto por el asegurador en función de los metros cuadrados de superficie construida y características de la vivienda que le ha declarado, o bien ha contratado un capital superior, siempre que estos datos sean correctos, aunque el capital sea inferior a valor a nuevo de reconstrucción del inmueble en el momento del siniestro. Para esta renuncia a la aplicación de la regla proporcional es necesario que en la póliza se esté aplicando la revalorización automática de los capitales asegurados. En capitales a primer riesgo, no procede la regla proporcional.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "primer riesgo",
+          "evidence": "En capitales a primer riesgo, no procede la regla proporcional."
+        },
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Tampoco se aplicará si el asegurador renuncia a la aplicación de la regla proporcional en caso de un siniestro que afecte a continente, cuando el asegurado ha aceptado el capital de continente propuesto por el asegurador en función de los metros cuadrados de superficie construida y características de la vivienda que le ha declarado, o bien ha contratado un capital superior."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "general_policy_rule",
+      "notes": "Regla proporcional (infraseguro) de tasación - transversal a cualquier cobertura con capital, no vinculada a una única cobertura"
+    },
+    {
+      "id": "GD-MATCH-028",
+      "semantic_unit_id": "su_00234",
+      "article": "Artículo 12.º Normas de tasación de daños e indemnización de siniestros",
+      "coverage_path": [
+        "b) Compensación de capitales"
+      ],
+      "source_text": "De tener que aplicarse la regla proporcional, si en el momento del siniestro existiese un exceso de capital asegurado para el Continente o para el Mobiliario, tal exceso podrá aplicarse al concepto que resultase insuficientemente asegurado, siempre que la prima resultante no exceda de la satisfecha en la anualidad en curso. La compensación de capitales no será de aplicación sobre las garantías o capitales asegurados bajo la modalidad de contratación a primer riesgo.",
+      "coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "!=",
+          "value": "primer riesgo",
+          "evidence": "La compensación de capitales no será de aplicación sobre las garantías o capitales asegurados bajo la modalidad de contratación a primer riesgo."
+        }
+      ],
+      "expected_cover_id": null,
+      "expected_bullet_match": null,
+      "expected_confidence": "alta",
+      "expected_reason": "general_policy_rule",
+      "notes": "Compensación de capitales (tasación) - regla transversal, misma razón que su_00233"
+    }
+  ],
+  "excel_fixture": {
+    "covers_por_modalidad": [
+      {
+        "cover_id": 15,
+        "cover_name": "Responsabilidad Civil",
+        "sample_text_bullets": [
+          "Capital 150.000€",
+          "-Responsabilidad Civil de la vivienda",
+          "Como propietario",
+          "Como inquilino frente al arrendador (locativa)",
+          "Patronal sobre empleados domésticos",
+          "Contaminación accidental",
+          "-Responsabilidad civil de la vida privada",
+          "Personal y familiar",
+          "Propiedad y tenencia de mascotas (no perros)",
+          "Estancias temporales en el extranjero (3 meses)",
+          "-Responsabilidad civil por uso de bicicletas"
+        ]
+      },
+      {
+        "cover_id": 16,
+        "cover_name": "Robo",
+        "sample_text_bullets": [
+          "Robo y Vandalismo",
+          "Robo de continente y daños - 100%",
+          "Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)",
+          "Robo de mobiliario y enseres - 100%",
+          "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
+          "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+          "Actos de vandalismo – 100%",
+          "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)"
+        ]
+      },
+      {
+        "cover_id": 17,
+        "cover_name": "Incendio",
+        "sample_text_bullets": [
+          "Incendio, explosión, caída del rayo e impactos -100% en Continente y Contenido por:",
+          "Incendio, Explosión e implosión y Caída del rayo",
+          "Daños por humo",
+          "Derrame o escape de instalaciones de extinción",
+          "Impactos desde el exterior"
+        ]
+      },
+      {
+        "cover_id": 18,
+        "cover_name": "Daños por agua",
+        "sample_text_bullets": [
+          "Daños por agua",
+          "Escapes de agua -100%",
+          "Localización y reparación -100%",
+          "Fontanería sin daños – 300€"
+        ]
+      },
+      {
+        "cover_id": 19,
+        "cover_name": "Daños eléctricos",
+        "sample_text_bullets": [
+          "Daños de origen eléctrico Continente y Contenido  - 1.500€"
+        ]
+      },
+      {
+        "cover_id": 20,
+        "cover_name": "Cristales / Roturas",
+        "sample_text_bullets": [
+          "Roturas",
+          "Cristales, lunas y espejos – 100%",
+          "Metacrilato y similares – 100%",
+          "Loza de aparatos sanitarios y fregaderos – 100%",
+          "Cristal de vitrocerámica o inducción – 300€ (Contenido)",
+          "Encimeras de piedra natural o artificial – 600€ (Continente y Contenido)"
+        ]
+      },
+      {
+        "cover_id": 21,
+        "cover_name": "Restauración estética",
+        "sample_text_bullets": [
+          "Restauración Estética Continente  - 1.500€"
+        ]
+      },
+      {
+        "cover_id": 22,
+        "cover_name": "Asistencia en el hogar",
+        "sample_text_bullets": [
+          "Asistencia en el Hogar incluida:",
+          "- Cerrajero urgente (max 3 horas mano de obra)",
+          "- Electricista urgente (max 3 horas mano de obra)",
+          "- Fontanero urgente (max 3 horas mano de obra)",
+          "- Personal de Seguridad (max 48h)",
+          "- Servicio de Conexión"
+        ]
+      },
+      {
+        "cover_id": 23,
+        "cover_name": "Defensa jurídica",
+        "sample_text_bullets": [
+          "Defensa Jurídica y reclamación - 6.100 €",
+          "- Asesoramiento jurídico",
+          "- Ayuda legal 24 horas",
+          "- Reclamación de daños relativos a la vivienda",
+          "- Reclamación de daños personales y materiales",
+          "- Reclamación contratos de servicios y suministro",
+          "- Reclamación en contratos sobre bienes muebles.",
+          "- Infracciones administrativas relacionadas con la vivienda",
+          "- Defensa penal",
+          "- Asesoramiento en gestión administrativa",
+          "- Asesoramiento fiscal",
+          "- Impugnación del valor catastral de la vivienda",
+          "- Asistencia en la redacción y revisión de contratos civiles"
+        ]
+      },
+      {
+        "cover_id": 79,
+        "cover_name": "Animales domésticos.",
+        "sample_text_bullets": [
+          "Garantía Opcional"
+        ]
+      },
+      {
+        "cover_id": 80,
+        "cover_name": "Asistencia en viaje./ Accidentes",
+        "sample_text_bullets": [
+          "Sin cobertura"
+        ]
+      },
+      {
+        "cover_id": 81,
+        "cover_name": "Todo riesgo accidental.",
+        "sample_text_bullets": [
+          "Garantía Opcional"
+        ]
+      },
+      {
+        "cover_id": 103,
+        "cover_name": "Daños por fenómenos meteorológicos",
+        "sample_text_bullets": [
+          "Fenómenos meteorológicos:",
+          "- Lluvia, viento, pedrisco y nieve – 100% (Continente y Contenido)",
+          "- Inundación - 100% (Continente y Contenido)",
+          "- Goteras y filtraciones - 100% (Continente y Contenido)"
+        ]
+      },
+      {
+        "cover_id": 104,
+        "cover_name": "Otras garantías / Extensión garantías.",
+        "sample_text_bullets": [
+          "Ruina total por obras de terceros - 100% (Continente y Contenido)",
+          "Garantía de Pérdidas Consecuenciales",
+          "- Demolición, desescombro, salvamento, reconstrucción y otros gastos derivados de un siniestro - 25% (Continente y Contenido)",
+          "- Inhabitabilidad temporal por:",
+          "o Alquiler de vivienda provisional - 25% (máx. 2 años)",
+          "o Mudanza y guardamuebles - 10% (máx. 6 meses)",
+          "o Gastos de hotel y restaurante - 10% (máx. 3.000 €)"
+        ]
+      },
+      {
+        "cover_id": 105,
+        "cover_name": "Vehículos/maq. autopropulsada en reposo.",
+        "sample_text_bullets": [
+          "Sin cobertura"
+        ]
+      }
+    ],
+    "coberturas_opcionales": [
+      {
+        "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada",
+        "text_content": "- Actos de vandalismo por el ocupante ilegal 100%  \n- Inhabitabilidad temporal. Límites Inhabitabilidad temporal  \n- Defensa jurídica. 6.000€  \n- Honorarios de intermediación. 3.000€  \n- Asistencia psicológica. 3.000€.",
+        "epigrafe": "Defensa jurídica"
+      },
+      {
+        "cover_name": "Cargador vehículo eléctrico o híbrido",
+        "text_content": "Límite 1.500€.",
+        "epigrafe": "Vehículos/maq. autopropulsada en reposo."
+      },
+      {
+        "cover_name": "Daños a placas solares y otros sistemas de energía renovable",
+        "text_content": "Primer riesgo",
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Avería a placas solares y otros sistemas de energía renovable",
+        "text_content": "Primer riesgo",
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Reconstrucción de jardín",
+        "text_content": "10% (máx. 50.000)",
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Reconstrucción de jardín singular",
+        "text_content": "20% (máx. 100.000)",
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Muebles de exterior",
+        "text_content": "- Sublime robo. 600€ / objeto.\n- Sublime hurto. 300€ / objeto.",
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Todo riesgo accidental",
+        "text_content": "Indemnización (100% capital) por los gastos de reparación o reposición a causa de los daños materiales directos en los bienes asegurados en el interior de la vivienda como consecuencia directa de cualquier hecho accidental producido de forma súbita, casual y ajena a su voluntad y la de los miembros de su unidad familiar",
+        "epigrafe": "Todo riesgo accidental."
+      },
+      {
+        "cover_name": "Todo riesgo de equipos tecnológicos",
+        "text_content": "Franqucia 200 €.\n10% Mob. (máx. 3.000€)\nSublímite móviles: 1.000 €",
+        "epigrafe": "Todo riesgo accidental."
+      },
+      {
+        "cover_name": "Mascotas (Accidentes de perros y otras mascotas)",
+        "text_content": "- Fallecimiento por accidente – 500 €\n- Gastos de entierro o incineración – 150 €\n- Estancia en residencia por hospitalización del propietario -300€.",
+        "epigrafe": "Animales domésticos."
+      },
+      {
+        "cover_name": "Responsabilidad civil por propiedad y tenencia de perros",
+        "text_content": null,
+        "epigrafe": "Responsabilidad Civil"
+      },
+      {
+        "cover_name": "RC perros peligrosos o de difícil manejo",
+        "text_content": null,
+        "epigrafe": "Responsabilidad Civil"
+      },
+      {
+        "cover_name": "Daños malintencionados del inquilino",
+        "text_content": null,
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Daños malintencionados del inquilino turística",
+        "text_content": null,
+        "epigrafe": "Otras garantías / Extensión garantías."
+      },
+      {
+        "cover_name": "Bricohogar",
+        "text_content": "2 servicios (3 horas/servicio)",
+        "epigrafe": "Asistencia en el hogar"
+      },
+      {
+        "cover_name": "Control de plagas",
+        "text_content": "1 servicio/año",
+        "epigrafe": "Otras garantías / Extensión garantías."
+      }
+    ]
+  }
+}

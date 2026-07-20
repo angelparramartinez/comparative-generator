@@ -1,0 +1,264 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_generator_golden_set",
+  "description": "Casos de prueba (unitarios + un caso real de Generali) para el generador de ENTRY/LINES: traduccion de dependencias a SPEL, y las reglas de granularidad/hoisting/optimizacion ya fijadas en knowledge/Modelo comparativa de coberturas - AI ready.md.",
+  "spel_translation_cases": [
+    {
+      "id": "GEN-SPEL-001",
+      "description": "igualdad enum",
+      "dependency": {
+        "risk_field": "occupancy",
+        "operator": "=",
+        "value": "mainresidence"
+      },
+      "expected_spel": "insurance[\"risk\"].occupancy == 'mainresidence'"
+    },
+    {
+      "id": "GEN-SPEL-002",
+      "description": "desigualdad enum",
+      "dependency": {
+        "risk_field": "capitalInsuranceType",
+        "operator": "!=",
+        "value": "primer riesgo"
+      },
+      "expected_spel": "insurance[\"risk\"].capitalInsuranceType != 'primer riesgo'"
+    },
+    {
+      "id": "GEN-SPEL-003",
+      "description": "comparacion numerica >",
+      "dependency": {
+        "risk_field": "continent",
+        "operator": ">",
+        "value": 0
+      },
+      "expected_spel": "insurance[\"risk\"].continent > 0"
+    },
+    {
+      "id": "GEN-SPEL-004",
+      "description": "comparacion numerica <=",
+      "dependency": {
+        "risk_field": "rooms",
+        "operator": "<=",
+        "value": 5
+      },
+      "expected_spel": "insurance[\"risk\"].rooms <= 5"
+    },
+    {
+      "id": "GEN-SPEL-005",
+      "description": "IN enum multivalor",
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "IN",
+        "value": [
+          "vivienda principal",
+          "vivienda secundaria"
+        ]
+      },
+      "expected_spel": "insurance[\"risk\"].housingUse in {'vivienda principal','vivienda secundaria'}"
+    },
+    {
+      "id": "GEN-SPEL-006",
+      "description": "NOT_IN enum multivalor",
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "NOT_IN",
+        "value": [
+          "uso turistico",
+          "alquiler vacacional"
+        ]
+      },
+      "expected_spel": "!(insurance[\"risk\"].housingUse in {'uso turistico','alquiler vacacional'})"
+    },
+    {
+      "id": "GEN-SPEL-007",
+      "description": "igualdad boolean",
+      "dependency": {
+        "risk_field": "alarm",
+        "operator": "=",
+        "value": true
+      },
+      "expected_spel": "insurance[\"risk\"].alarm == true"
+    }
+  ],
+  "combine_cases": [
+    {
+      "id": "GEN-COMBINE-001",
+      "description": "2 dependencias de la misma condicion estructural se combinan con AND",
+      "dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ]
+        },
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].housingUse in {'Vivienda principal','Vivienda secundaria'}) && (insurance[\"risk\"].content > 0)"
+    }
+  ],
+  "entry_building_cases": [
+    {
+      "id": "GEN-ENTRY-001",
+      "description": "Caso real Generali COVER_ID 18 (Danos por agua): 1 bullet sin condicion (Escapes de agua) + 2 bullets con la MISMA condicion (continent > 0). El default entry (sin condicion) rompe la uniformidad -> NO debe fusionarse a nivel de cobertura.",
+      "input": {
+        "coverId": 18,
+        "coverName": "Daños por agua",
+        "defaultBullets": [
+          "Escapes de agua -100%"
+        ],
+        "conditionedBullets": [
+          {
+            "text": "Localización y reparación -100%",
+            "dependencies": [
+              {
+                "risk_field": "continent",
+                "operator": ">",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "text": "Fontanería sin daños – 300€",
+            "dependencies": [
+              {
+                "risk_field": "continent",
+                "operator": ">",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 3,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1
+      }
+    },
+    {
+      "id": "GEN-ENTRY-002",
+      "description": "2 ENTRY, ambos SIN bullet por defecto, comparten exactamente la misma condicion -> debe trasladarse al HIRING_STATUS_EXPR de la cobertura (hoisting).",
+      "input": {
+        "coverId": 999,
+        "coverName": "Cobertura sintetica hoisting",
+        "defaultBullets": [],
+        "conditionedBullets": [
+          {
+            "text": "Bullet A",
+            "dependencies": [
+              {
+                "risk_field": "housingUse",
+                "operator": "=",
+                "value": "mainresidence"
+              }
+            ]
+          },
+          {
+            "text": "Bullet B",
+            "dependencies": [
+              {
+                "risk_field": "housingUse",
+                "operator": "=",
+                "value": "mainresidence"
+              }
+            ]
+          }
+        ],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": true,
+        "entries_with_null_filter_expr_count": 2
+      }
+    },
+    {
+      "id": "GEN-ENTRY-003",
+      "description": "2 ENTRY con condiciones DISTINTAS -> no debe fusionarse (cada bullet mantiene su propia condicion).",
+      "input": {
+        "coverId": 998,
+        "coverName": "Cobertura sintetica sin hoisting",
+        "defaultBullets": [],
+        "conditionedBullets": [
+          {
+            "text": "Bullet A",
+            "dependencies": [
+              {
+                "risk_field": "housingUse",
+                "operator": "=",
+                "value": "mainresidence"
+              }
+            ]
+          },
+          {
+            "text": "Bullet B",
+            "dependencies": [
+              {
+                "risk_field": "content",
+                "operator": ">",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 0
+      }
+    },
+    {
+      "id": "GEN-ENTRY-004",
+      "description": "Coberturas opcionales conservan su propio HIRING_STATUS_EXPR (normalmente OPTIONAL, ver bloque D).",
+      "input": {
+        "coverId": 105,
+        "coverName": "Vehículos/maq. autopropulsada en reposo.",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": [
+          {
+            "coverName": "Cargador vehículo eléctrico o híbrido",
+            "textContent": "Límite 1.500€.",
+            "hiringStatusExpr": "OPTIONAL"
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_hiring_status_expr": "OPTIONAL"
+      }
+    }
+  ],
+  "bullet_splitting_cases": [
+    {
+      "id": "GEN-BULLET-001",
+      "description": "Caso real Generali COVER_ID 18: la celda empieza repitiendo el nombre de la cobertura como cabecera -- debe descartarse.",
+      "cellText": "Daños por agua\n   Escapes de agua -100%\n   Localización y reparación -100%\n   Fontanería sin daños – 300€",
+      "coverName": "Daños por agua",
+      "expected_bullets": [
+        "Escapes de agua -100%",
+        "Localización y reparación -100%",
+        "Fontanería sin daños – 300€"
+      ]
+    }
+  ],
+  "insert_sql_cases": [
+    {
+      "id": "GEN-SQL-001",
+      "description": "Reproduce EXACTAMENTE el unico ejemplo real de INSERT de PRODUCT_COMPANY_COVER_LINES que trae knowledge/Modelo comparativa de coberturas - AI ready.md SS11 (envoltorio TEXT_EXPR entre /'...'/), para confirmar que el generador reproduce ese formato.",
+      "text": "• Texto visible.",
+      "expected_sql_line": "'/\\'• Texto visible.\\'/'"
+    }
+  ]
+}

@@ -1,0 +1,646 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_tuning_key_golden_set",
+  "description": "Golden set del matcher texto-Excel (hoja Coberturas opcionales, Generali Hogar) -> tuning_key, usando el diccionario real examples/tuning_generali_traducido.json aportado por el usuario.",
+  "source_tuning_file": "examples/tuning_generali_traducido.json",
+  "source_excel": "examples/Plantilla Comparativa Hogar.xlsx (hoja Coberturas opcionales)",
+  "schema_notes": {
+    "expected_tuning_key": "key real del diccionario de tuning, o \"NOT_FOUND\" si no existe ningun campo relacionado.",
+    "expected_confidence": "alta | media -- alta = deberia acertar siempre; media = casos con variacion lexica real (preposicion, sufijo, envoltorio) donde el heuristico puede necesitar mas contexto/LLM."
+  },
+  "cases": [
+    {
+      "id": "GD-TUNE-001",
+      "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada",
+      "expected_tuning_key": "ycodpo",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-002",
+      "cover_name": "Cargador vehículo eléctrico o híbrido",
+      "expected_tuning_key": "zasite",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-003",
+      "cover_name": "Daños a placas solares y otros sistemas de energía renovable",
+      "expected_tuning_key": "zasihb",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-004",
+      "cover_name": "Avería a placas solares y otros sistemas de energía renovable",
+      "expected_tuning_key": "zimpac",
+      "expected_confidence": "media",
+      "notes": "label real dice 'Averia DE placas...' (preposicion distinta)"
+    },
+    {
+      "id": "GD-TUNE-005",
+      "cover_name": "Reconstrucción de jardín",
+      "expected_tuning_key": "qrjard",
+      "expected_confidence": "media",
+      "notes": "label real es plural 'Reconstruccion de jardines'; existe tambien zrjard 'jardin singular' como posible confusor"
+    },
+    {
+      "id": "GD-TUNE-006",
+      "cover_name": "Reconstrucción de jardín singular",
+      "expected_tuning_key": "zrjard",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-007",
+      "cover_name": "Muebles de exterior",
+      "expected_tuning_key": "ztcar",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-008",
+      "cover_name": "Todo riesgo accidental",
+      "expected_tuning_key": "ztract",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-009",
+      "cover_name": "Todo riesgo de equipos tecnológicos",
+      "expected_tuning_key": "zdacon",
+      "expected_confidence": "media",
+      "notes": "label real anade sufijo '(franq. 200E)'"
+    },
+    {
+      "id": "GD-TUNE-010",
+      "cover_name": "Mascotas (Accidentes de perros y otras mascotas)",
+      "expected_tuning_key": "zresid",
+      "expected_confidence": "media",
+      "notes": "cover_name envuelve el label real entre parentesis con prefijo Mascotas"
+    },
+    {
+      "id": "GD-TUNE-011",
+      "cover_name": "Responsabilidad civil por propiedad y tenencia de perros",
+      "expected_tuning_key": "qrcand",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-012",
+      "cover_name": "RC perros peligrosos o de difícil manejo",
+      "expected_tuning_key": "NOT_FOUND",
+      "expected_confidence": "alta",
+      "notes": "no existe ningun campo de tuning para esta cobertura especifica (wpobl es un contador de perros, no un interruptor de esta cobertura) -- caso real de NOT_FOUND"
+    },
+    {
+      "id": "GD-TUNE-013",
+      "cover_name": "Daños malintencionados del inquilino",
+      "expected_tuning_key": "yvig24",
+      "expected_confidence": "alta",
+      "notes": "label dinamico (SPEL ternario) que expone este literal exacto como una de sus dos opciones"
+    },
+    {
+      "id": "GD-TUNE-014",
+      "cover_name": "Daños malintencionados del inquilino turística",
+      "expected_tuning_key": "yvig24",
+      "expected_confidence": "alta",
+      "notes": "mismo campo yvig24, la otra rama del ternario"
+    },
+    {
+      "id": "GD-TUNE-015",
+      "cover_name": "Bricohogar",
+      "expected_tuning_key": "zrobef",
+      "expected_confidence": "alta",
+      "notes": "label identico"
+    },
+    {
+      "id": "GD-TUNE-016",
+      "cover_name": "Control de plagas",
+      "expected_tuning_key": "znclas",
+      "expected_confidence": "alta",
+      "notes": "label identico salvo mayusculas (Control de Plagas)"
+    }
+  ],
+  "tuning_dictionary": {
+    "commercialDiscountNumber": {
+      "allowSavedTuning": true,
+      "component": "number",
+      "label": "Descuento comercial %",
+      "max": 100,
+      "min": -100,
+      "required": false,
+      "section": "section.discounts",
+      "step": 1,
+      "suffix": "/tuning?.commercialDiscountNumber < 0 ? { 'text': 'Recargo', 'style': 'warning' } : {}/",
+      "type": "number",
+      "value": 0
+    },
+    "jewelryInQuote": {
+      "component": "radio",
+      "label": "Joyas en caja fuerte con valor unitario igual o superior a 6.000€",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "si",
+              "value": "S"
+            },
+            {
+              "label": "no",
+              "value": "N"
+            }
+          ]
+        }
+      ],
+      "required": "/#this?.stage == 'preissuance' && insurance.risk.jewelsInSafeBoxLimit > 5999/",
+      "section": "section.additionalData",
+      "type": "string",
+      "value": null,
+      "visible": "/insurance.risk.jewelsInSafeBoxLimit > 5999/"
+    },
+    "jewelryInQuoteAmmount": {
+      "component": "number",
+      "label": "Suma de los importes de las Joyas en caja fuerte con valor unitario igual o superior a 6.000€",
+      "max": "/insurance.risk.jewelsInSafeBoxLimit/",
+      "min": "/tuning?.jewelryInQuote == 'S' ? 6000 : 0/",
+      "required": "/tuning?.jewelryInQuote == 'S'/",
+      "section": "section.additionalData",
+      "step": 1,
+      "type": "number",
+      "value": 0,
+      "visible": "/tuning?.jewelryInQuote == 'S'/"
+    },
+    "jewelryQuote": {
+      "component": "radio",
+      "label": "Joyas fuera de caja fuerte con valor unitario igual o superior a 6.000€",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "si",
+              "value": "S"
+            },
+            {
+              "label": "no",
+              "value": "N"
+            }
+          ]
+        }
+      ],
+      "required": "/#this?.stage == 'preissuance' && insurance.risk.jewelsOutSafeBoxLimit > 5999/",
+      "section": "section.additionalData",
+      "type": "string",
+      "value": null,
+      "visible": "/insurance.risk.jewelsOutSafeBoxLimit > 5999/"
+    },
+    "jewelryQuoteAmmount": {
+      "component": "number",
+      "label": "Suma de los importes de las Joyas fuera de caja fuerte con valor unitario igual o superior a 6.000€",
+      "max": "/insurance.risk.jewelsOutSafeBoxLimit/",
+      "min": "/tuning?.jewelryQuote == 'S' ? 6000 : 0/",
+      "required": "/tuning?.jewelryQuote == 'S'/",
+      "section": "section.additionalData",
+      "step": 1,
+      "type": "number",
+      "value": 0,
+      "visible": "/tuning?.jewelryQuote == 'S'/"
+    },
+    "qfrqu1": {
+      "allowSavedTuning": true,
+      "component": "select",
+      "label": "Franquicia general",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "Sin franquicia",
+              "value": "1"
+            },
+            {
+              "label": "200 euros",
+              "value": "2"
+            },
+            {
+              "label": "400 euros",
+              "value": "3"
+            },
+            {
+              "label": "600 euros",
+              "value": "4"
+            }
+          ]
+        }
+      ],
+      "required": false,
+      "section": "section.additionalData",
+      "type": "string",
+      "value": "1"
+    },
+    "qrcand": {
+      "allowSavedTuning": true,
+      "component": "radio",
+      "label": "Responsabilidad civil por propiedad y tenencia de perros",
+      "required": true,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": "/#this?.stage == 'edit' ? false : ((insurance.risk.use=='Owner' || insurance.risk.use=='Tenant') && insurance.risk.occupancy=='MainResidence') && insurance.risk.dangerousDogsNumber>0?true:false/",
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant') && insurance.risk.occupancy=='MainResidence'/"
+    },
+    "qrjard": {
+      "allowSavedTuning": true,
+      "component": "radio",
+      "label": "Reconstrucción de jardines",
+      "required": false,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": "/tuning?.zrjard == true ? false : tuning?.qrjard/",
+      "visible": true
+    },
+    "wdomi": {
+      "component": "number",
+      "help": "Estos metros se descontarán de la superficie total de la vivienda introducida en el campo “Superficie total construida”",
+      "label": "Metros construidos de los anexos",
+      "max": 9999,
+      "min": 0,
+      "required": true,
+      "section": "section.additionalData",
+      "step": 1,
+      "type": "number",
+      "value": 0,
+      "visible": true
+    },
+    "wpobl": {
+      "component": "number",
+      "label": "Número máximo de perros (incluye peligrosos y no peligrosos)",
+      "max": 5,
+      "min": "/tuning?.qrcand ? 1 : 0/",
+      "required": "/tuning?.qrcand/",
+      "section": "section.covers",
+      "step": 1,
+      "type": "number",
+      "value": "/tuning?.qrcand ? insurance.risk.dangerousDogsNumber : null/",
+      "visible": "/tuning?.qrcand/"
+    },
+    "yacte3": {
+      "component": "select",
+      "label": "Período deshabitación vivienda",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "Hasta 1 mes consecutivo",
+              "value": "1"
+            },
+            {
+              "label": "De 1 a 6 meses consecutivos",
+              "value": "2"
+            },
+            {
+              "label": "De 7 a 11 meses consecutivos",
+              "value": "3"
+            },
+            {
+              "label": "Más de 11 meses consecutivos",
+              "value": "4"
+            }
+          ]
+        }
+      ],
+      "required": "/#this?.stage == 'preissuance' ? true : false /",
+      "section": "section.additionalData",
+      "type": "string",
+      "value": null,
+      "visible": "/insurance.risk.occupancy=='SecondHome'/"
+    },
+    "yactsm": {
+      "component": "radio",
+      "label": "¿Se trata de una vivienda destinada a uso turístico?",
+      "required": "/insurance.risk.use=='Rental'/",
+      "section": "section.additionalData",
+      "type": "boolean",
+      "value": false,
+      "visible": "/insurance.risk.use=='Rental'/"
+    },
+    "ycodpo": {
+      "component": "radio",
+      "label": "Recuperación de la vivienda ocupada por allanamiento de morada",
+      "required": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/",
+      "section": "section.covers",
+      "type": "boolean",
+      "value": false,
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/"
+    },
+    "yflota": {
+      "allowSavedTuning": true,
+      "component": "input",
+      "label": "Código Flota",
+      "maxLength": 4,
+      "regExp": "^[0-9]*",
+      "required": false,
+      "section": "section.additionalData",
+      "type": "string",
+      "value": null
+    },
+    "yvig24": {
+      "component": "select",
+      "label": "/!tuning?.yactsm ? 'Daños malintencionados del inquilino' : 'Daños malintencionados del inquilino turística'/",
+      "options": [
+        {
+          "condition": "/!tuning?.yactsm/",
+          "items": [
+            {
+              "label": "No contratada",
+              "value": "0"
+            },
+            {
+              "label": "1.500",
+              "value": "1"
+            },
+            {
+              "label": "3.000",
+              "value": "2"
+            }
+          ]
+        },
+        {
+          "condition": "/tuning?.yactsm/",
+          "items": [
+            {
+              "label": "No contratada",
+              "value": "0"
+            },
+            {
+              "label": "1.000",
+              "value": "1"
+            },
+            {
+              "label": "2.000",
+              "value": "2"
+            }
+          ]
+        }
+      ],
+      "required": true,
+      "section": "section.covers",
+      "type": "string",
+      "value": "0",
+      "visible": "/insurance.risk.use=='Rental'/"
+    },
+    "zasihb": {
+      "component": "select",
+      "label": "Daños a placas solares y otros sistemas de energía renovable",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "No contratada",
+              "value": "0"
+            },
+            {
+              "label": "5.000",
+              "value": "1"
+            },
+            {
+              "label": "10.000",
+              "value": "2"
+            },
+            {
+              "label": "15.000",
+              "value": "3"
+            },
+            {
+              "label": "20.000",
+              "value": "4"
+            },
+            {
+              "label": "25.000",
+              "value": "5"
+            },
+            {
+              "label": "30.000",
+              "value": "6"
+            }
+          ]
+        }
+      ],
+      "required": true,
+      "section": "section.covers",
+      "type": "string",
+      "value": "0",
+      "visible": true
+    },
+    "zasite": {
+      "component": "select",
+      "label": "Cargador vehículo eléctrico o híbrido",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "No contratada",
+              "value": "0"
+            },
+            {
+              "label": "1.500",
+              "value": "1"
+            }
+          ]
+        }
+      ],
+      "required": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/",
+      "section": "section.covers",
+      "type": "string",
+      "value": "0",
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/"
+    },
+    "zcexte": {
+      "allowSavedTuning": true,
+      "component": "select",
+      "label": "Duración del contrato de alquiler",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "Anual renovable",
+              "value": "1"
+            },
+            {
+              "label": "Temporal (no vacacional)",
+              "value": "2"
+            }
+          ]
+        }
+      ],
+      "required": false,
+      "section": "section.additionalData",
+      "type": "string",
+      "value": "1",
+      "visible": "/insurance.risk.use=='Rental'/"
+    },
+    "zdacon": {
+      "component": "radio",
+      "label": "Todo riesgo de equipos tecnológicos (franq. 200€)",
+      "required": true,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": true,
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant') && (insurance.risk.occupancy!='UnoccupiedProperty' && tuning?.ztract==true)/"
+    },
+    "zedare": {
+      "allowSavedTuning": true,
+      "component": "select",
+      "label": "Reformas en los últimos 15 años",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "Sin reformas o con reformas parciales",
+              "value": "1"
+            },
+            {
+              "label": "Mas del 75% de las conducciones de agua",
+              "value": "2"
+            },
+            {
+              "label": "Rehabilitación integral",
+              "value": "3"
+            }
+          ]
+        }
+      ],
+      "required": false,
+      "section": "section.additionalData",
+      "type": "string",
+      "value": "1",
+      "visible": "/insurance.risk.reformed != null && insurance.risk.reformed && insurance.risk.lastReformDate != null && ((${yearNow} - insurance.risk.lastReformDate) <= 15)/"
+    },
+    "zimpac": {
+      "component": "select",
+      "label": "Avería de placas solares y otros sistemas energía renovable",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "No contratada",
+              "value": "0"
+            },
+            {
+              "label": "5.000",
+              "value": "1"
+            },
+            {
+              "label": "10.000",
+              "value": "2"
+            },
+            {
+              "label": "15.000",
+              "value": "3"
+            },
+            {
+              "label": "20.000",
+              "value": "4"
+            },
+            {
+              "label": "25.000",
+              "value": "5"
+            },
+            {
+              "label": "30.000",
+              "value": "6"
+            }
+          ]
+        }
+      ],
+      "required": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/",
+      "section": "section.covers",
+      "type": "string",
+      "value": "0",
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/"
+    },
+    "znclas": {
+      "component": "radio",
+      "label": "Control de Plagas",
+      "required": true,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": false,
+      "visible": "/!(insurance.risk.use=='Rental' && tuning?.yactsm == true)/"
+    },
+    "zresid": {
+      "component": "radio",
+      "label": "Accidentes de perros y otras mascotas",
+      "required": true,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": false,
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant') && insurance.risk.occupancy=='MainResidence'/"
+    },
+    "zrjard": {
+      "component": "radio",
+      "label": "Reconstrucción de jardín singular",
+      "required": false,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": "/tuning?.qrjard == true ? false : tuning?.zrjard/",
+      "visible": "/!(insurance.risk.use=='Rental' && tuning?.yactsm == true)/"
+    },
+    "zrobef": {
+      "component": "radio",
+      "label": "Bricohogar",
+      "required": true,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": false,
+      "visible": "/!(insurance.risk.use=='Rental' && tuning?.yactsm == true)/"
+    },
+    "ztcar": {
+      "component": "select",
+      "label": "Muebles de exterior",
+      "options": [
+        {
+          "items": [
+            {
+              "label": "No contratada",
+              "value": "0"
+            },
+            {
+              "label": "1.500",
+              "value": "1"
+            },
+            {
+              "label": "3.000",
+              "value": "2"
+            },
+            {
+              "label": "4.500",
+              "value": "3"
+            },
+            {
+              "label": "6.000",
+              "value": "4"
+            },
+            {
+              "label": "12.000",
+              "value": "5"
+            }
+          ]
+        }
+      ],
+      "required": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/",
+      "section": "section.covers",
+      "type": "string",
+      "value": "0",
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant')/"
+    },
+    "ztract": {
+      "allowSavedTuning": true,
+      "component": "radio",
+      "label": "Todo riesgo accidental",
+      "required": true,
+      "section": "section.covers",
+      "type": "boolean",
+      "value": false,
+      "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant') && insurance.risk.occupancy!='UnoccupiedProperty'/"
+    }
+  }
+}
