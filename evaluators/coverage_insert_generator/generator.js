@@ -116,6 +116,7 @@ function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditi
   }
 
   for (const opt of opcionales) {
+    const optLines = splitBulletsFromCellText(opt.textContent, null);
     entries.push({
       cover_id: coverId,
       filter_expr: opt.filterExpr ?? null,
@@ -123,7 +124,7 @@ function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditi
       value_expr: null,
       modality_id: null,
       source: "optional_cover",
-      lines: [{ filter_expr: null, text_expr: spelStringLiteral(opt.textContent) }]
+      lines: optLines.map(text => ({ filter_expr: null, text_expr: spelStringLiteral(text) }))
     });
   }
 
@@ -142,12 +143,31 @@ function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditi
   };
 }
 
+// Construye el HIRING_STATUS_EXPR real (formula SPEL) de una cobertura
+// opcional contratable via tuning, siguiendo el patron ya confirmado en
+// knowledge/Modelo comparativa de coberturas - AI ready.md ("Ejemplo
+// completo 2"): INCLUDED si el tuning tiene la opcion marcada, OPTIONAL si
+// no. Sin un tuning_key real resuelto (NOT_FOUND) no hay forma de construir
+// esa condicion -- se mantiene el literal "OPTIONAL" tal cual (mismo
+// comportamiento que antes para ese caso).
+function buildOptionalHiringStatusExpr(tuningKey) {
+  if (!tuningKey || tuningKey === "NOT_FOUND") return "OPTIONAL";
+  return `tuning?.${tuningKey} != null && tuning.${tuningKey} ? "INCLUDED" : "OPTIONAL"`;
+}
+
 // Regla de optimizacion: si TODOS los ENTRY (2 o mas) comparten exactamente
 // la misma condicion no nula, se traslada al HIRING_STATUS_EXPR de
 // PRODUCT_COMPANY_COVER en vez de repetirse en cada ENTRY (decision del
 // usuario, opcion B: el contenido sigue visible aunque la cobertura salga
-// NOT_INCLUDED). Con menos de 2 ENTRY no hay nada que deduplicar.
+// NOT_INCLUDED). Con menos de 2 ENTRY no hay nada que deduplicar -- salvo el
+// caso de 0 ENTRY (cobertura sin ningun bloque real): ahi se fuerza
+// explicitamente NOT_INCLUDED (decision del usuario, 21/07) en vez de dejar
+// NULL y depender de que el motor real agregue "cero bloques" a NOT_INCLUDED
+// de forma implicita.
 function computeCoverOverride(entries) {
+  if (entries.length === 0) {
+    return { sharedCondition: undefined, hiringStatusExpr: `"NOT_INCLUDED"` };
+  }
   if (entries.length < 2) return null;
   const conditions = entries.map(e => e.filter_expr);
   if (conditions.some(c => c == null)) return null;
@@ -217,6 +237,7 @@ module.exports = {
   spelStringLiteral,
   splitBulletsFromCellText,
   buildEntriesForCover,
+  buildOptionalHiringStatusExpr,
   computeCoverOverride,
   wrapAsSpelExpression,
   sqlLiteral,

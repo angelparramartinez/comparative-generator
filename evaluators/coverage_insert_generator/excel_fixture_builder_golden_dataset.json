@@ -4,7 +4,7 @@
   "description": "Casos reales extraidos directamente de examples/Plantilla Comparativa Hogar.xlsx (hoja 'Coberturas por modalidad', COVER_ID 18 'Danos por agua' y COVER_ID 16 'Robo') para validar buildExcelFixtureForMatcher (A6) y buildBulletGroupsForCover (A16) del diseno de Fase 4.",
   "schema_notes": {
     "fixture_cases": "Un caso por buildExcelFixtureForMatcher(cleanedModalityCovers, cleanedOptionalCovers) -- valida la construccion del indice de candidatos para matcher.js a partir de la salida real de 'Clean covers and modalities'.",
-    "bullet_group_cases": "Un caso por buildBulletGroupsForCover(coverId, coverName, modalitiesMap) -- valida la deteccion de bullets compartidos vs. por-modalidad, incl. el caso real heterogeneo (Robo, numero de bullets distinto entre modalidades) que se documenta como limitacion conocida (homogeneous: false), no se fuerza alineacion."
+    "bullet_group_cases": "Un caso por buildBulletGroupsForCover(coverId, coverName, modalitiesMap) -- valida la deteccion de bullets compartidos vs. por-modalidad, tanto cuando el numero de bullets coincide (alineacion por posicion) como cuando difiere entre modalidades (decision del usuario 21/07: fallback por texto via buildBulletGroupsForHeterogeneousCover, NUNCA bloquea la generacion -- ver EFB-GROUP-003/005/006, casos reales RC/Robo con 11 modalidades)."
   },
   "fixture_cases": [
     {
@@ -21,19 +21,56 @@
         }
       ],
       "cleaned_optional_covers": [
-        { "epigrafe": "Defensa jurídica", "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada", "text_content": "- Actos de vandalismo por el ocupante ilegal 100%" }
+        {
+          "epigrafe": "Defensa jurídica",
+          "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada",
+          "text_content": "- Actos de vandalismo por el ocupante ilegal 100%"
+        }
       ],
       "expected_fixture": {
         "covers_por_modalidad": [
           {
             "cover_id": 18,
             "cover_name": "Daños por agua",
-            "sample_text_bullets": ["Escapes de agua -100%", "Localización y reparación -100%", "Fontanería sin daños – 300€", "Fontanería sin daños – 600€"]
+            "sample_text_bullets": [
+              "Escapes de agua -100%",
+              "Localización y reparación -100%",
+              "Fontanería sin daños – 300€",
+              "Fontanería sin daños – 600€"
+            ]
           }
         ],
         "coberturas_opcionales": [
-          { "epigrafe": "Defensa jurídica", "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada", "text_content": "- Actos de vandalismo por el ocupante ilegal 100%" }
+          {
+            "epigrafe": "Defensa jurídica",
+            "cover_name": "Recuperación de la vivienda ocupada por allanamiento de morada",
+            "text_content": "- Actos de vandalismo por el ocupante ilegal 100%"
+          }
         ]
+      }
+    },
+    {
+      "id": "EFB-FIX-002",
+      "description": "Bug real 21/07 (cover_id 79/81): el marcador 'Garantía Opcional' no debe aparecer nunca en sample_text_bullets (no es contenido real de la cobertura).",
+      "cleaned_modality_covers": [
+        {
+          "cover_id": 79,
+          "cover_name": "Animales domésticos.",
+          "modalities": {
+            "5571": "Animales domésticos.\n   Garantía Opcional"
+          }
+        }
+      ],
+      "cleaned_optional_covers": [],
+      "expected_fixture": {
+        "covers_por_modalidad": [
+          {
+            "cover_id": 79,
+            "cover_name": "Animales domésticos.",
+            "sample_text_bullets": []
+          }
+        ],
+        "coberturas_opcionales": []
       }
     }
   ],
@@ -49,10 +86,21 @@
       },
       "expected": {
         "homogeneous": true,
-        "defaultBullets": ["Escapes de agua -100%", "Localización y reparación -100%"],
+        "defaultBullets": [
+          "Escapes de agua -100%",
+          "Localización y reparación -100%"
+        ],
         "perModalityBullets": [
-          { "modalityId": "5571", "text": "Fontanería sin daños – 300€" },
-          { "modalityId": "5572", "text": "Fontanería sin daños – 600€" }
+          {
+            "modalityId": "5571",
+            "text": "Fontanería sin daños – 300€",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5572",
+            "text": "Fontanería sin daños – 600€",
+            "groupIndex": 2
+          }
         ]
       }
     },
@@ -77,15 +125,23 @@
           "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)"
         ],
         "perModalityBullets": [
-          { "modalityId": "5571", "text": "Robo joyas y relojes de valor - 10% (máx. 5.000€)" },
-          { "modalityId": "5572", "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)" }
+          {
+            "modalityId": "5571",
+            "text": "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5572",
+            "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)",
+            "groupIndex": 4
+          }
         ]
       },
       "notes": "Solo la posicion 4 (joyas y relojes de valor) difiere entre modalidades; el resto de posiciones (identicas tras trim) van a defaultBullets aunque esten despues de la divergencia -- el algoritmo compara posicion a posicion, no se detiene en la primera diferencia."
     },
     {
       "id": "EFB-GROUP-003",
-      "description": "COVER_ID 16 'Robo', 3 modalidades reales con NUMERO DE BULLETS DISTINTO (5571: 8 bullets, 5577: 6 bullets, 5580: 5 bullets) -- caso real heterogeneo, limitacion conocida deliberada (no se fuerza alineacion).",
+      "description": "COVER_ID 16 'Robo', 3 modalidades reales con NUMERO DE BULLETS DISTINTO (5571: 8 bullets, 5577: 6 bullets, 5580: 5 bullets). Decision del usuario 21/07: esto es habitual (paquete superior con garantias enteras que el basico no tiene) y NO debe bloquear la generacion -- fallback por texto (buildBulletGroupsForHeterogeneousCover): lo compartido por las 3 modalidades pasa a defaultBullets, el resto a ENTRY por modalidad agrupadas por texto exacto (groupIndex).",
       "cover_id": 16,
       "cover_name": "Robo",
       "modalities": {
@@ -94,11 +150,603 @@
         "5580": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%   "
       },
       "expected": {
-        "homogeneous": false,
-        "defaultBullets": [],
-        "perModalityBullets": [],
-        "warning_present": true
+        "homogeneous": true,
+        "defaultBullets": [
+          "Robo y Vandalismo",
+          "Robo de continente y daños - 100%",
+          "Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)",
+          "Actos de vandalismo – 100%"
+        ],
+        "perModalityBullets": [
+          {
+            "modalityId": "5571",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5571",
+            "text": "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5571",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5571",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5577",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5577",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5580",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 4
+          }
+        ]
       }
+    },
+    {
+      "id": "EFB-GROUP-004",
+      "description": "Bug real 21/07 (cover_id 79/81, ejecucion 235): el marcador 'Garantía Opcional' de una celda de 'Coberturas por modalidad' se colaba como bullet real -> generaba una entry INCLUDED con esa frase literal. Debe filtrarse ANTES de la comprobacion de homogeneidad/agrupacion (2 modalidades, mismo bullet real + el marcador en ambas -> homogeneous:true, defaultBullets solo con el bullet real).",
+      "cover_id": 79,
+      "cover_name": "Animales domésticos.",
+      "modalities": {
+        "5571": "Animales domésticos.\n   Garantía Opcional",
+        "5572": "Animales domésticos.\n   Garantía Opcional"
+      },
+      "expected": {
+        "homogeneous": true,
+        "defaultBullets": [],
+        "perModalityBullets": []
+      }
+    },
+    {
+      "id": "EFB-GROUP-005",
+      "description": "COVER_ID 15 'Responsabilidad Civil', 11 modalidades reales completas con NUMERO DE BULLETS DISTINTO (11/6/5 lineas segun paquete). Caso real que motivo el fallback por texto: el capital asegurado varia por modalidad (linea unica por modalidad, nunca compartida), y el paquete alto anade secciones enteras (RC vida privada) que el basico no tiene.",
+      "cover_id": 15,
+      "cover_name": "Responsabilidad Civil",
+      "modalities": {
+        "5571": "Capital 150.000€\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental\n-Responsabilidad civil de la vida privada\n   Personal y familiar \n   Propiedad y tenencia de mascotas (no perros)\n   Estancias temporales en el extranjero (3 meses)\n-Responsabilidad civil por uso de bicicletas",
+        "5572": "Capital 300.000€ (fianzas 150.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental\n-Responsabilidad civil de la vida privada\n   Personal y familiar \n   Propiedad y tenencia de mascotas (no perros)\n   Estancias temporales en el extranjero (3 meses)\n-Responsabilidad civil por uso de bicicletas",
+        "5573": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental\n-Responsabilidad civil de la vida privada\n   Personal y familiar \n   Propiedad y tenencia de mascotas (no perros)\n   Estancias temporales en el extranjero (3 meses)\n-Responsabilidad civil por uso de bicicletas",
+        "5574": "Capital 150.000€\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental",
+        "5575": "Capital 300.000€ (fianzas 150.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental",
+        "5576": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental",
+        "5577": "Capital 150.000€\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como arrendador frente al inquilino\n   Contaminación accidental",
+        "5578": "Capital 300.000€ (fianzas 150.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como arrendador frente al inquilino\n   Contaminación accidental",
+        "5579": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como arrendador frente al inquilino\n   Contaminación accidental",
+        "5580": "Capital 150.000€\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como arrendador frente al inquilino\n   Contaminación accidental",
+        "5581": "Capital 300.000€ (fianzas 150.000€)\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como arrendador frente al inquilino\n   Contaminación accidental"
+      },
+      "expected": {
+        "homogeneous": true,
+        "defaultBullets": [
+          "-Responsabilidad Civil de la vivienda",
+          "Como propietario",
+          "Contaminación accidental"
+        ],
+        "perModalityBullets": [
+          {
+            "modalityId": "5571",
+            "text": "Capital 150.000€",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5571",
+            "text": "Como inquilino frente al arrendador (locativa)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5571",
+            "text": "Patronal sobre empleados domésticos",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5571",
+            "text": "-Responsabilidad civil de la vida privada",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5571",
+            "text": "Personal y familiar",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5571",
+            "text": "Propiedad y tenencia de mascotas (no perros)",
+            "groupIndex": 5
+          },
+          {
+            "modalityId": "5571",
+            "text": "Estancias temporales en el extranjero (3 meses)",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5571",
+            "text": "-Responsabilidad civil por uso de bicicletas",
+            "groupIndex": 7
+          },
+          {
+            "modalityId": "5572",
+            "text": "Capital 300.000€ (fianzas 150.000€)",
+            "groupIndex": 8
+          },
+          {
+            "modalityId": "5572",
+            "text": "Como inquilino frente al arrendador (locativa)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5572",
+            "text": "Patronal sobre empleados domésticos",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5572",
+            "text": "-Responsabilidad civil de la vida privada",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5572",
+            "text": "Personal y familiar",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5572",
+            "text": "Propiedad y tenencia de mascotas (no perros)",
+            "groupIndex": 5
+          },
+          {
+            "modalityId": "5572",
+            "text": "Estancias temporales en el extranjero (3 meses)",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5572",
+            "text": "-Responsabilidad civil por uso de bicicletas",
+            "groupIndex": 7
+          },
+          {
+            "modalityId": "5573",
+            "text": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)",
+            "groupIndex": 9
+          },
+          {
+            "modalityId": "5573",
+            "text": "Como inquilino frente al arrendador (locativa)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5573",
+            "text": "Patronal sobre empleados domésticos",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5573",
+            "text": "-Responsabilidad civil de la vida privada",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5573",
+            "text": "Personal y familiar",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5573",
+            "text": "Propiedad y tenencia de mascotas (no perros)",
+            "groupIndex": 5
+          },
+          {
+            "modalityId": "5573",
+            "text": "Estancias temporales en el extranjero (3 meses)",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5573",
+            "text": "-Responsabilidad civil por uso de bicicletas",
+            "groupIndex": 7
+          },
+          {
+            "modalityId": "5574",
+            "text": "Capital 150.000€",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5574",
+            "text": "Como inquilino frente al arrendador (locativa)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5574",
+            "text": "Patronal sobre empleados domésticos",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5575",
+            "text": "Capital 300.000€ (fianzas 150.000€)",
+            "groupIndex": 8
+          },
+          {
+            "modalityId": "5575",
+            "text": "Como inquilino frente al arrendador (locativa)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5575",
+            "text": "Patronal sobre empleados domésticos",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5576",
+            "text": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)",
+            "groupIndex": 9
+          },
+          {
+            "modalityId": "5576",
+            "text": "Como inquilino frente al arrendador (locativa)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5576",
+            "text": "Patronal sobre empleados domésticos",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5577",
+            "text": "Capital 150.000€",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5577",
+            "text": "Como arrendador frente al inquilino",
+            "groupIndex": 10
+          },
+          {
+            "modalityId": "5578",
+            "text": "Capital 300.000€ (fianzas 150.000€)",
+            "groupIndex": 8
+          },
+          {
+            "modalityId": "5578",
+            "text": "Como arrendador frente al inquilino",
+            "groupIndex": 10
+          },
+          {
+            "modalityId": "5579",
+            "text": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)",
+            "groupIndex": 9
+          },
+          {
+            "modalityId": "5579",
+            "text": "Como arrendador frente al inquilino",
+            "groupIndex": 10
+          },
+          {
+            "modalityId": "5580",
+            "text": "Capital 150.000€",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5580",
+            "text": "Como arrendador frente al inquilino",
+            "groupIndex": 10
+          },
+          {
+            "modalityId": "5581",
+            "text": "Capital 300.000€ (fianzas 150.000€)",
+            "groupIndex": 8
+          },
+          {
+            "modalityId": "5581",
+            "text": "Como arrendador frente al inquilino",
+            "groupIndex": 10
+          }
+        ]
+      }
+    },
+    {
+      "id": "EFB-GROUP-006",
+      "description": "COVER_ID 16 'Robo', las 11 modalidades reales completas (no el subconjunto de 3 de EFB-GROUP-003) -- confirma que el fallback escala bien con mas modalidades y mas familias de texto compartido parcialmente (joyas/relojes y reposicion de llaves con 2 variantes de importe cada una).",
+      "cover_id": 16,
+      "cover_name": "Robo",
+      "modalities": {
+        "5571": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 10% (máx. 5.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5572": "Robo y Vandalismo\n  Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 20% (máx. 20.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5573": "Robo y Vandalismo\n  Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 20% (máx. 20.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 1.000 €)",
+        "5574": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 10% (máx. 5.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5575": "Robo y Vandalismo\n  Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 20% (máx. 20.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5576": "Robo y Vandalismo\n  Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 20% (máx. 20.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 1.000 €)",
+        "5577": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5578": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5579": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "5580": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%",
+        "5581": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario del propietario - 100%\n   Actos de vandalismo – 100%"
+      },
+      "expected": {
+        "homogeneous": true,
+        "defaultBullets": [
+          "Robo y Vandalismo",
+          "Robo de continente y daños - 100%",
+          "Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)",
+          "Actos de vandalismo – 100%"
+        ],
+        "perModalityBullets": [
+          {
+            "modalityId": "5571",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5571",
+            "text": "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5571",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5571",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5572",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5572",
+            "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5572",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5572",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5573",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5573",
+            "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5573",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5573",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 1.000 €)",
+            "groupIndex": 5
+          },
+          {
+            "modalityId": "5574",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5574",
+            "text": "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
+            "groupIndex": 1
+          },
+          {
+            "modalityId": "5574",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5574",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5575",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5575",
+            "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5575",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5575",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5576",
+            "text": "Robo de mobiliario y enseres - 100%",
+            "groupIndex": 0
+          },
+          {
+            "modalityId": "5576",
+            "text": "Robo joyas y relojes de valor - 20% (máx. 20.000€)",
+            "groupIndex": 4
+          },
+          {
+            "modalityId": "5576",
+            "text": "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+            "groupIndex": 2
+          },
+          {
+            "modalityId": "5576",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 1.000 €)",
+            "groupIndex": 5
+          },
+          {
+            "modalityId": "5577",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5577",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5578",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5578",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5579",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5579",
+            "text": "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+            "groupIndex": 3
+          },
+          {
+            "modalityId": "5580",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 6
+          },
+          {
+            "modalityId": "5581",
+            "text": "Robo de mobiliario del propietario - 100%",
+            "groupIndex": 6
+          }
+        ]
+      }
+    }
+  ],
+  "bullet_dependency_matching_cases": [
+    {
+      "id": "EFB-DEPMATCH-001",
+      "description": "Bug real 21/07 (cover_id 18 'Fontanería sin daños', ejecucion 235): solo la variante de 300€ coincide textualmente con la cita literal de la dependencia extraida (continente > 0); las variantes de 600€/1.000€ deben recibir la MISMA dependencia por compartir groupIndex (misma posicion/concepto), no quedarse sin condicion.",
+      "per_modality_bullets": [
+        {
+          "modalityId": "5571",
+          "text": "Fontanería sin daños – 300€",
+          "groupIndex": 2
+        },
+        {
+          "modalityId": "5572",
+          "text": "Fontanería sin daños – 600€",
+          "groupIndex": 2
+        },
+        {
+          "modalityId": "5573",
+          "text": "Fontanería sin daños – 1.000€",
+          "groupIndex": 2
+        }
+      ],
+      "matches": [
+        {
+          "cover_id": 18,
+          "decision": "match",
+          "excel_quote": "Fontanería sin daños – 300€",
+          "dependencies_translated": [
+            {
+              "risk_field": "continent",
+              "operator": ">",
+              "value": 0
+            }
+          ]
+        }
+      ],
+      "cover_id": 18,
+      "expected": [
+        {
+          "text": "Fontanería sin daños – 300€",
+          "dependencies": [
+            {
+              "risk_field": "continent",
+              "operator": ">",
+              "value": 0
+            }
+          ],
+          "modalityId": "5571"
+        },
+        {
+          "text": "Fontanería sin daños – 600€",
+          "dependencies": [
+            {
+              "risk_field": "continent",
+              "operator": ">",
+              "value": 0
+            }
+          ],
+          "modalityId": "5572"
+        },
+        {
+          "text": "Fontanería sin daños – 1.000€",
+          "dependencies": [
+            {
+              "risk_field": "continent",
+              "operator": ">",
+              "value": 0
+            }
+          ],
+          "modalityId": "5573"
+        }
+      ]
+    },
+    {
+      "id": "EFB-DEPMATCH-002",
+      "description": "Sin ninguna cita que coincida con ninguna variante, todas quedan sin dependencias (comportamiento previo preservado).",
+      "per_modality_bullets": [
+        {
+          "modalityId": "5571",
+          "text": "Bullet sin dependencia A",
+          "groupIndex": 0
+        },
+        {
+          "modalityId": "5572",
+          "text": "Bullet sin dependencia B",
+          "groupIndex": 0
+        }
+      ],
+      "matches": [],
+      "cover_id": 18,
+      "expected": [
+        {
+          "text": "Bullet sin dependencia A",
+          "dependencies": [],
+          "modalityId": "5571"
+        },
+        {
+          "text": "Bullet sin dependencia B",
+          "dependencies": [],
+          "modalityId": "5572"
+        }
+      ]
     }
   ]
 }

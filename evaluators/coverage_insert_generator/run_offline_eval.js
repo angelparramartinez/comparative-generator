@@ -192,10 +192,24 @@ function checkGenerator(golden) {
     if (c.expected.first_entry_hiring_status_expr !== undefined) {
       checks.push(["first_entry_hiring_status_expr", entries[0] ? entries[0].hiring_status_expr : undefined, c.expected.first_entry_hiring_status_expr]);
     }
+    if (c.expected.first_entry_lines_count !== undefined) {
+      checks.push(["first_entry_lines_count", entries[0] ? entries[0].lines.length : undefined, c.expected.first_entry_lines_count]);
+    }
+    if (c.expected.cover_override_value !== undefined) {
+      checks.push(["cover_override_value", coverOverride, c.expected.cover_override_value]);
+    }
     const mismatches = checks.filter(([, got, expected]) => got !== expected);
     const pass = mismatches.length === 0;
     if (!pass) failures++;
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, got, exp]) => `${k}: got=${got}, esperado=${exp}`).join("; ")}`}`);
+  }
+
+  for (const c of golden.optional_hiring_status_cases || []) {
+    total++;
+    const got = generator.buildOptionalHiringStatusExpr(c.tuningKey);
+    const pass = got === c.expected_expr;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected_expr}`}`);
   }
 
   for (const c of golden.insert_sql_cases || []) {
@@ -308,6 +322,14 @@ function checkExcelFixture(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
   }
 
+  for (const c of golden.bullet_dependency_matching_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.matchDependenciesToBulletGroups(c.per_modality_bullets, c.matches, c.cover_id);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
   console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;
 }
@@ -362,6 +384,22 @@ function checkReviewAssembly(golden) {
     const pass = JSON.stringify(got) === JSON.stringify(c.expected);
     if (!pass) failures++;
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.assembly_cases || []) {
+    total++;
+    const got = reviewAssembly.assembleHumanReviewJson(c.input);
+    const firstCover = got.covers[0] || {};
+    const checks = [
+      ["covers_needing_review", got.summary.covers_needing_review, c.expected.covers_needing_review],
+      ["first_cover_review_status", firstCover.review_status, c.expected.first_cover_review_status],
+      ["first_cover_review_reasons", JSON.stringify(firstCover.review_reasons), JSON.stringify(c.expected.first_cover_review_reasons)],
+      ["first_cover_entries_count", (firstCover.entries || []).length, c.expected.first_cover_entries_count]
+    ];
+    const mismatches = checks.filter(([, g, e]) => g !== e);
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
   }
 
   console.log(`--review-assembly: ${total - failures}/${total} casos OK`);

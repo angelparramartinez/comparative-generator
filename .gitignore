@@ -20,6 +20,9 @@ data/
 # Procesados de condicionados generales
 ggcc_outputs/
 
+# Borradores de comparativa (flujo 3)
+coverage_insert_outputs/
+
 # Ejemplos
 examples/
 

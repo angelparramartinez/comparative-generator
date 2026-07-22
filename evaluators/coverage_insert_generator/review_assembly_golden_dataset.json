@@ -87,6 +87,62 @@
       "expected": { "review_status": "needs_review", "review_reasons": ["value_translation_partial"] }
     }
   ],
+  "assembly_cases": [
+    {
+      "id": "RA-ASSEMBLY-001",
+      "description": "Bug real 21/07 (cover_id 15/16/21/22/23/104 de Generali, ejecucion 235): una cobertura con bullets heterogeneos entre modalidades (needsReview:true desde Build Per-Cover Bullet Groups) debe aparecer en el JSON final con review_status needs_review y su razon, NO desaparecer silenciosamente por tener 0 entries.",
+      "input": {
+        "productCompanyId": 235,
+        "ramo": "Hogar",
+        "sourceFlow2Artifact": "artifact.json",
+        "sourceExcel": "excel.xlsx",
+        "coverRecords": [
+          {
+            "coverId": 16,
+            "coverName": "Robo",
+            "coverOverride": null,
+            "entries": [],
+            "needsReview": true,
+            "reviewReason": "heterogeneous_bullets_across_modalities"
+          }
+        ],
+        "unmatchedDependencies": []
+      },
+      "expected": {
+        "covers_needing_review": 1,
+        "first_cover_review_status": "needs_review",
+        "first_cover_review_reasons": ["heterogeneous_bullets_across_modalities"],
+        "first_cover_entries_count": 0
+      }
+    },
+    {
+      "id": "RA-ASSEMBLY-002",
+      "description": "Cobertura normal (sin needsReview) con entries auto_approved -- sigue saliendo auto_approved, review_reasons vacio a nivel de cobertura.",
+      "input": {
+        "productCompanyId": 235,
+        "ramo": "Hogar",
+        "sourceFlow2Artifact": "artifact.json",
+        "sourceExcel": "excel.xlsx",
+        "coverRecords": [
+          {
+            "coverId": 18,
+            "coverName": "Daños por agua",
+            "coverOverride": null,
+            "entries": [
+              { "cover_id": 18, "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "source": "default", "lines": [] }
+            ]
+          }
+        ],
+        "unmatchedDependencies": []
+      },
+      "expected": {
+        "covers_needing_review": 0,
+        "first_cover_review_status": "auto_approved",
+        "first_cover_review_reasons": [],
+        "first_cover_entries_count": 1
+      }
+    }
+  ],
   "completeness_cases": [
     {
       "id": "RA-COMPLETE-001",

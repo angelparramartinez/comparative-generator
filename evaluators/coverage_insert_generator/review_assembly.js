@@ -75,19 +75,31 @@ function computeEntryReviewStatus(entry) {
 // [{coverId, coverName, coverOverride, entries: [{entry_source, bullet_text,
 // modality_id, match, dependencies_raw, dependencies_translated,
 // value_translation, filter_expr, hiring_status_expr, value_expr,
-// tuning_key, human_decision}]}].
+// tuning_key, human_decision}], needsReview, reviewReason}].
+//
+// needsReview/reviewReason (opcional): senal a nivel de COBERTURA, no de
+// entry -- para el caso real de bullets heterogeneos entre modalidades
+// (buildBulletGroupsForCover, homogeneous:false), donde no hay ningun ENTRY
+// que generar automaticamente (0 bloques) pero la cobertura SI necesita
+// revision humana. Antes de esto, esas coberturas se descartaban del todo
+// del JSON final (bug real confirmado 21/07, cover_id 15/16/21/22/23/104 de
+// Generali desaparecian sin dejar rastro).
 function assembleHumanReviewJson({ productCompanyId, ramo, sourceFlow2Artifact, sourceExcel, coverRecords, unmatchedDependencies }) {
   const covers = (coverRecords || []).map(cover => {
     const entries = (cover.entries || []).map(entry => {
       const { review_status, review_reasons } = computeEntryReviewStatus(entry);
       return { ...entry, review_status, review_reasons, human_decision: entry.human_decision ?? null };
     });
-    const coverReviewStatus = entries.some(e => e.review_status === "needs_review") ? "needs_review" : "auto_approved";
+    const coverReviewReasons = cover.needsReview ? [cover.reviewReason || "structural_review_required"] : [];
+    const coverReviewStatus = coverReviewReasons.length > 0 || entries.some(e => e.review_status === "needs_review")
+      ? "needs_review"
+      : "auto_approved";
     return {
       cover_id: cover.coverId,
       cover_name: cover.coverName,
       cover_override_hiring_status_expr: cover.coverOverride ?? null,
       review_status: coverReviewStatus,
+      review_reasons: coverReviewReasons,
       entries
     };
   });

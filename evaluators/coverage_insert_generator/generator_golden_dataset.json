@@ -238,6 +238,67 @@
         "entries_with_null_filter_expr_count": 1,
         "first_entry_hiring_status_expr": "OPTIONAL"
       }
+    },
+    {
+      "id": "GEN-ENTRY-005",
+      "description": "Bug real 21/07 (cover_id 79, ejecucion 235): el text_content de una cobertura opcional trae varias frases separadas por salto de linea -- deben trocearse en varias LINES, no quedar todas juntas en una sola TEXT_EXPR con \\n literales dentro.",
+      "input": {
+        "coverId": 79,
+        "coverName": "Animales domésticos.",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": [
+          {
+            "coverName": "Accidentes en animales domésticos",
+            "textContent": "- Fallecimiento por accidente – 500 €\n- Gastos de entierro o incineración – 150 €\n- Estancia en residencia por hospitalización del propietario -300€.",
+            "hiringStatusExpr": "OPTIONAL"
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_hiring_status_expr": "OPTIONAL",
+        "first_entry_lines_count": 3
+      }
+    },
+    {
+      "id": "GEN-ENTRY-006",
+      "description": "Decision del usuario (21/07): una cobertura sin NINGUN bloque real (0 default, 0 conditioned, 0 opcionales) debe llevar HIRING_STATUS_EXPR = 'NOT_INCLUDED' EXPLICITO en PRODUCT_COMPANY_COVER, no NULL -- para que quede claro en el JSON de revision que se detecto como no incluida, sin depender de la agregacion implicita de 'cero bloques' del motor real.",
+      "input": {
+        "coverId": 80,
+        "coverName": "Asistencia en viaje./ Accidentes",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 0,
+        "cover_override_present": true,
+        "entries_with_null_filter_expr_count": 0,
+        "cover_override_value": "\"NOT_INCLUDED\""
+      }
+    }
+  ],
+  "optional_hiring_status_cases": [
+    {
+      "id": "GEN-OPTHS-001",
+      "description": "tuning_key resuelto -> formula SPEL real (patron confirmado en knowledge/Modelo.../Ejemplo completo 2): INCLUDED si el tuning tiene la opcion marcada, OPTIONAL si no.",
+      "tuningKey": "yvig24",
+      "expected_expr": "tuning?.yvig24 != null && tuning.yvig24 ? \"INCLUDED\" : \"OPTIONAL\""
+    },
+    {
+      "id": "GEN-OPTHS-002",
+      "description": "tuning_key NOT_FOUND -> no hay forma de construir la condicion real, se mantiene el literal OPTIONAL.",
+      "tuningKey": "NOT_FOUND",
+      "expected_expr": "OPTIONAL"
+    },
+    {
+      "id": "GEN-OPTHS-003",
+      "description": "tuning_key ausente/null -> mismo fallback que NOT_FOUND.",
+      "tuningKey": null,
+      "expected_expr": "OPTIONAL"
     }
   ],
   "bullet_splitting_cases": [
