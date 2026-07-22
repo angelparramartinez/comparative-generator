@@ -78,12 +78,15 @@ function computeEntryReviewStatus(entry) {
 // tuning_key, human_decision}], needsReview, reviewReason}].
 //
 // needsReview/reviewReason (opcional): senal a nivel de COBERTURA, no de
-// entry -- para el caso real de bullets heterogeneos entre modalidades
-// (buildBulletGroupsForCover, homogeneous:false), donde no hay ningun ENTRY
-// que generar automaticamente (0 bloques) pero la cobertura SI necesita
-// revision humana. Antes de esto, esas coberturas se descartaban del todo
-// del JSON final (bug real confirmado 21/07, cover_id 15/16/21/22/23/104 de
-// Generali desaparecian sin dejar rastro).
+// entry -- pensado originalmente para el caso real de bullets/bloques
+// heterogeneos entre modalidades sin ningun ENTRY que generar
+// automaticamente, donde la cobertura SI necesita revision humana. Antes de
+// esto, esas coberturas se descartaban del todo del JSON final (bug real
+// confirmado 21/07, cover_id 15/16/21/22/23/104 de Generali desaparecian sin
+// dejar rastro). Con el fallback por texto (excel_fixture_builder.
+// buildBlockGroupsForHeterogeneousCover) esto ya no deberia disparar en la
+// practica -- queda como infraestructura generica por si aparece otro caso
+// estructural futuro.
 function assembleHumanReviewJson({ productCompanyId, ramo, sourceFlow2Artifact, sourceExcel, coverRecords, unmatchedDependencies }) {
   const covers = (coverRecords || []).map(cover => {
     const entries = (cover.entries || []).map(entry => {

@@ -88,20 +88,57 @@ function matchEnumValue(riskField, spanishValue) {
 // y se reportan por separado los que no se pudieron traducir (visibilidad,
 // mismo patron que rejected_dependencies/ungrounded_dependencies del
 // guardrail de flujo 2: nunca descartar en silencio).
+//
+// Bug real detectado 22/07 (produccion, cover 15 "Patronal sobre empleados
+// domesticos", dependencia real housingUse NOT_IN ["otros usos"]): esta
+// funcion se llama en el nodo real (Translate Dependency Values) para TODAS
+// las dependencias del flujo 2, no solo las de campo enum -- y
+// matchEnumValue devuelve matched:false/reason:"risk_field_not_cataloged"
+// para CUALQUIER risk_field que no sea un enum (ej. "continent > 0"). Sin
+// distinguir este caso, ese "no matched" contaba igual que un fallo real de
+// traduccion (known_limitation/no_alias_match), marcando fullyTranslated:
+// false para la inmensa mayoria de dependencias reales (5 de 6 en una
+// ejecucion real muestreada) que ni siquiera son enums -- si el nodo llegara
+// a filtrar por ese flag (como deberia, ver mas abajo), se habria descartado
+// casi todo. "risk_field_not_cataloged" NO es un fallo -- ese campo
+// simplemente no necesita traduccion, se mantiene su valor original.
 function translateDependencyValue(dependency) {
   const isArray = Array.isArray(dependency.value);
   const rawValues = isArray ? dependency.value : [dependency.value];
   const results = rawValues.map(v => ({ raw: v, ...matchEnumValue(dependency.risk_field, v) }));
-  const unmatched = results.filter(r => !r.matched);
-  const translatedValues = results.filter(r => r.matched).map(r => r.value);
+
+  const realFailures = results.filter(r => !r.matched && r.reason !== "risk_field_not_cataloged");
+  const translatedValues = results
+    .filter(r => r.matched || r.reason === "risk_field_not_cataloged")
+    .map(r => (r.matched ? r.value : r.raw));
 
   return {
     dependency: {
       ...dependency,
       value: isArray ? translatedValues : (translatedValues[0] ?? dependency.value)
     },
-    fullyTranslated: unmatched.length === 0,
-    unmatched
+    fullyTranslated: realFailures.length === 0,
+    unmatched: realFailures
+  };
+}
+
+// Adaptador para el nodo real "Translate Dependency Values" (A15): traduce
+// TODAS las dependencias de un match, pero solo incluye en
+// dependencies_translated las que se tradujeron sin fallos reales -- una
+// dependencia con un fallo real (known_limitation/no_alias_match) se
+// EXCLUYE por completo, nunca se deja a medias (ej. el bug real de 22/07:
+// "!(insurance[\"risk\"].housingUse in {})" -- una lista vacia en el
+// FILTER_EXPR final, generada porque antes se incluia igual la dependencia
+// con su value ya vaciado por translateDependencyValue). El aggregate
+// fully_translated si refleja TODAS las dependencias (incl. las excluidas),
+// para que review_assembly.computeEntryReviewStatus pueda seguir marcando
+// needs_review cuando corresponda.
+function translateDependencies(dependencies) {
+  const translations = (dependencies || []).map(dep => translateDependencyValue(dep));
+  return {
+    dependencies_translated: translations.filter(t => t.fullyTranslated).map(t => t.dependency),
+    fully_translated: translations.every(t => t.fullyTranslated),
+    unmatched: translations.flatMap(t => t.unmatched)
   };
 }
 
@@ -109,5 +146,6 @@ module.exports = {
   ENUM_VALUE_CATALOG,
   buildValueIndex,
   matchEnumValue,
-  translateDependencyValue
+  translateDependencyValue,
+  translateDependencies
 };

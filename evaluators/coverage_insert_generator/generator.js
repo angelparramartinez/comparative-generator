@@ -88,7 +88,48 @@ function splitBulletsFromCellText(cellText, coverName) {
 //     "Coberturas opcionales" ya resueltos a este cover_id.
 //
 // Output: { entries: [...], coverOverride: string|null }
-function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditionedBullets = [], opcionales = [] }) {
+// Traduce un bloque (salida de rich_text_block_parser.parseModalityCellBlocks,
+// ver excel_fixture_builder.buildBlockGroupsForCover) a las LINES de su
+// ENTRY, aplicando la dependencia de flow 2 que le corresponda a CADA
+// segmento por separado (cabecera y cada linea, via
+// excel_fixture_builder.matchDependenciesForBlock/matchDependenciesToBlockGroups)
+// -- NUNCA al ENTRY completo. Motivo: un bloque puede agrupar varias lineas
+// (ej. "-Responsabilidad Civil de la vivienda" con 4 lineas) donde solo UNA
+// tiene una condicion real extraida del condicionado (ej. "Como inquilino
+// frente al arrendador (locativa)" -> housingRegime == 'Tenant'); si esa
+// condicion se pusiera en el FILTER_EXPR del ENTRY, ocultaria tambien las
+// otras 3 lineas sin relacion. La cabecera (negrita o "-") se mantiene como
+// primera linea visible -- ya se mostraba asi antes de este parser. Un
+// bloque "value" (ej. "Capital 150.000€") no tiene cuerpo propio: su unica
+// linea es el propio valor.
+function buildBlockLines(block, headerDependencies, lineDependencies) {
+  const lines = [];
+  const pushLine = (text, dependencies) => {
+    lines.push({ filter_expr: combineFilterExpr(dependencies), text_expr: spelStringLiteral(text) });
+  };
+
+  if (block.kind === "value") {
+    pushLine(block.headerText, headerDependencies);
+    return lines;
+  }
+  if (block.kind !== "flat" && block.headerText) {
+    pushLine(block.headerText, headerDependencies);
+  }
+  (block.lines || []).forEach((text, i) => pushLine(text, (lineDependencies || [])[i]));
+  return lines;
+}
+
+function buildEntriesForCover({
+  coverId,
+  coverName,
+  defaultBullets = [],
+  conditionedBullets = [],
+  defaultBlocks = [],
+  conditionedBlocks = [],
+  opcionales = [],
+  presentModalityIds = [],
+  missingModalityIds = []
+}) {
   const entries = [];
 
   if (defaultBullets.length > 0) {
@@ -100,6 +141,18 @@ function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditi
       modality_id: null,
       source: "default",
       lines: defaultBullets.map(text => ({ filter_expr: null, text_expr: spelStringLiteral(text) }))
+    });
+  }
+
+  for (const entry of defaultBlocks) {
+    entries.push({
+      cover_id: coverId,
+      filter_expr: null,
+      hiring_status_expr: "INCLUDED",
+      value_expr: null,
+      modality_id: null,
+      source: "default",
+      lines: buildBlockLines(entry.block, entry.headerDependencies, entry.lineDependencies)
     });
   }
 
@@ -115,17 +168,68 @@ function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditi
     });
   }
 
-  for (const opt of opcionales) {
-    const optLines = splitBulletsFromCellText(opt.textContent, null);
+  for (const cond of conditionedBlocks) {
     entries.push({
       cover_id: coverId,
-      filter_expr: opt.filterExpr ?? null,
-      hiring_status_expr: opt.hiringStatusExpr || "OPTIONAL",
+      filter_expr: null,
+      hiring_status_expr: "INCLUDED",
       value_expr: null,
-      modality_id: null,
-      source: "optional_cover",
-      lines: optLines.map(text => ({ filter_expr: null, text_expr: spelStringLiteral(text) }))
+      modality_id: cond.modalityId ?? null,
+      source: "modality_bullet",
+      lines: buildBlockLines(cond.block, cond.headerDependencies, cond.lineDependencies),
+      _blockIndex: cond.blockIndex
     });
+  }
+
+  // Bug real corregido 22/07 (covers 79/81, "Sin cobertura" en varias
+  // modalidades de "Coberturas por modalidad"): una cobertura opcional
+  // (hoja "Coberturas opcionales") no tiene por que ofrecerse en TODAS las
+  // modalidades de su cobertura base -- si "Coberturas por modalidad" dice
+  // "Sin cobertura" para una modalidad concreta, esa modalidad no puede
+  // contratar ni la base ni el opcional, y debe salir NOT_INCLUDED
+  // explicito, no la formula de tuning (que antes se aplicaba por igual a
+  // las 11 modalidades, modality_id null, ignorando cuales la ofrecen
+  // realmente). Si NINGUNA modalidad falta (missingModalityIds vacio, caso
+  // normal), se mantiene el comportamiento de siempre: una unica ENTRY sin
+  // modalidad.
+  for (const opt of opcionales) {
+    const optLines = splitBulletsFromCellText(opt.textContent, null).map(text => ({ filter_expr: null, text_expr: spelStringLiteral(text) }));
+
+    if (missingModalityIds.length === 0) {
+      entries.push({
+        cover_id: coverId,
+        filter_expr: opt.filterExpr ?? null,
+        hiring_status_expr: opt.hiringStatusExpr || "OPTIONAL",
+        value_expr: null,
+        modality_id: null,
+        source: "optional_cover",
+        lines: optLines
+      });
+      continue;
+    }
+
+    for (const modalityId of missingModalityIds) {
+      entries.push({
+        cover_id: coverId,
+        filter_expr: null,
+        hiring_status_expr: "NOT_INCLUDED",
+        value_expr: null,
+        modality_id: modalityId,
+        source: "optional_cover",
+        lines: []
+      });
+    }
+    for (const modalityId of presentModalityIds) {
+      entries.push({
+        cover_id: coverId,
+        filter_expr: opt.filterExpr ?? null,
+        hiring_status_expr: opt.hiringStatusExpr || "OPTIONAL",
+        value_expr: null,
+        modality_id: modalityId,
+        source: "optional_cover",
+        lines: optLines
+      });
+    }
   }
 
   const coverOverride = computeCoverOverride(entries);
@@ -137,10 +241,52 @@ function buildEntriesForCover({ coverId, coverName, defaultBullets = [], conditi
     }
   }
 
+  const sorted = sortEntriesByModality(entries);
+  sorted.forEach(entry => delete entry._blockIndex);
+
   return {
-    entries,
+    entries: sorted,
     coverOverride: coverOverride ? coverOverride.hiringStatusExpr : null
   };
+}
+
+// Reordena las ENTRY para que sea facil revisar si una modalidad concreta
+// tiene todo su contenido (peticion del usuario, 22/07 -- con el orden de
+// construccion original, entries de la misma modalidad quedaban dispersas
+// entre familias/bloques distintos). Primero las sin modalidad que vienen
+// del propio Excel de modalidades (comunes a todas, source "default"),
+// despues agrupadas por modalidad, y las de "Coberturas opcionales"
+// (source "optional_cover") siempre al FINAL con independencia de que su
+// modality_id sea null -- ajuste pedido por el usuario tras revisar un caso
+// real (cover 15: "Responsabilidad civil por propiedad y tenencia de
+// perros" salia antes que las entries por modalidad, dificultando revisar
+// si una modalidad concreta tiene todo su contenido).
+//
+// Dentro de una MISMA modalidad, se ordena ademas por _blockIndex (la
+// posicion original del bloque dentro de su propia celda, ver
+// excel_fixture_builder.buildBlockGroupsForCover/Heterogeneous) -- bug real
+// detectado 22/07 (cover 15): sin este criterio, el orden dentro de una
+// modalidad dependia de en que momento se creaba el groupIndex de cada
+// familia durante el agrupamiento (un artefacto interno de
+// matchDependenciesToBlockGroups, no el orden real de la celda), asi que el
+// Capital aparecia primero en unas modalidades y al final en otras.
+// _blockIndex es un campo temporal (no forma parte del ENTRY final, ver el
+// borrado tras ordenar en buildEntriesForCover) -- las entries que no vienen
+// de conditionedBlocks (default/bullets/opcionales) no lo tienen, se tratan
+// como 0 (no afecta su posicion relativa entre modalidades, solo el
+// desempate DENTRO de la misma modalidad). Array.prototype.sort es estable
+// en Node/V8, asi que el orden relativo dentro de un mismo (modalidad,
+// blockIndex) se conserva tal cual las genero buildEntriesForCover.
+function sortEntriesByModality(entries) {
+  return [...entries].sort((a, b) => {
+    const aIsOptional = a.source === "optional_cover" ? 1 : 0;
+    const bIsOptional = b.source === "optional_cover" ? 1 : 0;
+    if (aIsOptional !== bIsOptional) return aIsOptional - bIsOptional;
+    const aKey = a.modality_id == null ? -Infinity : Number(a.modality_id);
+    const bKey = b.modality_id == null ? -Infinity : Number(b.modality_id);
+    if (aKey !== bKey) return aKey - bKey;
+    return (a._blockIndex ?? 0) - (b._blockIndex ?? 0);
+  });
 }
 
 // Construye el HIRING_STATUS_EXPR real (formula SPEL) de una cobertura
@@ -236,6 +382,7 @@ module.exports = {
   combineFilterExpr,
   spelStringLiteral,
   splitBulletsFromCellText,
+  buildBlockLines,
   buildEntriesForCover,
   buildOptionalHiringStatusExpr,
   computeCoverOverride,

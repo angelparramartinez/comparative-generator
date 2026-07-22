@@ -23,6 +23,9 @@
 //   --review-assembly valida los guardrails y el ensamblado del JSON
 //                      intermedio revisable por humano (nodos A13/A19/A21/B3
 //                      del diseno de Fase 4)
+//   --rich-text-blocks valida el parser de bloques/lines a partir de la
+//                      negrita real de "Coberturas por modalidad"
+//                      (rich_text_block_parser.js, diseno 22/07)
 //   (sin flags)       ejecuta todos los checks
 //
 // Nota sobre "grounding" del matcher lexico (matcher.js): se intento un check
@@ -46,12 +49,14 @@ const TUNING_DATASET_PATH = path.join(__dirname, "tuning_key_golden_dataset.json
 const VALUE_MATCHER_DATASET_PATH = path.join(__dirname, "value_matcher_golden_dataset.json");
 const EXCEL_FIXTURE_DATASET_PATH = path.join(__dirname, "excel_fixture_builder_golden_dataset.json");
 const REVIEW_ASSEMBLY_DATASET_PATH = path.join(__dirname, "review_assembly_golden_dataset.json");
+const RICH_TEXT_BLOCK_PARSER_DATASET_PATH = path.join(__dirname, "rich_text_block_parser_golden_dataset.json");
 const matcher = require("./matcher");
 const generator = require("./generator");
 const tuningMatcher = require("./tuning_matcher");
 const valueMatcher = require("./value_matcher");
 const excelFixtureBuilder = require("./excel_fixture_builder");
 const reviewAssembly = require("./review_assembly");
+const richTextBlockParser = require("./rich_text_block_parser");
 
 function loadGoldenDataset() {
   return JSON.parse(fs.readFileSync(DATASET_PATH, "utf8"));
@@ -75,6 +80,10 @@ function loadExcelFixtureGoldenDataset() {
 
 function loadReviewAssemblyGoldenDataset() {
   return JSON.parse(fs.readFileSync(REVIEW_ASSEMBLY_DATASET_PATH, "utf8"));
+}
+
+function loadRichTextBlockParserGoldenDataset() {
+  return JSON.parse(fs.readFileSync(RICH_TEXT_BLOCK_PARSER_DATASET_PATH, "utf8"));
 }
 
 // Compara el nivel de confianza esperado (etiqueta manual, ver schema_notes)
@@ -198,10 +207,22 @@ function checkGenerator(golden) {
     if (c.expected.cover_override_value !== undefined) {
       checks.push(["cover_override_value", coverOverride, c.expected.cover_override_value]);
     }
+    if (c.expected.full_entries !== undefined) {
+      checks.push(["full_entries", JSON.stringify(entries), JSON.stringify(c.expected.full_entries)]);
+    }
     const mismatches = checks.filter(([, got, expected]) => got !== expected);
     const pass = mismatches.length === 0;
     if (!pass) failures++;
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, got, exp]) => `${k}: got=${got}, esperado=${exp}`).join("; ")}`}`);
+  }
+
+  for (const c of golden.entry_ordering_cases || []) {
+    total++;
+    const { entries } = generator.buildEntriesForCover(c.input);
+    const got = entries.map(e => e.modality_id);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected_modality_order);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${JSON.stringify(got)}${pass ? "" : ` | esperado: ${JSON.stringify(c.expected_modality_order)}`}`);
   }
 
   for (const c of golden.optional_hiring_status_cases || []) {
@@ -290,6 +311,19 @@ function checkValueMatching(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${(c.source_case_refs || []).join(", ")}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected_final_spel}`}`);
   }
 
+  for (const c of golden.dependency_set_translation_cases || []) {
+    total++;
+    const got = valueMatcher.translateDependencies(c.dependencies);
+    const checks = [
+      ["dependencies_translated", JSON.stringify(got.dependencies_translated), JSON.stringify(c.expected_dependencies_translated)],
+      ["fully_translated", got.fully_translated, c.expected_fully_translated]
+    ];
+    const mismatches = checks.filter(([, g, e]) => g !== e);
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
+  }
+
   console.log(`--value-matching: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;
 }
@@ -307,27 +341,22 @@ function checkExcelFixture(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected_fixture)}`}`);
   }
 
-  for (const c of golden.bullet_group_cases || []) {
+  for (const c of golden.block_group_cases || []) {
     total++;
-    const got = excelFixtureBuilder.buildBulletGroupsForCover(c.cover_id, c.cover_name, c.modalities);
-    const checks = [
-      ["homogeneous", got.homogeneous, c.expected.homogeneous],
-      ["defaultBullets", JSON.stringify(got.defaultBullets), JSON.stringify(c.expected.defaultBullets)],
-      ["perModalityBullets", JSON.stringify(got.perModalityBullets), JSON.stringify(c.expected.perModalityBullets)]
-    ];
-    if (c.expected.warning_present) checks.push(["warning_present", !!got.warning, true]);
-    const mismatches = checks.filter(([, g, e]) => g !== e);
-    const pass = mismatches.length === 0;
-    if (!pass) failures++;
-    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
-  }
-
-  for (const c of golden.bullet_dependency_matching_cases || []) {
-    total++;
-    const got = excelFixtureBuilder.matchDependenciesToBulletGroups(c.per_modality_bullets, c.matches, c.cover_id);
+    const got = excelFixtureBuilder.buildBlockGroupsForCover(c.coverId, c.coverName, c.modalities);
     const pass = JSON.stringify(got) === JSON.stringify(c.expected);
     if (!pass) failures++;
-    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got, null, 2)} | esperado: ${JSON.stringify(c.expected, null, 2)}`}`);
+  }
+
+  for (const c of golden.block_dependency_matching_cases || []) {
+    total++;
+    const got = c.defaultBlocks
+      ? excelFixtureBuilder.matchDependenciesToDefaultBlocks(c.defaultBlocks, c.matches, c.coverId)
+      : excelFixtureBuilder.matchDependenciesToBlockGroups(c.perModalityBlocks, c.matches, c.coverId);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got, null, 2)} | esperado: ${JSON.stringify(c.expected, null, 2)}`}`);
   }
 
   console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
@@ -406,6 +435,29 @@ function checkReviewAssembly(golden) {
   return failures === 0 ? 0 : 1;
 }
 
+function checkRichTextBlockParser(golden) {
+  console.log("\n=== --rich-text-blocks ===");
+  let failures = 0;
+  let total = 0;
+
+  for (const c of golden.cases || []) {
+    total++;
+    const got = richTextBlockParser.parseModalityCellBlocks(c.cell);
+    const normalize = blocks => blocks.map(b => ({
+      kind: b.kind,
+      headerText: b.headerText,
+      lines: b.lines,
+      needsReview: !!b.needsReview
+    }));
+    const pass = JSON.stringify(normalize(got.blocks)) === JSON.stringify(normalize(c.expected.blocks));
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(normalize(got.blocks), null, 2)} | esperado: ${JSON.stringify(normalize(c.expected.blocks), null, 2)}`}`);
+  }
+
+  console.log(`--rich-text-blocks: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
@@ -415,6 +467,7 @@ function main() {
   const valueMatcherGolden = loadValueMatcherGoldenDataset();
   const excelFixtureGolden = loadExcelFixtureGoldenDataset();
   const reviewAssemblyGolden = loadReviewAssemblyGoldenDataset();
+  const richTextBlockParserGolden = loadRichTextBlockParserGoldenDataset();
 
   let exitCode = 0;
   if (runAll || args.includes("--matching")) {
@@ -434,6 +487,9 @@ function main() {
   }
   if (runAll || args.includes("--review-assembly")) {
     exitCode = Math.max(exitCode, checkReviewAssembly(reviewAssemblyGolden));
+  }
+  if (runAll || args.includes("--rich-text-blocks")) {
+    exitCode = Math.max(exitCode, checkRichTextBlockParser(richTextBlockParserGolden));
   }
   process.exit(exitCode);
 }

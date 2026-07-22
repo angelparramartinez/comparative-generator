@@ -1,0 +1,413 @@
+{
+  "version": "1.0",
+  "dataset_name": "rich_text_block_parser",
+  "description": "Casos reales (celdas tal cual las devuelve Google Sheets API con includeGridData=true, extraidas el 22/07 via el workflow diagnostico 'DIAG - bold format check (borrar)') para validar parseModalityCellBlocks -- los 4 patrones de negrita/guion observados por el usuario revisando 'Coberturas por modalidad' de Generali.",
+  "cases": [
+    {
+      "id": "RTB-001",
+      "description": "COVER_ID 15 'Responsabilidad Civil', modalidad 5571. Negrita = Capital (VALOR, su propio bloque); cuerpo MIXTO ('-' abre 3 sub-coberturas, lineas sin '-' son su detalle) -- la ultima ('bicicletas') no tiene detalle.",
+      "cell": {
+        "formattedValue": "Capital 150.000€\n-Responsabilidad Civil de la vivienda\n   Como propietario\n   Como inquilino frente al arrendador (locativa)\n   Patronal sobre empleados domésticos\n   Contaminación accidental\n-Responsabilidad civil de la vida privada\n   Personal y familiar \n   Propiedad y tenencia de mascotas (no perros)\n   Estancias temporales en el extranjero (3 meses)\n-Responsabilidad civil por uso de bicicletas",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 16,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "value",
+            "headerText": "Capital 150.000€",
+            "lines": [],
+            "needsReview": false
+          },
+          {
+            "kind": "dash",
+            "headerText": "-Responsabilidad Civil de la vivienda",
+            "lines": [
+              "Como propietario",
+              "Como inquilino frente al arrendador (locativa)",
+              "Patronal sobre empleados domésticos",
+              "Contaminación accidental"
+            ],
+            "needsReview": false
+          },
+          {
+            "kind": "dash",
+            "headerText": "-Responsabilidad civil de la vida privada",
+            "lines": [
+              "Personal y familiar",
+              "Propiedad y tenencia de mascotas (no perros)",
+              "Estancias temporales en el extranjero (3 meses)"
+            ],
+            "needsReview": false
+          },
+          {
+            "kind": "dash",
+            "headerText": "-Responsabilidad civil por uso de bicicletas",
+            "lines": [],
+            "needsReview": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-002",
+      "description": "COVER_ID 16 'Robo', modalidad 5571. Negrita = ETIQUETA (titulo, no valor); cuerpo UNIFORME sin ningun '-' -- un unico bloque con todas las lineas (la particion linea a linea por variacion entre modalidades es responsabilidad de excel_fixture_builder.js, no de este parser).",
+      "cell": {
+        "formattedValue": "Robo y Vandalismo\n   Robo de continente y daños - 100%\n   Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)\n   Robo de mobiliario y enseres - 100%\n   Robo joyas y relojes de valor - 10% (máx. 5.000€)\n   Robo y expoliación en anexos - 10% (1.500 €/objeto)\n   Actos de vandalismo – 100%\n   Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 17,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "label",
+            "headerText": "Robo y Vandalismo",
+            "lines": [
+              "Robo de continente y daños - 100%",
+              "Robo de continente y daños (si no se contrata continente) - 10% (máx. 1.800€)",
+              "Robo de mobiliario y enseres - 100%",
+              "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
+              "Robo y expoliación en anexos - 10% (1.500 €/objeto)",
+              "Actos de vandalismo – 100%",
+              "Reposición de llaves y cerraduras por robo, expoliación o hurto - 2% (máx. 600 €)"
+            ],
+            "needsReview": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-003",
+      "description": "COVER_ID 17 'Incendio', modalidad 5571. Negrita = ETIQUETA (descripcion+capital de la cobertura); cuerpo UNIFORME sin '-' -- las causas son lineas de la MISMA entry que la negrita (no bloques independientes).",
+      "cell": {
+        "formattedValue": "Incendio, explosión, caída del rayo e impactos -100% en Continente y Contenido por:\n   Incendio, Explosión e implosión y Caída del rayo \n   Daños por humo\n   Derrame o escape de instalaciones de extinción\n   Impactos desde el exterior",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 83,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "label",
+            "headerText": "Incendio, explosión, caída del rayo e impactos -100% en Continente y Contenido por:",
+            "lines": [
+              "Incendio, Explosión e implosión y Caída del rayo",
+              "Daños por humo",
+              "Derrame o escape de instalaciones de extinción",
+              "Impactos desde el exterior"
+            ],
+            "needsReview": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-004",
+      "description": "COVER_ID 22 'Asistencia en el hogar', modalidad 5571 (variante de 1 solo bloque). Negrita = ETIQUETA de bloque ('... incluida:'); cuerpo UNIFORME, TODAS las lineas con '-' -- aqui el '-' es solo vineta (ninguna linea tiene hijas mas indentadas), asi que todo es un unico bloque con esas lineas.",
+      "cell": {
+        "formattedValue": "Asistencia en el Hogar incluida:\n- Cerrajero urgente (max 3 horas mano de obra)\n- Electricista urgente (max 3 horas mano de obra)\n- Fontanero urgente (max 3 horas mano de obra)\n- Personal de Seguridad (max 48h)\n- Servicio de Conexión",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 32,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "label",
+            "headerText": "Asistencia en el Hogar incluida:",
+            "lines": [
+              "- Cerrajero urgente (max 3 horas mano de obra)",
+              "- Electricista urgente (max 3 horas mano de obra)",
+              "- Fontanero urgente (max 3 horas mano de obra)",
+              "- Personal de Seguridad (max 48h)",
+              "- Servicio de Conexión"
+            ],
+            "needsReview": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-005",
+      "description": "COVER_ID 22, modalidad 5574 (variante de 2 bloques -- 2 runs en negrita en la misma celda). Cada '... incluida:' es su propio bloque con sus lineas (todas con '-', uniformes -- sin sub-jerarquia).",
+      "cell": {
+        "formattedValue": "Asistencia en el Hogar incluida: \n - Cerrajero urgente (max 3 horas mano de obra)\n - Electricista urgente (max 3 horas mano de obra)\n - Fontanero urgente (max 3 horas mano de obra)\n - Personal de Seguridad (max 48h)\n - Servicio de Conexión\nAsistencia Informática incluida:\n - Asistencia remota 24\n - Asistencia informática a domicilio horas\n - Asistencia tecnológica para el teletrabajo\n - Asistencia tecnológica para la educación on-line\n - Asistencia en compras on-line\n- Asistencia urgente por falta de suministro eléctrico",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 32,
+            "format": {}
+          },
+          {
+            "startIndex": 240,
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 273,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "label",
+            "headerText": "Asistencia en el Hogar incluida:",
+            "lines": [
+              "- Cerrajero urgente (max 3 horas mano de obra)",
+              "- Electricista urgente (max 3 horas mano de obra)",
+              "- Fontanero urgente (max 3 horas mano de obra)",
+              "- Personal de Seguridad (max 48h)",
+              "- Servicio de Conexión"
+            ],
+            "needsReview": false
+          },
+          {
+            "kind": "label",
+            "headerText": "Asistencia Informática incluida:",
+            "lines": [
+              "- Asistencia remota 24",
+              "- Asistencia informática a domicilio horas",
+              "- Asistencia tecnológica para el teletrabajo",
+              "- Asistencia tecnológica para la educación on-line",
+              "- Asistencia en compras on-line",
+              "- Asistencia urgente por falta de suministro eléctrico"
+            ],
+            "needsReview": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-EDGE-001",
+      "description": "Celda sin ningun textFormatRuns (formato uniforme, campo ausente en la respuesta real de la API cuando toda la celda comparte el mismo formato) y effectiveFormat.bold=false -- todo plano, un unico bloque flat sin cabecera.",
+      "cell": {
+        "formattedValue": "Texto libre sin ninguna negrita\nSegunda linea",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        }
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "flat",
+            "headerText": null,
+            "lines": [
+              "Texto libre sin ninguna negrita",
+              "Segunda linea"
+            ],
+            "needsReview": false
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-EDGE-002",
+      "description": "Celda vacia (bullet/modalidad sin ese cover) -- 0 bloques, no debe fallar.",
+      "cell": {
+        "formattedValue": "",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        }
+      },
+      "expected": {
+        "blocks": []
+      }
+    },
+    {
+      "id": "RTB-006",
+      "description": "Bug real 22/07 (ejecucion 250): COVER_ID 21 \"Restauración Estética\", modalidad 5572. La negrita NO ocupa la linea entera -- \"Restauración Estética Continente\" (negrita) termina A MITAD de la primera linea, seguido de \"- 3.000€\" (sin negrita) en esa MISMA linea; luego \"Restauración Estética Mobiliario\" (negrita) en la segunda linea + \"- 1.500€\" (sin negrita). Clasificar por linea completa fusionaba ambos bloques en uno solo con los textos concatenados -- debe dar 2 bloques \"label\" separados, cada uno con su propia linea de importe.",
+      "cell": {
+        "formattedValue": "Restauración Estética Continente  - 3.000€\nRestauración Estética Mobiliario  - 1.500€",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 32,
+            "format": {}
+          },
+          {
+            "startIndex": 43,
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 75,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "label",
+            "headerText": "Restauración Estética Continente",
+            "lines": [
+              "- 3.000€"
+            ],
+            "needsReview": false,
+            "reviewReason": null
+          },
+          {
+            "kind": "label",
+            "headerText": "Restauración Estética Mobiliario",
+            "lines": [
+              "- 1.500€"
+            ],
+            "needsReview": false,
+            "reviewReason": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "RTB-007",
+      "description": "Bug real 22/07 (ejecucion 250): COVER_ID 104 \"Otras garantías\", modalidad 5571. Mismo patron que RTB-006 (negrita termina a mitad de linea: \"Ruina total por obras de terceros -\" / \"100% (Continente y Contenido)\"), seguido de un SEGUNDO bloque en negrita completo (\"Garantía de Pérdidas Consecuenciales\") cuyo cuerpo es MIXTO (dash + sub-lineas \"o \") -- caso real del patron \"label con cuerpo mixto\" que antes solo estaba previsto como needsReview, nunca visto con datos reales.",
+      "cell": {
+        "formattedValue": "Ruina total por obras de terceros - 100% (Continente y Contenido)                                          \nGarantía de Pérdidas Consecuenciales\n- Demolición, desescombro, salvamento, reconstrucción y otros gastos derivados de un siniestro - 25% (Continente y Contenido)\n- Inhabitabilidad temporal por:\n     o Alquiler de vivienda provisional - 25% (máx. 2 años)\n     o Mudanza y guardamuebles - 10% (máx. 6 meses)\n     o Gastos de hotel y restaurante - 10% (máx. 3.000 €)",
+        "effectiveFormat": {
+          "textFormat": {
+            "bold": false
+          }
+        },
+        "textFormatRuns": [
+          {
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 36,
+            "format": {}
+          },
+          {
+            "startIndex": 108,
+            "format": {
+              "bold": true
+            }
+          },
+          {
+            "startIndex": 144,
+            "format": {}
+          }
+        ]
+      },
+      "expected": {
+        "blocks": [
+          {
+            "kind": "label",
+            "headerText": "Ruina total por obras de terceros -",
+            "lines": [
+              "100% (Continente y Contenido)"
+            ],
+            "needsReview": false,
+            "reviewReason": null
+          },
+          {
+            "kind": "label",
+            "headerText": "Garantía de Pérdidas Consecuenciales",
+            "lines": [],
+            "needsReview": true,
+            "reviewReason": "mixed_body_under_label"
+          },
+          {
+            "kind": "dash",
+            "headerText": "- Demolición, desescombro, salvamento, reconstrucción y otros gastos derivados de un siniestro - 25% (Continente y Contenido)",
+            "lines": [],
+            "needsReview": false,
+            "reviewReason": null
+          },
+          {
+            "kind": "dash",
+            "headerText": "- Inhabitabilidad temporal por:",
+            "lines": [
+              "o Alquiler de vivienda provisional - 25% (máx. 2 años)",
+              "o Mudanza y guardamuebles - 10% (máx. 6 meses)",
+              "o Gastos de hotel y restaurante - 10% (máx. 3.000 €)"
+            ],
+            "needsReview": false,
+            "reviewReason": null
+          }
+        ]
+      }
+    }
+  ]
+}
