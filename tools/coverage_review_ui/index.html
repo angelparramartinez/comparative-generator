@@ -607,6 +607,10 @@
         <span class="badge-mod">${escapeHtml(entry.source || "")}</span>
         <span data-entry-badge="${entry._uiId}">${statusChip(status)}</span>
         <span class="grow"></span>
+        ${status === "removed" ? "" : `
+          <button class="small" data-move-entry="-1" title="Subir entry" ${idx === 0 ? "disabled" : ""}>&uarr;</button>
+          <button class="small" data-move-entry="1" title="Bajar entry" ${idx === (cover.entries.length - 1) ? "disabled" : ""}>&darr;</button>
+        `}
         ${status === "removed"
           ? `<button class="small" data-restore>Restaurar</button>`
           : `<button class="small danger" data-remove-entry>Eliminar entry</button>`}
@@ -655,6 +659,11 @@
       wrap.querySelector("[data-remove-entry]").addEventListener("click", () => {
         removeEntry(cover, entry);
       });
+      wrap.querySelectorAll("[data-move-entry]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          moveEntry(cover, idx, Number(btn.getAttribute("data-move-entry")));
+        });
+      });
     } else {
       wrap.querySelector("[data-restore]").addEventListener("click", () => {
         restoreEntry(cover, entry);
@@ -674,7 +683,11 @@
           <span class="idx">${i + 1}</span>
           <textarea class="lf" data-line-field="filter_expr" placeholder="(sin filtro)" ${disabled ? "disabled" : ""}>${escapeHtml(line.filter_expr || "")}</textarea>
           <textarea class="lt" data-line-field="text_expr" placeholder="(texto)" ${disabled ? "disabled" : ""}>${escapeHtml(line.text_expr || "")}</textarea>
-          ${disabled ? "" : `<button class="small danger" data-remove-line="${i}">&times;</button>`}
+          ${disabled ? "" : `
+            <button class="small" data-move-line="-1" title="Subir linea" ${i === 0 ? "disabled" : ""}>&uarr;</button>
+            <button class="small" data-move-line="1" title="Bajar linea" ${i === lines.length - 1 ? "disabled" : ""}>&darr;</button>
+            <button class="small danger" data-remove-line="${i}">&times;</button>
+          `}
         </div>
       `;
     });
@@ -712,6 +725,11 @@
         renderLinesBox(box, cover, entry, false);
         renderProgress();
       });
+      row.querySelectorAll("[data-move-line]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          moveLine(box, cover, entry, i, Number(btn.getAttribute("data-move-line")));
+        });
+      });
     });
     const addBtn = box.querySelector("[data-add-line]");
     if (addBtn) addBtn.addEventListener("click", () => {
@@ -721,6 +739,17 @@
       renderLinesBox(box, cover, entry, false);
       renderProgress();
     });
+  }
+
+  function moveLine(box, cover, entry, index, delta) {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= entry.lines.length) return;
+    ensureEditedSnapshot(entry);
+    const [item] = entry.lines.splice(index, 1);
+    entry.lines.splice(newIndex, 0, item);
+    refreshEntryBadge(entry);
+    renderLinesBox(box, cover, entry, false);
+    renderProgress();
   }
 
   function removeEntry(cover, entry) {
@@ -740,6 +769,14 @@
       Object.assign(entry, cloneDeep(original));
     }
     entry.human_decision = null;
+    rerenderCoverAfterListChange(cover);
+  }
+
+  function moveEntry(cover, index, delta) {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= cover.entries.length) return;
+    const [item] = cover.entries.splice(index, 1);
+    cover.entries.splice(newIndex, 0, item);
     rerenderCoverAfterListChange(cover);
   }
 
