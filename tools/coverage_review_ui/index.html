@@ -1,0 +1,956 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<title>Revisión de comparativa de coberturas</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+  :root {
+    color-scheme: light dark;
+    --bg: #f7f7f8;
+    --panel: #ffffff;
+    --border: #e0e0e3;
+    --text: #1c1c1f;
+    --text-dim: #6b6b73;
+    --mono: "SF Mono", Menlo, Consolas, monospace;
+    --green: #1e7e34; --green-bg: #e6f4ea;
+    --amber: #9a6700; --amber-bg: #fff3d6;
+    --blue: #1258a6; --blue-bg: #e5f0fb;
+    --purple: #6b3fa0; --purple-bg: #f1e9fb;
+    --gray: #6b6b73; --gray-bg: #ececef;
+    --red: #b3261e;
+    --accent: #2f5fd0;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #16161a; --panel: #1e1e23; --border: #303038;
+      --text: #ececf1; --text-dim: #9a9aa2;
+      --green: #4caf6d; --green-bg: #123422;
+      --amber: #e0b03f; --amber-bg: #3a2e0e;
+      --blue: #6fa8dc; --blue-bg: #12293f;
+      --purple: #b389e0; --purple-bg: #2c1f3d;
+      --gray: #9a9aa2; --gray-bg: #2a2a30;
+      --red: #e2695f;
+      --accent: #6f9bf0;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  }
+  header {
+    position: sticky; top: 0; z-index: 20;
+    background: var(--panel); border-bottom: 1px solid var(--border);
+    padding: 10px 16px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  header h1 { font-size: 15px; margin: 0; white-space: nowrap; }
+  header .meta { font-size: 12px; color: var(--text-dim); }
+  button, .btn {
+    font: inherit; cursor: pointer; border: 1px solid var(--border);
+    background: var(--panel); color: var(--text); border-radius: 6px;
+    padding: 5px 10px;
+  }
+  button:hover { border-color: var(--accent); }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.danger { color: var(--red); }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button.small { padding: 2px 7px; font-size: 12px; }
+  .spacer { flex: 1; }
+  #dropzone {
+    margin: 40px auto; max-width: 640px; padding: 40px; text-align: center;
+    border: 2px dashed var(--border); border-radius: 12px; color: var(--text-dim);
+  }
+  #dropzone.drag { border-color: var(--accent); color: var(--accent); }
+  #app { display: none; }
+  #app.ready { display: flex; }
+  .layout { display: flex; width: 100%; align-items: flex-start; }
+  #sidebar {
+    width: 260px; flex: none; position: sticky; top: 49px;
+    max-height: calc(100vh - 49px); overflow-y: auto;
+    border-right: 1px solid var(--border); background: var(--panel);
+  }
+  #sidebar .side-section { padding: 10px 12px; border-bottom: 1px solid var(--border); }
+  #sidebar h2 { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: var(--text-dim); margin: 0 0 6px; }
+  .cover-nav-item {
+    display: flex; align-items: center; gap: 6px; padding: 5px 6px; border-radius: 6px;
+    cursor: pointer; font-size: 12.5px;
+  }
+  .cover-nav-item:hover { background: var(--gray-bg); }
+  .cover-nav-item .dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+  .cover-nav-item .name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cover-nav-item .count { color: var(--text-dim); font-size: 11px; }
+  #main { flex: 1; min-width: 0; padding: 16px 20px 80px; }
+  #unmatched-panel, #covers-panel { }
+  .hidden { display: none !important; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 14px; }
+  .tabs button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .progress-bar {
+    display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--text-dim);
+  }
+  .progress-bar b { color: var(--text); }
+  .chip {
+    display: inline-flex; align-items: center; gap: 4px; border-radius: 999px;
+    padding: 1px 8px; font-size: 11px; font-weight: 600; white-space: nowrap;
+  }
+  .chip.status-auto_approved { background: var(--green-bg); color: var(--green); }
+  .chip.status-needs_review { background: var(--amber-bg); color: var(--amber); }
+  .chip.status-edited { background: var(--blue-bg); color: var(--blue); }
+  .chip.status-added { background: var(--purple-bg); color: var(--purple); }
+  .chip.status-removed { background: var(--gray-bg); color: var(--gray); text-decoration: line-through; }
+  .cover-card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    margin-bottom: 14px; overflow: hidden;
+  }
+  .cover-head {
+    display: flex; align-items: center; gap: 10px; padding: 10px 14px; cursor: pointer;
+  }
+  .cover-head:hover { background: var(--gray-bg); }
+  .cover-head .caret { transition: transform .1s; color: var(--text-dim); }
+  .cover-card.open .cover-head .caret { transform: rotate(90deg); }
+  .cover-head .title { font-weight: 600; flex: 1; }
+  .cover-head .cid { color: var(--text-dim); font-weight: 400; }
+  .cover-body { display: none; padding: 4px 14px 14px; }
+  .cover-card.open .cover-body { display: block; }
+  .cover-toolbar {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 8px 0 12px; border-bottom: 1px solid var(--border); margin-bottom: 10px; font-size: 12.5px;
+  }
+  .cover-toolbar label { display: flex; align-items: center; gap: 5px; color: var(--text-dim); }
+  .field-row { display: flex; align-items: center; gap: 6px; margin: 3px 0; }
+  .field-row label { width: 128px; flex: none; color: var(--text-dim); font-size: 12px; }
+  .field-row input[type=text], .field-row textarea, .field-row select {
+    flex: 1; font-family: var(--mono); font-size: 12.5px; background: var(--bg);
+    border: 1px solid var(--border); border-radius: 5px; color: var(--text); padding: 4px 7px;
+  }
+  .field-row textarea { resize: vertical; min-height: 30px; }
+  .entry-card {
+    border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; margin: 8px 0;
+    background: var(--bg);
+  }
+  .entry-card.is-removed { opacity: .55; }
+  .entry-card.just-added { animation: flashAdded 1.6s ease; }
+  @keyframes flashAdded {
+    0% { background: var(--purple-bg); border-color: var(--purple); }
+    100% { background: var(--bg); border-color: var(--border); }
+  }
+  .entry-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+  .entry-head .badge-mod { font-size: 11px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; }
+  .entry-head .grow { flex: 1; }
+  .reasons { font-size: 11.5px; color: var(--text-dim); font-style: italic; margin: 2px 0 6px; }
+  .lines-box { margin-top: 6px; border-top: 1px dashed var(--border); padding-top: 6px; }
+  .line-row { display: flex; align-items: flex-start; gap: 6px; margin: 4px 0; }
+  .line-row .idx { width: 16px; flex: none; color: var(--text-dim); font-size: 11px; padding-top: 6px; }
+  .line-row textarea { flex: 1; font-family: var(--mono); font-size: 12.5px; background: var(--panel);
+    border: 1px solid var(--border); border-radius: 5px; color: var(--text); padding: 4px 7px; resize: vertical; min-height: 28px; }
+  .line-row .lf { max-width: 42%; }
+  .line-row .lt { flex: 1.4; }
+  details.original-view { margin-top: 8px; }
+  details.original-view summary { cursor: pointer; font-size: 11.5px; color: var(--accent); }
+  details.original-view pre {
+    font-size: 11px; background: var(--gray-bg); padding: 8px; border-radius: 6px; overflow-x: auto;
+    margin: 6px 0 0;
+  }
+  .add-entry-form {
+    border: 1px dashed var(--border); border-radius: 8px; padding: 10px 12px; margin-top: 10px;
+  }
+  .unmatched-item {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px 14px; margin-bottom: 12px;
+  }
+  .unmatched-item .path { font-size: 12px; color: var(--text-dim); margin-bottom: 4px; }
+  .unmatched-item .evidence { font-style: italic; margin: 6px 0; }
+  .unmatched-item table { width: 100%; border-collapse: collapse; font-size: 12px; margin-top: 6px; }
+  .unmatched-item th, .unmatched-item td { text-align: left; padding: 3px 6px; border-bottom: 1px solid var(--border); }
+  .unmatched-item th { color: var(--text-dim); font-weight: 500; }
+  .annotation-row { display: flex; gap: 8px; margin-top: 8px; align-items: flex-start; flex-wrap: wrap; }
+  .annotation-row select { font: inherit; padding: 4px 6px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text); }
+  .annotation-row textarea { flex: 1; min-width: 200px; font: inherit; font-size: 12.5px; padding: 4px 7px; border-radius: 5px; border: 1px solid var(--border); background: var(--bg); color: var(--text); min-height: 30px; }
+  #errbox { color: var(--red); font-size: 12.5px; margin-top: 10px; }
+  .help {
+    max-width: 640px; margin: 8px auto 0; font-size: 12.5px; color: var(--text-dim); text-align: left;
+  }
+  .help code { font-family: var(--mono); background: var(--gray-bg); padding: 0 4px; border-radius: 4px; }
+  .top-summary { font-size: 12px; color: var(--text-dim); margin-bottom: 14px; }
+  .top-summary b { color: var(--text); }
+</style>
+</head>
+<body>
+
+<datalist id="hiringStatusValues">
+  <option value="INCLUDED">
+  <option value="NOT_INCLUDED">
+  <option value="OPTIONAL">
+</datalist>
+
+<header>
+  <h1>Revisión de comparativa de coberturas</h1>
+  <span class="meta" id="fileMeta"></span>
+  <div class="spacer"></div>
+  <input type="file" id="fileInput" accept="application/json,.json" style="display:none">
+  <button id="loadBtn">Cargar JSON</button>
+  <button id="expandAllBtn" disabled>Expandir todo</button>
+  <button id="collapseAllBtn" disabled>Colapsar todo</button>
+  <button id="exportBtn" class="primary" disabled>Exportar JSON revisado</button>
+</header>
+
+<div id="dropzone">
+  <p><strong>Arrastra aquí</strong> un fichero <code>coverage_insert_draft_*.json</code> generado por el Trigger A, o usa el botón <strong>Cargar JSON</strong> de arriba.</p>
+  <div class="help">
+    Esta página funciona 100% en tu navegador, sin servidor: el fichero no se sube a ningún sitio.
+    Puedes editar <code>filter_expr</code>/<code>hiring_status_expr</code>/<code>value_expr</code> de cada entry,
+    el texto y filtro de cada línea, añadir o eliminar líneas y entries completas.
+    Cada cambio conserva el contenido original generado por la IA (desplegable "Ver original").
+    Al terminar, pulsa <strong>Exportar JSON revisado</strong> para descargar el fichero que alimentará el Trigger B.
+  </div>
+  <div id="errbox"></div>
+</div>
+
+<div id="app">
+  <div class="layout">
+    <div id="sidebar"></div>
+    <div id="main">
+      <div class="top-summary" id="topSummary"></div>
+      <div class="tabs">
+        <button id="tabCoversBtn" class="active">Coberturas</button>
+        <button id="tabUnmatchedBtn">Dependencias sin match</button>
+      </div>
+      <div class="progress-bar" id="progressBar"></div>
+      <div id="covers-panel" style="margin-top:14px;"></div>
+      <div id="unmatched-panel" class="hidden" style="margin-top:14px;"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  // ---------------------------------------------------------------
+  // Estado
+  // ---------------------------------------------------------------
+  const state = {
+    root: null,          // objeto raiz (schema_version, covers, unmatched_dependencies, ...)
+    wasArrayWrapped: false,
+    filename: "coverage_review.json",
+    uiIdCounter: 0,
+    activeTab: "covers"
+  };
+
+  function nowIso() { return new Date().toISOString(); }
+
+  function cloneDeep(obj) {
+    if (typeof structuredClone === "function") return structuredClone(obj);
+    return JSON.parse(JSON.stringify(obj));
+  }
+
+  function nextUiId() { return "u" + (state.uiIdCounter++); }
+
+  // Misma convencion que spelStringLiteral() en generator.js: los text_expr
+  // reales son siempre un literal de cadena SPEL entre comillas simples.
+  function normalizeTextExpr(raw) {
+    const trimmed = raw == null ? "" : String(raw).trim();
+    if (!trimmed) return "''";
+    if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2) return trimmed;
+    return "'" + trimmed.replace(/'/g, "\\'") + "'";
+  }
+
+  // ---------------------------------------------------------------
+  // Carga de fichero
+  // ---------------------------------------------------------------
+  const fileInput = document.getElementById("fileInput");
+  const loadBtn = document.getElementById("loadBtn");
+  const dropzone = document.getElementById("dropzone");
+  const app = document.getElementById("app");
+  const errbox = document.getElementById("errbox");
+
+  loadBtn.addEventListener("click", () => fileInput.click());
+  fileInput.addEventListener("change", (e) => {
+    if (e.target.files[0]) loadFile(e.target.files[0]);
+  });
+  ["dragenter", "dragover"].forEach(ev =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.add("drag"); }));
+  ["dragleave", "drop"].forEach(ev =>
+    dropzone.addEventListener(ev, (e) => { e.preventDefault(); dropzone.classList.remove("drag"); }));
+  dropzone.addEventListener("drop", (e) => {
+    if (e.dataTransfer.files[0]) loadFile(e.dataTransfer.files[0]);
+  });
+
+  function loadFile(file) {
+    errbox.textContent = "";
+    const reader = new FileReader();
+    reader.onload = () => {
+      let parsed;
+      try {
+        parsed = JSON.parse(reader.result);
+      } catch (err) {
+        errbox.textContent = "El fichero no es JSON valido: " + err.message;
+        return;
+      }
+      let root, wasArrayWrapped;
+      if (Array.isArray(parsed)) {
+        root = parsed[0];
+        wasArrayWrapped = true;
+      } else {
+        root = parsed;
+        wasArrayWrapped = false;
+      }
+      if (!root || !Array.isArray(root.covers)) {
+        errbox.textContent = "El JSON no tiene el formato esperado (falta 'covers').";
+        return;
+      }
+      state.root = root;
+      state.wasArrayWrapped = wasArrayWrapped;
+      state.filename = file.name;
+      state.uiIdCounter = 0;
+      assignUiIds(root);
+      onLoaded();
+    };
+    reader.readAsText(file);
+  }
+
+  function assignUiIds(root) {
+    (root.covers || []).forEach(cover => {
+      cover._uiId = nextUiId();
+      (cover.entries || []).forEach(entry => {
+        entry._uiId = nextUiId();
+        entry._linesOpen = true;
+      });
+    });
+    (root.unmatched_dependencies || []).forEach(dep => { dep._uiId = nextUiId(); });
+  }
+
+  function onLoaded() {
+    dropzone.style.display = "none";
+    app.classList.add("ready");
+    document.getElementById("fileMeta").textContent =
+      state.filename + " · " + (state.root.product_company_id || "?") + " · " + (state.root.ramo || "?");
+    document.getElementById("expandAllBtn").disabled = false;
+    document.getElementById("collapseAllBtn").disabled = false;
+    document.getElementById("exportBtn").disabled = false;
+    renderAll();
+  }
+
+  // ---------------------------------------------------------------
+  // Utilidades de estado / edicion
+  // ---------------------------------------------------------------
+  function stripInternal(obj) {
+    const clone = cloneDeep(obj);
+    (function strip(o) {
+      if (Array.isArray(o)) { o.forEach(strip); return; }
+      if (o && typeof o === "object") {
+        delete o._uiId;
+        delete o._linesOpen;
+        Object.values(o).forEach(strip);
+      }
+    })(clone);
+    return clone;
+  }
+
+  function ensureEditedSnapshot(entry) {
+    const action = entry.human_decision && entry.human_decision.action;
+    if (action === "added" || action === "removed" || action === "edited") return;
+    const original = stripInternal(entry);
+    delete original.human_decision;
+    entry.human_decision = { action: "edited", original, timestamp: nowIso() };
+  }
+
+  function effectiveStatus(entry) {
+    const action = entry.human_decision && entry.human_decision.action;
+    if (action === "removed") return "removed";
+    if (action === "added") return "added";
+    if (action === "edited") return "edited";
+    if (entry.review_status === "needs_review") return "needs_review";
+    return "auto_approved";
+  }
+
+  const STATUS_LABEL = {
+    auto_approved: "Auto-aprobado",
+    needs_review: "Necesita revision",
+    edited: "Editado",
+    added: "Anadido",
+    removed: "Eliminado"
+  };
+
+  function statusChip(status) {
+    return `<span class="chip status-${status}">${STATUS_LABEL[status] || status}</span>`;
+  }
+
+  // ---------------------------------------------------------------
+  // Render: barra de progreso + resumen
+  // ---------------------------------------------------------------
+  function computeProgress(root) {
+    let total = 0, pendingReview = 0, edited = 0, added = 0, removed = 0;
+    (root.covers || []).forEach(cover => {
+      (cover.entries || []).forEach(entry => {
+        total++;
+        const action = entry.human_decision && entry.human_decision.action;
+        if (action === "edited") edited++;
+        else if (action === "added") added++;
+        else if (action === "removed") removed++;
+        if (entry.review_status === "needs_review" && !action) pendingReview++;
+      });
+    });
+    const unmatched = root.unmatched_dependencies || [];
+    const unmatchedAnnotated = unmatched.filter(d => d.human_annotation && d.human_annotation.status).length;
+    return { total, pendingReview, edited, added, removed, unmatchedTotal: unmatched.length, unmatchedAnnotated };
+  }
+
+  function renderProgress() {
+    const p = computeProgress(state.root);
+    document.getElementById("progressBar").innerHTML = `
+      <span><b>${p.total}</b> entries totales</span>
+      <span style="color:var(--amber)"><b>${p.pendingReview}</b> pendientes de revision</span>
+      <span style="color:var(--blue)"><b>${p.edited}</b> editadas</span>
+      <span style="color:var(--purple)"><b>${p.added}</b> anadidas</span>
+      <span style="color:var(--gray)"><b>${p.removed}</b> eliminadas</span>
+      <span><b>${p.unmatchedAnnotated}</b>/${p.unmatchedTotal} dependencias sin match anotadas</span>
+    `;
+  }
+
+  function renderTopSummary() {
+    const r = state.root;
+    const s = r.summary || {};
+    document.getElementById("topSummary").innerHTML = `
+      <b>${r.product_company_id || ""}</b> &middot; ramo <b>${r.ramo || ""}</b> &middot;
+      excel origen: ${r.source_excel || "?"} &middot;
+      resumen IA: ${s.total_covers ?? "?"} covers, ${s.total_entries ?? "?"} entries,
+      ${s.entries_needing_review ?? "?"} needs_review al generar
+    `;
+  }
+
+  // ---------------------------------------------------------------
+  // Render: sidebar
+  // ---------------------------------------------------------------
+  function statusDotColor(status) {
+    return { auto_approved: "var(--green)", needs_review: "var(--amber)", edited: "var(--blue)",
+      added: "var(--purple)", removed: "var(--gray)" }[status] || "var(--gray)";
+  }
+
+  function coverAggregateStatus(cover) {
+    let worst = "auto_approved";
+    const rank = { auto_approved: 0, added: 1, edited: 1, removed: 1, needs_review: 2 };
+    (cover.entries || []).forEach(e => {
+      const s = effectiveStatus(e);
+      if (rank[s] > rank[worst]) worst = s;
+    });
+    return worst;
+  }
+
+  function renderSidebar() {
+    const sidebar = document.getElementById("sidebar");
+    const rows = (state.root.covers || []).map(cover => {
+      const status = coverAggregateStatus(cover);
+      const pending = (cover.entries || []).filter(e => e.review_status === "needs_review" &&
+        !(e.human_decision && e.human_decision.action)).length;
+      return `<div class="cover-nav-item" data-goto="${cover._uiId}">
+        <span class="dot" style="background:${statusDotColor(status)}"></span>
+        <span class="name">#${cover.cover_id} ${escapeHtml(cover.cover_name || "")}</span>
+        <span class="count">${pending ? pending + " pend." : (cover.entries || []).length}</span>
+      </div>`;
+    }).join("");
+    sidebar.innerHTML = `<div class="side-section"><h2>Coberturas</h2>${rows}</div>`;
+    sidebar.querySelectorAll(".cover-nav-item").forEach(el => {
+      el.addEventListener("click", () => {
+        setActiveTab("covers");
+        const cover = findCoverByUiId(el.getAttribute("data-goto"));
+        const card = document.querySelector(`[data-cover-card="${cover._uiId}"]`);
+        if (card) {
+          card.classList.add("open");
+          renderCoverBody(cover);
+          card.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      });
+    });
+  }
+
+  function findCoverByUiId(uiId) {
+    return (state.root.covers || []).find(c => c._uiId === uiId);
+  }
+
+  // ---------------------------------------------------------------
+  // Render: tabs
+  // ---------------------------------------------------------------
+  function setActiveTab(tab) {
+    state.activeTab = tab;
+    document.getElementById("tabCoversBtn").classList.toggle("active", tab === "covers");
+    document.getElementById("tabUnmatchedBtn").classList.toggle("active", tab === "unmatched");
+    document.getElementById("covers-panel").classList.toggle("hidden", tab !== "covers");
+    document.getElementById("unmatched-panel").classList.toggle("hidden", tab !== "unmatched");
+  }
+  document.getElementById("tabCoversBtn").addEventListener("click", () => setActiveTab("covers"));
+  document.getElementById("tabUnmatchedBtn").addEventListener("click", () => setActiveTab("unmatched"));
+
+  // ---------------------------------------------------------------
+  // Render: covers panel (colapsable, render perezoso del cuerpo)
+  // ---------------------------------------------------------------
+  function renderAll() {
+    renderTopSummary();
+    renderProgress();
+    renderSidebar();
+    renderCoversPanel();
+    renderUnmatchedPanel();
+  }
+
+  function renderCoversPanel() {
+    const panel = document.getElementById("covers-panel");
+    panel.innerHTML = "";
+    (state.root.covers || []).forEach(cover => {
+      const card = document.createElement("div");
+      card.className = "cover-card";
+      card.setAttribute("data-cover-card", cover._uiId);
+      const status = coverAggregateStatus(cover);
+      card.innerHTML = `
+        <div class="cover-head">
+          <span class="caret">&#9656;</span>
+          <span class="title">#${cover.cover_id} <span class="cid">${escapeHtml(cover.cover_name || "")}</span></span>
+          ${statusChip(status)}
+          <span style="color:var(--text-dim); font-size:11px;">${(cover.entries || []).length} entries</span>
+        </div>
+        <div class="cover-body"></div>
+      `;
+      card.querySelector(".cover-head").addEventListener("click", () => {
+        card.classList.toggle("open");
+        if (card.classList.contains("open")) renderCoverBody(cover);
+      });
+      panel.appendChild(card);
+    });
+  }
+
+  function renderCoverBody(cover) {
+    const card = document.querySelector(`[data-cover-card="${cover._uiId}"]`);
+    const body = card.querySelector(".cover-body");
+    const onlyPending = body.getAttribute("data-only-pending") === "1";
+
+    let html = `
+      <div class="cover-toolbar">
+        <div class="field-row" style="margin:0;">
+          <label>Override HIRING_STATUS</label>
+          <input type="text" data-cover-override list="hiringStatusValues"
+            value="${escapeHtml(cover.cover_override_hiring_status_expr || "")}"
+            placeholder="(NULL, agregado de bloques)">
+        </div>
+        <label><input type="checkbox" data-only-pending ${onlyPending ? "checked" : ""}> Solo pendientes de revision</label>
+        <div class="spacer"></div>
+        <button class="small" data-add-entry>+ Anadir entry</button>
+      </div>
+      ${(cover.review_reasons || []).length ? `<div class="reasons">Cobertura: ${cover.review_reasons.map(escapeHtml).join("; ")}</div>` : ""}
+      <div class="entries-list"></div>
+      <div class="add-entry-slot"></div>
+    `;
+    body.innerHTML = html;
+
+    body.querySelector("[data-cover-override]").addEventListener("input", (e) => {
+      cover.cover_override_hiring_status_expr = e.target.value || null;
+      renderProgress();
+    });
+    body.querySelector("[data-only-pending]").addEventListener("change", (e) => {
+      body.setAttribute("data-only-pending", e.target.checked ? "1" : "0");
+      renderEntriesList(cover, body);
+    });
+    body.querySelector("[data-add-entry]").addEventListener("click", () => showAddEntryForm(cover, body));
+
+    renderEntriesList(cover, body);
+  }
+
+  function renderEntriesList(cover, body) {
+    const onlyPending = body.getAttribute("data-only-pending") === "1";
+    const list = body.querySelector(".entries-list");
+    list.innerHTML = "";
+    (cover.entries || []).forEach((entry, idx) => {
+      const status = effectiveStatus(entry);
+      if (onlyPending && status !== "needs_review") return;
+      list.appendChild(renderEntryCard(cover, entry, idx));
+    });
+    if (!list.children.length) {
+      list.innerHTML = `<div style="color:var(--text-dim); font-size:12.5px; padding:8px 0;">Sin entries que mostrar con el filtro actual.</div>`;
+    }
+  }
+
+  function refreshEntryBadge(entry) {
+    const el = document.querySelector(`[data-entry-badge="${entry._uiId}"]`);
+    if (el) {
+      const status = effectiveStatus(entry);
+      el.outerHTML = statusChip(status).replace("<span", `<span data-entry-badge="${entry._uiId}"`);
+    }
+    ensureOriginalView(entry);
+  }
+
+  function ensureOriginalView(entry) {
+    const card = document.querySelector(`[data-entry-card="${entry._uiId}"]`);
+    if (!card) return;
+    const existing = card.querySelector("details.original-view");
+    if (entry.human_decision && entry.human_decision.original) {
+      if (!existing) {
+        const det = document.createElement("details");
+        det.className = "original-view";
+        det.innerHTML = `<summary>Ver original generado por IA</summary><pre>${escapeHtml(JSON.stringify(entry.human_decision.original, null, 2))}</pre>`;
+        card.appendChild(det);
+      } else {
+        existing.querySelector("pre").textContent = JSON.stringify(entry.human_decision.original, null, 2);
+      }
+    } else if (existing) {
+      existing.remove();
+    }
+  }
+
+  function renderEntryCard(cover, entry, idx) {
+    const wrap = document.createElement("div");
+    const status = effectiveStatus(entry);
+    wrap.className = "entry-card" + (status === "removed" ? " is-removed" : "");
+    wrap.setAttribute("data-entry-card", entry._uiId);
+    const disabled = status === "removed" ? "disabled" : "";
+
+    wrap.innerHTML = `
+      <div class="entry-head">
+        <span class="badge-mod">${entry.modality_id ? "modalidad " + escapeHtml(String(entry.modality_id)) : "todas las modalidades"}</span>
+        <span class="badge-mod">${escapeHtml(entry.source || "")}</span>
+        <span data-entry-badge="${entry._uiId}">${statusChip(status)}</span>
+        <span class="grow"></span>
+        ${status === "removed" ? "" : `
+          <button class="small" data-move-entry="-1" title="Subir entry" ${idx === 0 ? "disabled" : ""}>&uarr;</button>
+          <button class="small" data-move-entry="1" title="Bajar entry" ${idx === (cover.entries.length - 1) ? "disabled" : ""}>&darr;</button>
+        `}
+        ${status === "removed"
+          ? `<button class="small" data-restore>Restaurar</button>`
+          : `<button class="small danger" data-remove-entry>Eliminar entry</button>`}
+      </div>
+      ${(entry.review_reasons || []).length ? `<div class="reasons">${entry.review_reasons.map(escapeHtml).join("; ")}</div>` : ""}
+      <div class="field-row">
+        <label>hiring_status_expr</label>
+        <input type="text" data-field="hiring_status_expr" list="hiringStatusValues" ${disabled}
+          value="${escapeHtml(entry.hiring_status_expr || "")}" placeholder="(NULL, auto)">
+      </div>
+      <div class="field-row">
+        <label>filter_expr</label>
+        <textarea data-field="filter_expr" ${disabled} placeholder="(sin filtro)">${escapeHtml(entry.filter_expr || "")}</textarea>
+      </div>
+      <div class="field-row">
+        <label>value_expr</label>
+        <textarea data-field="value_expr" ${disabled} placeholder="(sin valor)">${escapeHtml(entry.value_expr || "")}</textarea>
+      </div>
+      <div class="lines-box" data-lines-box></div>
+      ${status !== "added" && entry.human_decision && entry.human_decision.original ? `
+        <details class="original-view">
+          <summary>Ver original generado por IA</summary>
+          <pre>${escapeHtml(JSON.stringify(entry.human_decision.original, null, 2))}</pre>
+        </details>` : ""}
+    `;
+
+    if (status !== "removed") {
+      wrap.querySelector('[data-field="hiring_status_expr"]').addEventListener("input", (e) => {
+        ensureEditedSnapshot(entry);
+        entry.hiring_status_expr = e.target.value || null;
+        refreshEntryBadge(entry);
+        renderProgress();
+      });
+      wrap.querySelector('[data-field="filter_expr"]').addEventListener("input", (e) => {
+        ensureEditedSnapshot(entry);
+        entry.filter_expr = e.target.value || null;
+        refreshEntryBadge(entry);
+        renderProgress();
+      });
+      wrap.querySelector('[data-field="value_expr"]').addEventListener("input", (e) => {
+        ensureEditedSnapshot(entry);
+        entry.value_expr = e.target.value || null;
+        refreshEntryBadge(entry);
+        renderProgress();
+      });
+      wrap.querySelector("[data-remove-entry]").addEventListener("click", () => {
+        removeEntry(cover, entry);
+      });
+      wrap.querySelectorAll("[data-move-entry]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          moveEntry(cover, idx, Number(btn.getAttribute("data-move-entry")));
+        });
+      });
+    } else {
+      wrap.querySelector("[data-restore]").addEventListener("click", () => {
+        restoreEntry(cover, entry);
+      });
+    }
+
+    renderLinesBox(wrap.querySelector("[data-lines-box]"), cover, entry, status === "removed");
+    return wrap;
+  }
+
+  function renderLinesBox(box, cover, entry, disabled) {
+    const lines = entry.lines || [];
+    let html = `<div style="font-size:11px; color:var(--text-dim); margin-bottom:4px;">LINES (${lines.length})</div>`;
+    lines.forEach((line, i) => {
+      html += `
+        <div class="line-row" data-line-row="${i}">
+          <span class="idx">${i + 1}</span>
+          <textarea class="lf" data-line-field="filter_expr" placeholder="(sin filtro)" ${disabled ? "disabled" : ""}>${escapeHtml(line.filter_expr || "")}</textarea>
+          <textarea class="lt" data-line-field="text_expr" placeholder="(texto)" ${disabled ? "disabled" : ""}>${escapeHtml(line.text_expr || "")}</textarea>
+          ${disabled ? "" : `
+            <button class="small" data-move-line="-1" title="Subir linea" ${i === 0 ? "disabled" : ""}>&uarr;</button>
+            <button class="small" data-move-line="1" title="Bajar linea" ${i === lines.length - 1 ? "disabled" : ""}>&darr;</button>
+            <button class="small danger" data-remove-line="${i}">&times;</button>
+          `}
+        </div>
+      `;
+    });
+    if (!disabled) html += `<button class="small" data-add-line style="margin-top:6px;">+ Anadir linea</button>`;
+    box.innerHTML = html;
+    if (disabled) return;
+
+    box.querySelectorAll("[data-line-row]").forEach(row => {
+      const i = Number(row.getAttribute("data-line-row"));
+      row.querySelector('[data-line-field="filter_expr"]').addEventListener("input", (e) => {
+        ensureEditedSnapshot(entry);
+        entry.lines[i].filter_expr = e.target.value || null;
+        refreshEntryBadge(entry);
+        renderProgress();
+      });
+      const textField = row.querySelector('[data-line-field="text_expr"]');
+      textField.addEventListener("input", (e) => {
+        ensureEditedSnapshot(entry);
+        entry.lines[i].text_expr = e.target.value || null;
+        refreshEntryBadge(entry);
+        renderProgress();
+      });
+      textField.addEventListener("blur", (e) => {
+        const normalized = normalizeTextExpr(e.target.value);
+        if (normalized !== e.target.value) {
+          e.target.value = normalized;
+          entry.lines[i].text_expr = normalized;
+        }
+      });
+      const removeBtn = row.querySelector("[data-remove-line]");
+      if (removeBtn) removeBtn.addEventListener("click", () => {
+        ensureEditedSnapshot(entry);
+        entry.lines.splice(i, 1);
+        refreshEntryBadge(entry);
+        renderLinesBox(box, cover, entry, false);
+        renderProgress();
+      });
+      row.querySelectorAll("[data-move-line]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          moveLine(box, cover, entry, i, Number(btn.getAttribute("data-move-line")));
+        });
+      });
+    });
+    const addBtn = box.querySelector("[data-add-line]");
+    if (addBtn) addBtn.addEventListener("click", () => {
+      ensureEditedSnapshot(entry);
+      entry.lines.push({ filter_expr: null, text_expr: "''" });
+      refreshEntryBadge(entry);
+      renderLinesBox(box, cover, entry, false);
+      renderProgress();
+    });
+  }
+
+  function moveLine(box, cover, entry, index, delta) {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= entry.lines.length) return;
+    ensureEditedSnapshot(entry);
+    const [item] = entry.lines.splice(index, 1);
+    entry.lines.splice(newIndex, 0, item);
+    refreshEntryBadge(entry);
+    renderLinesBox(box, cover, entry, false);
+    renderProgress();
+  }
+
+  function removeEntry(cover, entry) {
+    const hadEditedSnapshot = entry.human_decision && entry.human_decision.action === "edited";
+    const original = hadEditedSnapshot ? entry.human_decision.original : (() => {
+      const o = stripInternal(entry);
+      delete o.human_decision;
+      return o;
+    })();
+    entry.human_decision = { action: "removed", original, timestamp: nowIso() };
+    rerenderCoverAfterListChange(cover);
+  }
+
+  function restoreEntry(cover, entry) {
+    const original = entry.human_decision && entry.human_decision.original;
+    if (original) {
+      Object.assign(entry, cloneDeep(original));
+    }
+    entry.human_decision = null;
+    rerenderCoverAfterListChange(cover);
+  }
+
+  function moveEntry(cover, index, delta) {
+    const newIndex = index + delta;
+    if (newIndex < 0 || newIndex >= cover.entries.length) return;
+    const [item] = cover.entries.splice(index, 1);
+    cover.entries.splice(newIndex, 0, item);
+    rerenderCoverAfterListChange(cover);
+  }
+
+  function rerenderCoverAfterListChange(cover) {
+    renderSidebar();
+    renderProgress();
+    const card = document.querySelector(`[data-cover-card="${cover._uiId}"]`);
+    if (card && card.classList.contains("open")) renderCoverBody(cover);
+  }
+
+  function showAddEntryForm(cover, body) {
+    const slot = body.querySelector(".add-entry-slot");
+    if (slot.querySelector("form")) {
+      slot.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
+    slot.innerHTML = `
+      <form class="add-entry-form">
+        <div class="field-row"><label>modality_id</label><input type="text" name="modality_id" placeholder="(vacio = todas las modalidades)"></div>
+        <div class="field-row"><label>hiring_status_expr</label>
+          <input type="text" name="hiring_status_expr" list="hiringStatusValues" placeholder="(NULL, auto)">
+        </div>
+        <div class="field-row"><label>filter_expr</label><textarea name="filter_expr" placeholder="(sin filtro)"></textarea></div>
+        <div class="field-row"><label>value_expr</label><textarea name="value_expr" placeholder="(sin valor)"></textarea></div>
+        <div class="field-row"><label>primera linea (texto)</label><input type="text" name="first_line" placeholder="Texto de la linea (las comillas se anaden solas)"></div>
+        <div style="margin-top:8px; display:flex; gap:8px;">
+          <button type="submit" class="primary small">Anadir</button>
+          <button type="button" class="small" data-cancel>Cancelar</button>
+        </div>
+      </form>
+    `;
+    slot.querySelector("[data-cancel]").addEventListener("click", () => { slot.innerHTML = ""; });
+    slot.querySelector("form").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const fd = new FormData(e.target);
+      const modalityId = fd.get("modality_id").trim();
+      const firstLine = fd.get("first_line").trim();
+      const entry = {
+        cover_id: cover.cover_id,
+        filter_expr: fd.get("filter_expr").trim() || null,
+        hiring_status_expr: fd.get("hiring_status_expr") || null,
+        value_expr: fd.get("value_expr").trim() || null,
+        modality_id: modalityId || null,
+        source: "human_added",
+        lines: firstLine ? [{ filter_expr: null, text_expr: normalizeTextExpr(firstLine) }] : [],
+        review_status: "human_added",
+        review_reasons: [],
+        human_decision: { action: "added", original: null, timestamp: nowIso() },
+        _uiId: nextUiId()
+      };
+      cover.entries.push(entry);
+      slot.innerHTML = "";
+      rerenderCoverAfterListChange(cover);
+      highlightEntry(entry);
+    });
+    slot.scrollIntoView({ behavior: "smooth", block: "center" });
+    slot.querySelector('[name="modality_id"]').focus();
+  }
+
+  function highlightEntry(entry) {
+    const card = document.querySelector(`[data-entry-card="${entry._uiId}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("just-added");
+    setTimeout(() => card.classList.remove("just-added"), 1600);
+  }
+
+  // ---------------------------------------------------------------
+  // Render: unmatched dependencies
+  // ---------------------------------------------------------------
+  function renderUnmatchedPanel() {
+    const panel = document.getElementById("unmatched-panel");
+    const deps = state.root.unmatched_dependencies || [];
+    if (!deps.length) {
+      panel.innerHTML = `<div style="color:var(--text-dim);">No hay dependencias sin match en esta ejecucion.</div>`;
+      return;
+    }
+    panel.innerHTML = "";
+    deps.forEach(dep => panel.appendChild(renderUnmatchedItem(dep)));
+  }
+
+  function renderUnmatchedItem(dep) {
+    const el = document.createElement("div");
+    el.className = "unmatched-item";
+    const candidates = (dep.candidates || []).slice().sort((a, b) => (b.score || 0) - (a.score || 0)).slice(0, 5);
+    const ann = dep.human_annotation || {};
+    el.innerHTML = `
+      <div class="path">${escapeHtml((dep.coverage_path || []).join(" › "))} &middot; ${escapeHtml(dep.article || "")}</div>
+      <div><b>decision IA:</b> ${escapeHtml(dep.decision || "")} &middot; confianza ${escapeHtml(dep.confidence || "")}</div>
+      <div class="evidence">"${escapeHtml(dep.evidence || "")}"</div>
+      <div style="font-size:12px; color:var(--text-dim);">${escapeHtml(dep.reasoning || "")}</div>
+      ${candidates.length ? `
+        <table>
+          <thead><tr><th>cover_id</th><th>texto</th><th>fuente</th><th>score</th></tr></thead>
+          <tbody>
+            ${candidates.map(c => `<tr><td>${c.cover_id}</td><td>${escapeHtml(c.text || "")}</td><td>${escapeHtml(c.source || "")}</td><td>${(c.score || 0).toFixed(2)}</td></tr>`).join("")}
+          </tbody>
+        </table>` : ""}
+      <div class="annotation-row">
+        <select data-ann-status>
+          <option value="">Sin anotar</option>
+          <option value="confirmado_fuera_de_alcance" ${ann.status === "confirmado_fuera_de_alcance" ? "selected" : ""}>Confirmado: fuera de alcance</option>
+          <option value="marcado_para_seguimiento" ${ann.status === "marcado_para_seguimiento" ? "selected" : ""}>Marcar para seguimiento (posible match perdido)</option>
+        </select>
+        <textarea data-ann-comment placeholder="Comentario (opcional)">${escapeHtml(ann.comment || "")}</textarea>
+      </div>
+    `;
+    const updateAnnotation = () => {
+      const status = el.querySelector("[data-ann-status]").value;
+      const comment = el.querySelector("[data-ann-comment]").value.trim();
+      if (!status && !comment) {
+        delete dep.human_annotation;
+      } else {
+        dep.human_annotation = { status: status || null, comment, timestamp: nowIso() };
+      }
+      renderProgress();
+    };
+    el.querySelector("[data-ann-status]").addEventListener("change", updateAnnotation);
+    el.querySelector("[data-ann-comment]").addEventListener("input", updateAnnotation);
+    return el;
+  }
+
+  // ---------------------------------------------------------------
+  // Expandir / colapsar todo
+  // ---------------------------------------------------------------
+  document.getElementById("expandAllBtn").addEventListener("click", () => {
+    document.querySelectorAll(".cover-card").forEach(card => {
+      card.classList.add("open");
+      const cover = findCoverByUiId(card.getAttribute("data-cover-card"));
+      if (cover) renderCoverBody(cover);
+    });
+  });
+  document.getElementById("collapseAllBtn").addEventListener("click", () => {
+    document.querySelectorAll(".cover-card").forEach(card => card.classList.remove("open"));
+  });
+
+  // ---------------------------------------------------------------
+  // Exportar
+  // ---------------------------------------------------------------
+  document.getElementById("exportBtn").addEventListener("click", () => {
+    const clean = stripInternal(state.root);
+    const progress = computeProgress(state.root);
+    clean.review_progress = {
+      total_entries: progress.total,
+      pending_human_review: progress.pendingReview,
+      edited_entries: progress.edited,
+      added_entries: progress.added,
+      removed_entries: progress.removed,
+      unmatched_dependencies_annotated: progress.unmatchedAnnotated,
+      unmatched_dependencies_total: progress.unmatchedTotal,
+      exported_at: nowIso()
+    };
+    const output = state.wasArrayWrapped ? [clean] : clean;
+    const blob = new Blob([JSON.stringify(output, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const base = state.filename.replace(/\.json$/i, "");
+    a.href = url;
+    a.download = base + "_reviewed.json";
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  });
+
+  // ---------------------------------------------------------------
+  // Utils
+  // ---------------------------------------------------------------
+  function escapeHtml(str) {
+    return String(str == null ? "" : str)
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;").replace(/'/g, "&#39;");
+  }
+})();
+</script>
+</body>
+</html>
