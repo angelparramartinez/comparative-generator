@@ -72,7 +72,12 @@ function buildIsBoldAt(textFormatRuns, fallbackBold) {
 // 3.000€" sin negrita, ambos en la MISMA linea). Clasificar por linea
 // completa (mirando solo su primer caracter, como hacia la version
 // anterior) fusionaba estos casos con la linea siguiente en un unico bloque
-// con los textos concatenados.
+// con los textos concatenados. Cada segmento lleva ademas
+// `startsNewPhysicalLine`: si arranca justo despues de un "\n" real (o al
+// principio de la celda) frente a si continua, sin salto de linea, el
+// segmento de negrita distinta anterior -- usado en analyzeLines para
+// distinguir "linea fisica nueva" de "resto de la misma linea con formato
+// distinto" (ver `continuesPreviousLine`).
 function buildCharSegments(text, isBoldAt) {
   const segments = [];
   if (!text) return segments;
@@ -81,7 +86,11 @@ function buildCharSegments(text, isBoldAt) {
   for (let i = 1; i <= text.length; i++) {
     const bold = i < text.length ? isBoldAt(i) : !currentBold; // fuerza el flush final
     if (bold !== currentBold || i === text.length) {
-      segments.push({ text: text.slice(start, i), bold: currentBold });
+      segments.push({
+        text: text.slice(start, i),
+        bold: currentBold,
+        startsNewPhysicalLine: start === 0 || text[start - 1] === "\n"
+      });
       start = i;
       currentBold = bold;
     }
@@ -100,17 +109,27 @@ function buildCharSegments(text, isBoldAt) {
 // precision de caracter -- no hace falta ninguna heuristica adicional para
 // el caso de espacios sobrantes antes de un "\n" (el propio split ya deja
 // ese fragmento vacio, descartado por el filtro de lineas en blanco).
+//
+// `continuesPreviousLine`: true solo para el PRIMER fragmento de un segmento
+// que no arranca justo despues de un "\n" real -- es decir, cuando un cambio
+// de negrita ocurre A MITAD de una linea fisica (ej. cover 21 "Restauración
+// Estética Continente" negrita + " - 3.000€" sin negrita, misma linea). Se
+// usa en parseModalityCellBlocks para reunir de nuevo ese fragmento con la
+// linea anterior (la cabecera) en vez de tratarlo como una linea de cuerpo
+// independiente -- sin alterar la deteccion de bloques/runs, que sigue
+// operando sobre lineas separadas como antes.
 function analyzeLines(formattedValue, textFormatRuns, effectiveFormatBold) {
   const isBoldAt = buildIsBoldAt(textFormatRuns, effectiveFormatBold);
   const segments = buildCharSegments(formattedValue || "", isBoldAt);
 
   const result = [];
   for (const segment of segments) {
-    for (const raw of segment.text.split("\n")) {
+    segment.text.split("\n").forEach((raw, pieceIdx) => {
       const trimmed = raw.trim();
-      if (trimmed.length === 0) continue;
-      result.push({ text: trimmed, isDash: /^-/.test(trimmed), bold: segment.bold });
-    }
+      if (trimmed.length === 0) return;
+      const continuesPreviousLine = pieceIdx === 0 && !segment.startsNewPhysicalLine;
+      result.push({ text: trimmed, isDash: /^-/.test(trimmed), bold: segment.bold, continuesPreviousLine });
+    });
   }
   return result;
 }
@@ -162,6 +181,22 @@ function splitBodyRun(run) {
     }
   }
   return { mode: "dash-split", blocks };
+}
+
+// Si la primera linea de un bodyRun es en realidad el resto (sin negrita)
+// de la MISMA linea fisica que la cabecera en negrita (continuesPreviousLine,
+// ver analyzeLines), la reune con la cabecera en vez de dejarla como una
+// linea de cuerpo aparte -- caso real cover 21/104: "Restauración Estética
+// Continente" (negrita) + " - 3.000€" (sin negrita), misma linea -> una
+// unica linea "Restauración Estética Continente - 3.000€". Solo afecta a la
+// PRIMERA linea del bodyRun (el resto, si lo hay, son lineas fisicas reales
+// -- separadas por un "\n" real -- y siguen su deteccion de guion/mixto
+// habitual sin tocar).
+function mergeLineContinuationIntoHeader(headerText, bodyLines) {
+  if (bodyLines.length > 0 && bodyLines[0].continuesPreviousLine) {
+    return { headerText: `${headerText} ${bodyLines[0].text}`, lines: bodyLines.slice(1) };
+  }
+  return { headerText, lines: bodyLines };
 }
 
 function expandBodyAsSiblingBlocks(run) {
@@ -222,11 +257,12 @@ function parseModalityCellBlocks(cell) {
       continue;
     }
 
-    const split = splitBodyRun(bodyRun);
+    const merged = mergeLineContinuationIntoHeader(boldInfo.text, bodyRun.lines);
+    const split = splitBodyRun({ lines: merged.lines });
     if (split.mode === "flat") {
-      blocks.push({ kind: "label", headerText: boldInfo.text, lines: split.lines, needsReview: boldInfo.needsReview, reviewReason: boldInfo.reviewReason });
+      blocks.push({ kind: "label", headerText: merged.headerText, lines: split.lines, needsReview: boldInfo.needsReview, reviewReason: boldInfo.reviewReason });
     } else {
-      blocks.push({ kind: "label", headerText: boldInfo.text, lines: [], needsReview: true, reviewReason: "mixed_body_under_label" });
+      blocks.push({ kind: "label", headerText: merged.headerText, lines: [], needsReview: true, reviewReason: "mixed_body_under_label" });
       blocks.push(...split.blocks.map(b => ({
         kind: "dash",
         headerText: b.headerText,

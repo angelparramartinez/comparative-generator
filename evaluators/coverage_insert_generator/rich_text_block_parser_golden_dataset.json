@@ -285,7 +285,7 @@
     },
     {
       "id": "RTB-006",
-      "description": "Bug real 22/07 (ejecucion 250): COVER_ID 21 \"Restauración Estética\", modalidad 5572. La negrita NO ocupa la linea entera -- \"Restauración Estética Continente\" (negrita) termina A MITAD de la primera linea, seguido de \"- 3.000€\" (sin negrita) en esa MISMA linea; luego \"Restauración Estética Mobiliario\" (negrita) en la segunda linea + \"- 1.500€\" (sin negrita). Clasificar por linea completa fusionaba ambos bloques en uno solo con los textos concatenados -- debe dar 2 bloques \"label\" separados, cada uno con su propia linea de importe.",
+      "description": "Bug real 22/07 (ejecucion 250) + fix 23/07: COVER_ID 21 \"Restauración Estética\", modalidad 5572. La negrita NO ocupa la linea entera -- \"Restauración Estética Continente\" (negrita) termina A MITAD de la primera linea, seguido de \"- 3.000€\" (sin negrita) en esa MISMA linea; luego \"Restauración Estética Mobiliario\" (negrita) en la segunda linea + \"- 1.500€\" (sin negrita). Debe dar 2 bloques \"label\" separados (nunca fusionados entre si) y, dentro de cada uno, la cabecera y su importe reunidos en una unica linea (misma linea fisica en el Excel, sin salto de linea real entre ambos).",
       "cell": {
         "formattedValue": "Restauración Estética Continente  - 3.000€\nRestauración Estética Mobiliario  - 1.500€",
         "effectiveFormat": {
@@ -319,19 +319,15 @@
         "blocks": [
           {
             "kind": "label",
-            "headerText": "Restauración Estética Continente",
-            "lines": [
-              "- 3.000€"
-            ],
+            "headerText": "Restauración Estética Continente - 3.000€",
+            "lines": [],
             "needsReview": false,
             "reviewReason": null
           },
           {
             "kind": "label",
-            "headerText": "Restauración Estética Mobiliario",
-            "lines": [
-              "- 1.500€"
-            ],
+            "headerText": "Restauración Estética Mobiliario - 1.500€",
+            "lines": [],
             "needsReview": false,
             "reviewReason": null
           }
@@ -340,7 +336,7 @@
     },
     {
       "id": "RTB-007",
-      "description": "Bug real 22/07 (ejecucion 250): COVER_ID 104 \"Otras garantías\", modalidad 5571. Mismo patron que RTB-006 (negrita termina a mitad de linea: \"Ruina total por obras de terceros -\" / \"100% (Continente y Contenido)\"), seguido de un SEGUNDO bloque en negrita completo (\"Garantía de Pérdidas Consecuenciales\") cuyo cuerpo es MIXTO (dash + sub-lineas \"o \") -- caso real del patron \"label con cuerpo mixto\" que antes solo estaba previsto como needsReview, nunca visto con datos reales.",
+      "description": "Bug real 22/07 (ejecucion 250) + fix 23/07: COVER_ID 104 \"Otras garantías\", modalidad 5571. Mismo patron que RTB-006 (negrita termina a mitad de linea: \"Ruina total por obras de terceros -\" / \"100% (Continente y Contenido)\", reunidas en una unica linea), seguido de un SEGUNDO bloque en negrita completo (\"Garantía de Pérdidas Consecuenciales\", en su propia linea fisica -- sin continuacion, no se fusiona con nada) cuyo cuerpo es MIXTO (dash + sub-lineas \"o \") -- caso real del patron \"label con cuerpo mixto\" que antes solo estaba previsto como needsReview, nunca visto con datos reales.",
       "cell": {
         "formattedValue": "Ruina total por obras de terceros - 100% (Continente y Contenido)                                          \nGarantía de Pérdidas Consecuenciales\n- Demolición, desescombro, salvamento, reconstrucción y otros gastos derivados de un siniestro - 25% (Continente y Contenido)\n- Inhabitabilidad temporal por:\n     o Alquiler de vivienda provisional - 25% (máx. 2 años)\n     o Mudanza y guardamuebles - 10% (máx. 6 meses)\n     o Gastos de hotel y restaurante - 10% (máx. 3.000 €)",
         "effectiveFormat": {
@@ -374,10 +370,8 @@
         "blocks": [
           {
             "kind": "label",
-            "headerText": "Ruina total por obras de terceros -",
-            "lines": [
-              "100% (Continente y Contenido)"
-            ],
+            "headerText": "Ruina total por obras de terceros - 100% (Continente y Contenido)",
+            "lines": [],
             "needsReview": false,
             "reviewReason": null
           },
