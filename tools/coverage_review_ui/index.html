@@ -177,6 +177,12 @@
 </head>
 <body>
 
+<datalist id="hiringStatusValues">
+  <option value="INCLUDED">
+  <option value="NOT_INCLUDED">
+  <option value="OPTIONAL">
+</datalist>
+
 <header>
   <h1>Revisión de comparativa de coberturas</h1>
   <span class="meta" id="fileMeta"></span>
@@ -230,8 +236,6 @@
     uiIdCounter: 0,
     activeTab: "covers"
   };
-
-  const HIRING_STATUS_VALUES = ["INCLUDED", "NOT_INCLUDED", "OPTIONAL"];
 
   function nowIso() { return new Date().toISOString(); }
 
@@ -518,15 +522,13 @@
     const body = card.querySelector(".cover-body");
     const onlyPending = body.getAttribute("data-only-pending") === "1";
 
-    const overrideOptions = ["", ...HIRING_STATUS_VALUES].map(v =>
-      `<option value="${v}" ${cover.cover_override_hiring_status_expr === (v || null) ? "selected" : ""}>${v || "(NULL, agregado de bloques)"}</option>`
-    ).join("");
-
     let html = `
       <div class="cover-toolbar">
         <div class="field-row" style="margin:0;">
           <label>Override HIRING_STATUS</label>
-          <select data-cover-override>${overrideOptions}</select>
+          <input type="text" data-cover-override list="hiringStatusValues"
+            value="${escapeHtml(cover.cover_override_hiring_status_expr || "")}"
+            placeholder="(NULL, agregado de bloques)">
         </div>
         <label><input type="checkbox" data-only-pending ${onlyPending ? "checked" : ""}> Solo pendientes de revision</label>
         <div class="spacer"></div>
@@ -538,7 +540,7 @@
     `;
     body.innerHTML = html;
 
-    body.querySelector("[data-cover-override]").addEventListener("change", (e) => {
+    body.querySelector("[data-cover-override]").addEventListener("input", (e) => {
       cover.cover_override_hiring_status_expr = e.target.value || null;
       renderProgress();
     });
@@ -599,10 +601,6 @@
     wrap.setAttribute("data-entry-card", entry._uiId);
     const disabled = status === "removed" ? "disabled" : "";
 
-    const hiringOptions = ["", ...HIRING_STATUS_VALUES].map(v =>
-      `<option value="${v}" ${(entry.hiring_status_expr || "") === v ? "selected" : ""}>${v || "(auto)"}</option>`
-    ).join("");
-
     wrap.innerHTML = `
       <div class="entry-head">
         <span class="badge-mod">${entry.modality_id ? "modalidad " + escapeHtml(String(entry.modality_id)) : "todas las modalidades"}</span>
@@ -616,7 +614,8 @@
       ${(entry.review_reasons || []).length ? `<div class="reasons">${entry.review_reasons.map(escapeHtml).join("; ")}</div>` : ""}
       <div class="field-row">
         <label>hiring_status_expr</label>
-        <select data-field="hiring_status_expr" ${disabled}>${hiringOptions}</select>
+        <input type="text" data-field="hiring_status_expr" list="hiringStatusValues" ${disabled}
+          value="${escapeHtml(entry.hiring_status_expr || "")}" placeholder="(NULL, auto)">
       </div>
       <div class="field-row">
         <label>filter_expr</label>
@@ -635,7 +634,7 @@
     `;
 
     if (status !== "removed") {
-      wrap.querySelector('[data-field="hiring_status_expr"]').addEventListener("change", (e) => {
+      wrap.querySelector('[data-field="hiring_status_expr"]').addEventListener("input", (e) => {
         ensureEditedSnapshot(entry);
         entry.hiring_status_expr = e.target.value || null;
         refreshEntryBadge(entry);
@@ -761,10 +760,7 @@
       <form class="add-entry-form">
         <div class="field-row"><label>modality_id</label><input type="text" name="modality_id" placeholder="(vacio = todas las modalidades)"></div>
         <div class="field-row"><label>hiring_status_expr</label>
-          <select name="hiring_status_expr">
-            <option value="">(auto)</option>
-            ${HIRING_STATUS_VALUES.map(v => `<option value="${v}">${v}</option>`).join("")}
-          </select>
+          <input type="text" name="hiring_status_expr" list="hiringStatusValues" placeholder="(NULL, auto)">
         </div>
         <div class="field-row"><label>filter_expr</label><textarea name="filter_expr" placeholder="(sin filtro)"></textarea></div>
         <div class="field-row"><label>value_expr</label><textarea name="value_expr" placeholder="(sin valor)"></textarea></div>
