@@ -242,6 +242,15 @@
 
   function nextUiId() { return "u" + (state.uiIdCounter++); }
 
+  // Misma convencion que spelStringLiteral() en generator.js: los text_expr
+  // reales son siempre un literal de cadena SPEL entre comillas simples.
+  function normalizeTextExpr(raw) {
+    const trimmed = raw == null ? "" : String(raw).trim();
+    if (!trimmed) return "''";
+    if (trimmed.startsWith("'") && trimmed.endsWith("'") && trimmed.length >= 2) return trimmed;
+    return "'" + trimmed.replace(/'/g, "\\'") + "'";
+  }
+
   // ---------------------------------------------------------------
   // Carga de fichero
   // ---------------------------------------------------------------
@@ -682,11 +691,19 @@
         refreshEntryBadge(entry);
         renderProgress();
       });
-      row.querySelector('[data-line-field="text_expr"]').addEventListener("input", (e) => {
+      const textField = row.querySelector('[data-line-field="text_expr"]');
+      textField.addEventListener("input", (e) => {
         ensureEditedSnapshot(entry);
         entry.lines[i].text_expr = e.target.value || null;
         refreshEntryBadge(entry);
         renderProgress();
+      });
+      textField.addEventListener("blur", (e) => {
+        const normalized = normalizeTextExpr(e.target.value);
+        if (normalized !== e.target.value) {
+          e.target.value = normalized;
+          entry.lines[i].text_expr = normalized;
+        }
       });
       const removeBtn = row.querySelector("[data-remove-line]");
       if (removeBtn) removeBtn.addEventListener("click", () => {
@@ -751,7 +768,7 @@
         </div>
         <div class="field-row"><label>filter_expr</label><textarea name="filter_expr" placeholder="(sin filtro)"></textarea></div>
         <div class="field-row"><label>value_expr</label><textarea name="value_expr" placeholder="(sin valor)"></textarea></div>
-        <div class="field-row"><label>primera linea (texto)</label><input type="text" name="first_line" placeholder="'Texto de la linea'"></div>
+        <div class="field-row"><label>primera linea (texto)</label><input type="text" name="first_line" placeholder="Texto de la linea (las comillas se anaden solas)"></div>
         <div style="margin-top:8px; display:flex; gap:8px;">
           <button type="submit" class="primary small">Anadir</button>
           <button type="button" class="small" data-cancel>Cancelar</button>
@@ -771,7 +788,7 @@
         value_expr: fd.get("value_expr").trim() || null,
         modality_id: modalityId || null,
         source: "human_added",
-        lines: firstLine ? [{ filter_expr: null, text_expr: firstLine }] : [],
+        lines: firstLine ? [{ filter_expr: null, text_expr: normalizeTextExpr(firstLine) }] : [],
         review_status: "human_added",
         review_reasons: [],
         human_decision: { action: "added", original: null, timestamp: nowIso() },
