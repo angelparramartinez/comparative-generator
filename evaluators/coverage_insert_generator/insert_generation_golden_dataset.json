@@ -1,0 +1,347 @@
+{
+  "version": "1.0",
+  "dataset_name": "insert_generation",
+  "description": "Casos para insert_generation.js (Trigger B, workflow n8n 'coverage insert sql generation.json', nuevo 23/07). Cover 17 'Incendio' es un fixture real (coverage_insert_draft_235_2026-07-23T10-00-41-633Z.json, ejecucion real tras los fixes de rich-text/matching/housingRegime); las coberturas 'sinteticas' (cover_id 900/901) usan sintaxis SPEL real ya vista en el proyecto pero con datos inventados, solo para ejercitar la regla de condicion compartida (generator.computeCoverOverride) tras un removed/edited/added humano -- caso que no existe todavia en ninguna ejecucion real. Todos los expected_* de este fichero se verificaron ejecutando insert_generation.js directamente (node -e) antes de escribirlos aqui, no derivados a mano -- evita errores de escapado SQL (sqlLiteral escapa comillas simples con backslash, las dobles de insurance[\"risk\"] NO se escapan).",
+  "schema_notes": "human_decision, human_annotation y review_progress siguen el esquema real confirmado por el usuario 23/07 (mini-app de revision, otra sesion): human_decision = {action: edited|added|removed, original, timestamp}, ausente/null si la entry no se toco. Los expected_sql_contains/expected_sql_not_contains usan substrings SIN comillas simples/dobles alrededor para no depender del escapado exacto de sqlLiteral (ya validado por separado en generator_golden_dataset.json).",
+  "unwrap_cases": [
+    {
+      "id": "UG-001",
+      "description": "Array-wrapping tipico (Convert to File de n8n serializa TODOS los items, incluso 1 solo, como array) -- debe desenvolver al objeto.",
+      "raw": [{ "product_company_id": 235, "covers": [] }],
+      "expected": { "product_company_id": 235, "covers": [] }
+    },
+    {
+      "id": "UG-002",
+      "description": "Objeto suelto sin array-wrapping -- debe devolverse tal cual, sin fallar.",
+      "raw": { "product_company_id": 235, "covers": [] },
+      "expected": { "product_company_id": 235, "covers": [] }
+    }
+  ],
+  "entry_shape_cases": [
+    {
+      "id": "ES-001",
+      "description": "Entry valida (misma forma que genera generator.buildEntriesForCover).",
+      "entry": {
+        "filter_expr": null,
+        "hiring_status_expr": "INCLUDED",
+        "value_expr": null,
+        "modality_id": "5571",
+        "lines": [{ "filter_expr": null, "text_expr": "'Robo de continente y daños - 100%'" }]
+      },
+      "expected_valid": true,
+      "expected_error_substrings": []
+    },
+    {
+      "id": "ES-002",
+      "description": "Entry anadida a mano en la mini-app sin hiring_status_expr -- guardrail nuevo, no existia riesgo de esto con entries generadas por IA.",
+      "entry": {
+        "filter_expr": null,
+        "hiring_status_expr": "",
+        "value_expr": null,
+        "modality_id": "5571",
+        "lines": [{ "filter_expr": null, "text_expr": "'Cobertura anadida a mano'" }]
+      },
+      "expected_valid": false,
+      "expected_error_substrings": ["hiring_status_expr"]
+    },
+    {
+      "id": "ES-003",
+      "description": "lines no es un array (typo humano en la mini-app).",
+      "entry": {
+        "filter_expr": null,
+        "hiring_status_expr": "INCLUDED",
+        "value_expr": null,
+        "modality_id": null,
+        "lines": "no es un array"
+      },
+      "expected_valid": false,
+      "expected_error_substrings": ["lines debe ser un array"]
+    },
+    {
+      "id": "ES-004",
+      "description": "Una linea sin text_expr.",
+      "entry": {
+        "filter_expr": null,
+        "hiring_status_expr": "INCLUDED",
+        "value_expr": null,
+        "modality_id": null,
+        "lines": [{ "filter_expr": null, "text_expr": "" }]
+      },
+      "expected_valid": false,
+      "expected_error_substrings": ["lines[0].text_expr"]
+    },
+    {
+      "id": "ES-005",
+      "description": "modality_id no numerico ('abc') -- distinto del caso real valido (string numerico '5571', como lo genera Trigger A).",
+      "entry": {
+        "filter_expr": null,
+        "hiring_status_expr": "INCLUDED",
+        "value_expr": null,
+        "modality_id": "abc",
+        "lines": [{ "filter_expr": null, "text_expr": "'texto'" }]
+      },
+      "expected_valid": false,
+      "expected_error_substrings": ["modality_id"]
+    }
+  ],
+  "cover_insert_cases": [
+    {
+      "id": "CI-001",
+      "description": "Cover real (17 'Incendio', ejecucion 2026-07-23T10-00-41-633Z, sin ninguna edicion humana) -- baseline, mismo resultado que ya genera generator.buildInsertStatements hoy.",
+      "cover": {
+        "cover_id": 17,
+        "entries": [
+          {
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": null,
+            "lines": [
+              { "filter_expr": null, "text_expr": "'Incendio, explosión, caída del rayo e impactos -100% en Continente y Contenido por:'" },
+              { "filter_expr": null, "text_expr": "'Incendio, Explosión e implosión y Caída del rayo'" },
+              { "filter_expr": null, "text_expr": "'Daños por humo'" },
+              { "filter_expr": null, "text_expr": "'Derrame o escape de instalaciones de extinción'" },
+              { "filter_expr": null, "text_expr": "'Impactos desde el exterior'" }
+            ],
+            "human_decision": null
+          }
+        ]
+      },
+      "product_company_id": 235,
+      "expected_ok": true,
+      "expected_active_entry_count": 1,
+      "expected_statement_count": 9,
+      "expected_sql_contains": ["VALUES (NULL, 17, 235)", "Daños por humo"],
+      "expected_sql_not_contains": []
+    },
+    {
+      "id": "CI-002",
+      "description": "Cover sintetica (900), 3 entries: 2 comparten condicion housingUse==MainResidence, 1 tiene housingRegime==Tenant -- sin ninguna edicion humana, NO deben compartir override (no todas iguales), cada entry mantiene su propio filter_expr.",
+      "cover": {
+        "cover_id": 900,
+        "entries": [
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "human_decision": null }
+        ]
+      },
+      "product_company_id": 235,
+      "expected_ok": true,
+      "expected_active_entry_count": 3,
+      "expected_statement_count": 11,
+      "expected_sql_contains": ["VALUES (NULL, 900, 235)", "MainResidence", "Tenant", "Linea B"],
+      "expected_sql_not_contains": ["NOT_INCLUDED"]
+    },
+    {
+      "id": "CI-003",
+      "description": "Misma cover 900, pero la entry con condicion Tenant fue eliminada por el humano (human_decision.action=removed) -- las 2 restantes SI comparten condicion: debe activarse la regla de optimizacion (HIRING_STATUS_EXPR de la cobertura, filter_expr de cada ENTRY se anula) -- este es el caso real que motiva recalcular coverOverride en Trigger B en vez de confiar en el que congelo Trigger A.",
+      "cover": {
+        "cover_id": 900,
+        "entries": [
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "human_decision": { "action": "removed", "original": { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'" }, "timestamp": "2026-07-23T11:03:25.008Z" } }
+        ]
+      },
+      "product_company_id": 235,
+      "expected_ok": true,
+      "expected_active_entry_count": 2,
+      "expected_statement_count": 8,
+      "expected_sql_contains": ["MainResidence", "INCLUDED\" : \"NOT_INCLUDED", "VALUES (NULL, '/INCLUDED/', 1"],
+      "expected_sql_not_contains": ["Linea B", "Tenant"]
+    },
+    {
+      "id": "CI-004",
+      "description": "Entry anadida a mano mal formada (sin hiring_status_expr) -- debe abortar esta cobertura con shapeErrors, nunca generar SQL a partir de ella.",
+      "cover": {
+        "cover_id": 901,
+        "entries": [
+          { "filter_expr": null, "hiring_status_expr": "", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Cobertura anadida a mano'" }], "human_decision": { "action": "added", "original": null, "timestamp": "2026-07-23T11:05:00.000Z" } }
+        ]
+      },
+      "product_company_id": 235,
+      "expected_ok": false,
+      "expected_shape_error_count": 1
+    }
+  ],
+  "final_sql_cases": [
+    {
+      "id": "FS-001",
+      "description": "JSON completo, 1 cover (17), sin ninguna edicion humana -- caso base, todo auto_approved.",
+      "reviewed_json": {
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 17,
+            "review_status": "auto_approved",
+            "entries": [
+              {
+                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "lines": [{ "filter_expr": null, "text_expr": "'Incendio, explosión...'" }],
+                "review_status": "auto_approved", "human_decision": null
+              }
+            ]
+          }
+        ],
+        "unmatched_dependencies": []
+      },
+      "expected_ok": true,
+      "expected_stats": { "total_covers": 1, "total_entries": 1, "edited_entries": 0, "added_entries": 0, "removed_entries": 0 },
+      "expected_sql_contains": ["START TRANSACTION;", "COMMIT;"]
+    },
+    {
+      "id": "FS-002",
+      "description": "Una entry needs_review sin human_decision.action -- debe abortar (nunca generar SQL parcial), mismo criterio que review_assembly.validateReviewCompleteness.",
+      "reviewed_json": {
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 21,
+            "review_status": "needs_review",
+            "entries": [
+              {
+                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "lines": [{ "filter_expr": null, "text_expr": "'texto'" }],
+                "review_status": "needs_review", "review_reasons": ["match_confidence_not_alta"], "human_decision": null
+              }
+            ]
+          }
+        ],
+        "unmatched_dependencies": []
+      },
+      "expected_ok": false,
+      "expected_reason": "pending_review",
+      "expected_pending_cover_ids": [21]
+    },
+    {
+      "id": "FS-003",
+      "description": "Entry anadida a mano mal formada dentro del JSON completo -- debe abortar con invalid_entries.",
+      "reviewed_json": {
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 901,
+            "review_status": "auto_approved",
+            "entries": [
+              {
+                "filter_expr": null, "hiring_status_expr": "", "value_expr": null, "modality_id": null,
+                "lines": [{ "filter_expr": null, "text_expr": "'Cobertura anadida a mano'" }],
+                "review_status": "auto_approved", "human_decision": { "action": "added", "original": null, "timestamp": "2026-07-23T11:05:00.000Z" }
+              }
+            ]
+          }
+        ],
+        "unmatched_dependencies": []
+      },
+      "expected_ok": false,
+      "expected_reason": "invalid_entries"
+    },
+    {
+      "id": "FS-004",
+      "description": "Mismo caso que FS-001 pero envuelto en array (formato real que produce Convert to File de n8n) -- debe desenvolver y dar el mismo resultado.",
+      "reviewed_json": [{
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 17,
+            "review_status": "auto_approved",
+            "entries": [
+              {
+                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "lines": [{ "filter_expr": null, "text_expr": "'Incendio, explosión...'" }],
+                "review_status": "auto_approved", "human_decision": null
+              }
+            ]
+          }
+        ],
+        "unmatched_dependencies": []
+      }],
+      "expected_ok": true,
+      "expected_stats": { "total_covers": 1, "total_entries": 1, "edited_entries": 0, "added_entries": 0, "removed_entries": 0 },
+      "expected_sql_contains": ["START TRANSACTION;", "COMMIT;"]
+    },
+    {
+      "id": "FS-005",
+      "description": "Entry editada a mano (action=edited, con snapshot original) -- los campos actuales (ya corregidos) son los que deben generar el SQL, no los de 'original'. Caso real: cover 15 'Como arrendador frente al inquilino' (housingRegime Owner->Rental, ver project_flujo3_matching_llm_fixes).",
+      "reviewed_json": {
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 15,
+            "review_status": "auto_approved",
+            "entries": [
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Rental'",
+                "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": "5577",
+                "lines": [{ "filter_expr": null, "text_expr": "'Como arrendador frente al inquilino'" }],
+                "review_status": "auto_approved",
+                "human_decision": {
+                  "action": "edited",
+                  "original": {
+                    "filter_expr": "insurance[\"risk\"].housingRegime == 'Owner'",
+                    "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": "5577",
+                    "lines": [{ "filter_expr": null, "text_expr": "'Como arrendador frente al inquilino'" }]
+                  },
+                  "timestamp": "2026-07-23T11:03:25.008Z"
+                }
+              }
+            ]
+          }
+        ],
+        "unmatched_dependencies": []
+      },
+      "expected_ok": true,
+      "expected_stats": { "total_covers": 1, "total_entries": 1, "edited_entries": 1, "added_entries": 0, "removed_entries": 0 },
+      "expected_sql_contains": ["Rental"],
+      "expected_sql_not_contains": ["Owner"]
+    },
+    {
+      "id": "FS-006",
+      "description": "unmatched_dependencies con human_annotation (marcado_para_seguimiento) -- solo trazabilidad, no debe afectar el SQL ni los stats.",
+      "reviewed_json": {
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 17,
+            "review_status": "auto_approved",
+            "entries": [
+              {
+                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "lines": [{ "filter_expr": null, "text_expr": "'texto'" }],
+                "review_status": "auto_approved", "human_decision": null
+              }
+            ]
+          }
+        ],
+        "unmatched_dependencies": [
+          { "semantic_unit_id": "su_00027", "human_annotation": { "status": "marcado_para_seguimiento", "comment": "revisar con el usuario", "timestamp": "2026-07-23T11:03:25.008Z" } }
+        ]
+      },
+      "expected_ok": true,
+      "expected_stats": { "total_covers": 1, "total_entries": 1, "edited_entries": 0, "added_entries": 0, "removed_entries": 0 }
+    },
+    {
+      "id": "FS-007",
+      "description": "Cover 900 (ver CI-003) dentro del JSON completo -- un removed cambia si la cobertura activa comparte condicion; confirma que buildFinalSql tambien recalcula bien coverOverride end-to-end, no solo buildCoverInserts aislado.",
+      "reviewed_json": {
+        "product_company_id": 235,
+        "covers": [
+          {
+            "cover_id": 900,
+            "review_status": "auto_approved",
+            "entries": [
+              { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "review_status": "auto_approved", "human_decision": null },
+              { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "review_status": "auto_approved", "human_decision": null },
+              { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "review_status": "auto_approved", "human_decision": { "action": "removed", "original": { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'" }, "timestamp": "2026-07-23T11:03:25.008Z" } }
+            ]
+          }
+        ],
+        "unmatched_dependencies": []
+      },
+      "expected_ok": true,
+      "expected_stats": { "total_covers": 1, "total_entries": 2, "edited_entries": 0, "added_entries": 0, "removed_entries": 1 },
+      "expected_sql_contains": ["INCLUDED\" : \"NOT_INCLUDED"],
+      "expected_sql_not_contains": ["Linea B"]
+    }
+  ]
+}

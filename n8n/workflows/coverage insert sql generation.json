@@ -1,0 +1,289 @@
+{
+  "name": "coverage insert sql generation",
+  "nodes": [
+    {
+      "parameters": {
+        "formTitle": "Generar SQL desde JSON revisado",
+        "formDescription": "Sube el JSON que genero el Trigger A de 'coverage insert generation' despues de que un humano lo haya revisado (mini-app de revision). Genera el SQL final de INSERT o, si queda alguna revision pendiente, un fichero con el detalle de que falta.",
+        "formFields": {
+          "values": [
+            {
+              "fieldLabel": "JSON revisado",
+              "fieldType": "file",
+              "acceptFileTypes": ".json",
+              "requiredField": true
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "cisg-node-1",
+      "name": "Generar SQL desde JSON revisado - On form submission",
+      "type": "n8n-nodes-base.formTrigger",
+      "typeVersion": 2.5,
+      "position": [
+        -576,
+        304
+      ],
+      "webhookId": "d2e7c2b2-1b2b-4b2b-8b2b-c0verageinsertsql1"
+    },
+    {
+      "parameters": {
+        "operation": "fromJson",
+        "binaryPropertyName": "JSON_revisado",
+        "options": {}
+      },
+      "id": "cisg-node-2",
+      "name": "Read Reviewed JSON",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -368,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Trigger B (\"Generar SQL desde JSON revisado\") -- nodo \"Build Insert SQL\".\n// Embebe (LITERAL, copiado de las fuentes reales, sin retranscripcion manual):\n// - generator.js: computeCoverOverride, wrapAsSpelExpression, sqlLiteral,\n//   buildInsertStatements (el resto de generator.js no hace falta aqui --\n//   las entries ya llegan con filter_expr/hiring_status_expr/lines[].text_expr\n//   ya traducidos por Trigger A, no dependencias {risk_field,operator,value}\n//   crudas).\n// - review_assembly.js: validateReviewCompleteness (B3).\n// - insert_generation.js: completo (unwrapReviewedJson, filterActiveEntries,\n//   validateEntryShape, buildCoverInserts, buildFinalSql) -- sin los\n//   require(...) ni los prefijos generator./reviewAssembly. de las llamadas\n//   (aqui todo esta en el mismo scope plano, mismo patron que el resto de\n//   nodos Code de Trigger A que concatenan varios modulos).\n\n\n// Regla de optimizacion: si TODOS los ENTRY (2 o mas) comparten exactamente\n// la misma condicion no nula, se traslada al HIRING_STATUS_EXPR de\n// PRODUCT_COMPANY_COVER en vez de repetirse en cada ENTRY (decision del\n// usuario, opcion B: el contenido sigue visible aunque la cobertura salga\n// NOT_INCLUDED). Con menos de 2 ENTRY no hay nada que deduplicar -- salvo el\n// caso de 0 ENTRY (cobertura sin ningun bloque real): ahi se fuerza\n// explicitamente NOT_INCLUDED (decision del usuario, 21/07) en vez de dejar\n// NULL y depender de que el motor real agregue \"cero bloques\" a NOT_INCLUDED\n// de forma implicita.\nfunction computeCoverOverride(entries) {\n  if (entries.length === 0) {\n    return { sharedCondition: undefined, hiringStatusExpr: `\"NOT_INCLUDED\"` };\n  }\n  if (entries.length < 2) return null;\n  const conditions = entries.map(e => e.filter_expr);\n  if (conditions.some(c => c == null)) return null;\n  const allSame = conditions.every(c => c === conditions[0]);\n  if (!allSame) return null;\n  return {\n    sharedCondition: conditions[0],\n    hiringStatusExpr: `${conditions[0]} ? \"INCLUDED\" : \"NOT_INCLUDED\"`\n  };\n}\n\n// Generacion del SQL INSERT final (motor: MySQL, confirmado por el usuario)\n// a partir del artefacto de una cobertura (ver buildEntriesForCover). Usa\n// variables de sesion (`SET @var := LAST_INSERT_ID()`) para encadenar las FK\n// entre PRODUCT_COMPANY_COVER -> _ENTRY -> _LINES, ya que los INSERT se\n// ejecutan secuencialmente y el ID de cada fila se genera en la propia BBDD.\n//\n// Confirmado por el usuario (20/07): toda expresion SPEL (no solo TEXT_EXPR)\n// lleva el envoltorio \"/\" ... \"/\" -- se aplica por igual a FILTER_EXPR/\n// HIRING_STATUS_EXPR/VALUE_EXPR/TEXT_EXPR.\nfunction wrapAsSpelExpression(rawExpr) {\n  return rawExpr == null ? null : `/${rawExpr}/`;\n}\n\n// Literal SQL: escapa comillas simples con backslash, igual que el ejemplo\n// real del modelo (`'/\\'texto\\'/'`) -- convencion de MySQL con\n// NO_BACKSLASH_ESCAPES desactivado (el modo por defecto).\nfunction sqlLiteral(value) {\n  if (value == null) return \"NULL\";\n  if (typeof value === \"number\") return String(value);\n  return `'${String(value).replace(/'/g, \"\\\\'\")}'`;\n}\n\n// coverArtifact: { coverId, productCompanyId, coverOverride, entries } --\n// coverOverride y entries.*.filter_expr/hiring_status_expr/value_expr son\n// expresiones SPEL en crudo (sin el envoltorio \"/.../\"); entries.*.lines[].\n// text_expr ya viene como literal de cadena SPEL (`'texto'`, ver\n// spelStringLiteral) al que tambien hay que anadirle el envoltorio.\nfunction buildInsertStatements({ coverId, productCompanyId, coverOverride, entries }) {\n  const statements = [];\n\n  statements.push(\n    `INSERT INTO PRODUCT_COMPANY_COVER (HIRING_STATUS_EXPR, COVER_ID, PRODUCT_COMPANY_ID) VALUES (${sqlLiteral(wrapAsSpelExpression(coverOverride))}, ${coverId}, ${productCompanyId});`\n  );\n  statements.push(\"SET @cover_id := LAST_INSERT_ID();\");\n\n  entries.forEach((entry, entryIndex) => {\n    const entryVar = `@entry_id_${entryIndex + 1}`;\n    statements.push(\n      `INSERT INTO PRODUCT_COMPANY_COVER_ENTRY (FILTER_EXPR, HIRING_STATUS_EXPR, ENTRY_ORDER, VALUE_EXPR, UNIT, PRODUCT_COMPANY_MODALITY_ID, PRODUCT_COMPANY_COVER_ID) VALUES (${sqlLiteral(wrapAsSpelExpression(entry.filter_expr))}, ${sqlLiteral(wrapAsSpelExpression(entry.hiring_status_expr))}, ${entryIndex + 1}, ${sqlLiteral(wrapAsSpelExpression(entry.value_expr))}, NULL, ${entry.modality_id ?? \"NULL\"}, @cover_id);`\n    );\n    statements.push(`SET ${entryVar} := LAST_INSERT_ID();`);\n\n    entry.lines.forEach((line, lineIndex) => {\n      statements.push(\n        `INSERT INTO PRODUCT_COMPANY_COVER_LINES (TEXT_EXPR, PRODUCT_COMPANY_COVER_ENTRY_ID, LINE_ORDER) VALUES (${sqlLiteral(wrapAsSpelExpression(line.text_expr))}, ${entryVar}, ${lineIndex + 1});`\n      );\n    });\n  });\n\n  return statements;\n}\n\n// B3: aborta con item de error explicito (nunca rubber-stamp) si queda\n// alguna entrada needs_review sin human_decision.action relleno.\nfunction validateReviewCompleteness(reviewJson) {\n  const pending = [];\n  for (const cover of reviewJson.covers || []) {\n    for (const entry of cover.entries || []) {\n      if (entry.review_status === \"needs_review\" && !(entry.human_decision && entry.human_decision.action)) {\n        pending.push({ cover_id: cover.cover_id, bullet_text: entry.bullet_text });\n      }\n    }\n  }\n  return { complete: pending.length === 0, pending };\n}\n\n// Trigger B (\"Generar SQL desde JSON revisado\", workflow n8n\n// `coverage insert sql generation.json`, nuevo -- decision del usuario\n// 23/07 de separarlo del workflow de Trigger A). Toma el JSON que produjo\n// Trigger A (`assembleHumanReviewJson`, review_assembly.js) despues de que\n// una mini-app externa lo haya dejado revisado por un humano, y genera el\n// SQL final de INSERT.\n//\n// Esquema real de la revision humana (confirmado por el usuario 23/07,\n// aditivo sobre el JSON de Trigger A -- nada se renombra ni reestructura):\n//   covers[].entries[].human_decision: {action: \"edited\"|\"added\"|\"removed\",\n//     original: <entry-copy-o-null>, timestamp} -- ausente/null si la entry\n//     no se toco. Los campos ACTUALES de la entry (filter_expr,\n//     hiring_status_expr, value_expr, lines[]) ya reflejan el valor\n//     corregido para \"edited\"/\"added\"; \"removed\" es soft-delete (la entry\n//     sigue en el array, con sus campos congelados).\n//   unmatched_dependencies[].human_annotation: solo trazabilidad, este\n//     modulo no lo usa para generar SQL.\n//   review_progress: recalculado por la mini-app al exportar -- este modulo\n//     NO confia en el, recalcula su propio criterio de completitud via\n//     review_assembly.validateReviewCompleteness (misma fuente de verdad\n//     que ya valida offline el resto del proyecto).\n\n\n// Defensivo: Convert to File de n8n serializa TODOS los items de entrada\n// como un array (incluso con 1 solo item) -- Trigger A siempre produce\n// exactamente ese patron, la mini-app preserva \"el mismo array-wrapping si\n// el original lo tenia\" (confirmado por el usuario). No asume un unico\n// formato por si el fichero se edita/genera a mano sin ese wrapping.\nfunction unwrapReviewedJson(raw) {\n  return Array.isArray(raw) ? raw[0] : raw;\n}\n\n// Soft-delete: la entry \"removed\" sigue en covers[].entries[] (para no\n// perder el rastro de que existio, ver `original`) pero nunca debe generar\n// SQL.\nfunction filterActiveEntries(entries) {\n  return (entries || []).filter(e => e.human_decision?.action !== \"removed\");\n}\n\n// Guardrail nuevo (Trigger B): una entry generada por la IA en Trigger A ya\n// esta garantizada bien formada por construccion (generator.buildEntriesForCover\n// siempre las construye asi); una entry \"edited\"/\"added\" a mano en la\n// mini-app no lo esta -- mismo espiritu que el resto de guardrails del\n// proyecto (Risk Field Guardrail, Grounding Guardrail, Tuning Key\n// Guardrail): nunca generar SQL a partir de un dato no verificado, listar\n// el problema en vez de fallar en silencio o generar SQL invalido.\nfunction validateEntryShape(entry) {\n  const errors = [];\n  if (typeof entry.hiring_status_expr !== \"string\" || entry.hiring_status_expr.trim() === \"\") {\n    errors.push(\"hiring_status_expr debe ser un string no vacio\");\n  }\n  if (entry.filter_expr != null && typeof entry.filter_expr !== \"string\") {\n    errors.push(\"filter_expr debe ser string o null\");\n  }\n  if (entry.value_expr != null && typeof entry.value_expr !== \"string\") {\n    errors.push(\"value_expr debe ser string o null\");\n  }\n  if (entry.modality_id != null && Number.isNaN(Number(entry.modality_id))) {\n    errors.push(\"modality_id debe ser null o numerico\");\n  }\n  if (!Array.isArray(entry.lines)) {\n    errors.push(\"lines debe ser un array\");\n  } else {\n    entry.lines.forEach((line, i) => {\n      if (typeof line.text_expr !== \"string\" || line.text_expr.trim() === \"\") {\n        errors.push(`lines[${i}].text_expr debe ser un string no vacio`);\n      }\n      if (line.filter_expr != null && typeof line.filter_expr !== \"string\") {\n        errors.push(`lines[${i}].filter_expr debe ser string o null`);\n      }\n    });\n  }\n  return { valid: errors.length === 0, errors };\n}\n\n// Ensambla los INSERT de una cobertura: filtra las entries eliminadas,\n// valida la forma de las que quedan, y recalcula coverOverride sobre las\n// entries ACTIVAS finales -- nunca sobre cover.cover_override_hiring_status_expr\n// (el que congelo Trigger A), porque un removed/added/edited puede cambiar\n// si \"todas las entries comparten la misma condicion\" (regla de\n// optimizacion, knowledge/Modelo comparativa de coberturas - AI ready.md:\n// \"su HIRING_STATUS_EXPR debe calcularse despues de tener claras las\n// condiciones de todos sus ENTRY\").\nfunction buildCoverInserts(cover, productCompanyId) {\n  const activeEntries = filterActiveEntries(cover.entries);\n\n  const shapeErrors = [];\n  activeEntries.forEach((entry, i) => {\n    const { valid, errors } = validateEntryShape(entry);\n    if (!valid) {\n      shapeErrors.push({ cover_id: cover.cover_id, entry_index: i, errors });\n    }\n  });\n  if (shapeErrors.length > 0) {\n    return { ok: false, shapeErrors };\n  }\n\n  const coverOverride = computeCoverOverride(activeEntries);\n  // Mismo paso que generator.buildEntriesForCover tras detectar condicion\n  // compartida: la condicion se traslada al HIRING_STATUS_EXPR de la\n  // cobertura, asi que no debe repetirse tambien en el FILTER_EXPR de cada\n  // ENTRY (evita duplicar la misma condicion dos veces en el SQL final).\n  // Clona antes de mutar para no alterar el JSON de entrada del caller.\n  const finalEntries = coverOverride && coverOverride.sharedCondition !== undefined\n    ? activeEntries.map(e => e.filter_expr === coverOverride.sharedCondition ? { ...e, filter_expr: null } : e)\n    : activeEntries;\n\n  const statements = buildInsertStatements({\n    coverId: cover.cover_id,\n    productCompanyId,\n    coverOverride: coverOverride ? coverOverride.hiringStatusExpr : null,\n    entries: finalEntries\n  });\n\n  return { ok: true, statements, activeEntryCount: finalEntries.length };\n}\n\nfunction countByAction(covers, action) {\n  return covers.reduce(\n    (sum, c) => sum + (c.entries || []).filter(e => e.human_decision?.action === action).length,\n    0\n  );\n}\n\n// Punto de entrada unico del nodo real \"Build Insert SQL\". Nunca aborta en\n// silencio: si queda revision humana pendiente O una entry mal formada,\n// devuelve {ok:false, reason, ...detalle} para que el workflow escriba un\n// fichero de error legible en vez de fallar la ejecucion de n8n sin mas --\n// mismo principio que rejected_dependencies/ungrounded_dependencies en\n// flujo 2 (nunca descartar en silencio).\nfunction buildFinalSql(rawReviewedJson) {\n  const reviewJson = unwrapReviewedJson(rawReviewedJson);\n  const covers = reviewJson.covers || [];\n\n  const completeness = validateReviewCompleteness(reviewJson);\n  if (!completeness.complete) {\n    const pending = [];\n    for (const cover of covers) {\n      for (const entry of cover.entries || []) {\n        if (entry.review_status === \"needs_review\" && !entry.human_decision?.action) {\n          pending.push({ cover_id: cover.cover_id, review_reasons: entry.review_reasons || [] });\n        }\n      }\n    }\n    return { ok: false, reason: \"pending_review\", pending, product_company_id: reviewJson.product_company_id };\n  }\n\n  const productCompanyId = reviewJson.product_company_id;\n  const allShapeErrors = [];\n  const coverStatements = [];\n\n  for (const cover of covers) {\n    const result = buildCoverInserts(cover, productCompanyId);\n    if (!result.ok) {\n      allShapeErrors.push(...result.shapeErrors);\n      continue;\n    }\n    coverStatements.push(...result.statements);\n  }\n\n  if (allShapeErrors.length > 0) {\n    return { ok: false, reason: \"invalid_entries\", errors: allShapeErrors, product_company_id: productCompanyId };\n  }\n\n  const sql = [\"START TRANSACTION;\", ...coverStatements, \"COMMIT;\"].join(\"\\n\");\n\n  return {\n    ok: true,\n    sql,\n    product_company_id: productCompanyId,\n    stats: {\n      total_covers: covers.length,\n      total_entries: covers.reduce((sum, c) => sum + filterActiveEntries(c.entries).length, 0),\n      edited_entries: countByAction(covers, \"edited\"),\n      added_entries: countByAction(covers, \"added\"),\n      removed_entries: countByAction(covers, \"removed\")\n    }\n  };\n}\n\n// --- adaptador n8n (nodo nuevo \"Build Insert SQL\") ---\n// \"Read Reviewed JSON\" (extractFromFile, operacion fromJson) envuelve el\n// JSON parseado bajo item.json.data (mismo patron que \"Read Flujo 2\n// Artifact\"/\"Read Tuning Dictionary\" en Trigger A, ver bug 6 del 21/07) --\n// unwrapReviewedJson desenvuelve ADEMAS el array-wrapping propio del JSON\n// revisado, si lo tiene (ver cabecera de insert_generation.js). PRIMER\n// BORRADOR: verificar en la primera ejecucion real que \"Read Reviewed\n// JSON\" efectivamente anida bajo .data (mismo supuesto que Trigger A, no\n// probado todavia para este nodo concreto).\nconst rawInput = $input.first().json.data;\nconst result = buildFinalSql(rawInput);\nreturn [{ json: result }];\n"
+      },
+      "id": "cisg-node-3",
+      "name": "Build Insert SQL",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -160,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 3
+          },
+          "conditions": [
+            {
+              "id": "a1b2c3d4-0000-4000-8000-000000000001",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cisg-node-4",
+      "name": "Review Complete?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.3,
+      "position": [
+        48,
+        304
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const timestamp = new Date().toISOString().replace(/[:.]/g, \"-\");\nreturn [{\n  json: {\n    ...$json,\n    filename: `coverage_insert_statements_${$json.product_company_id}_${timestamp}.sql`\n  }\n}];"
+      },
+      "id": "cisg-node-5",
+      "name": "Generate SQL file name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "sql",
+        "options": {
+          "fileName": "={{$json.filename}}"
+        }
+      },
+      "id": "cisg-node-6",
+      "name": "Convert SQL to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/coverage_insert_outputs/{{$binary.data.fileName}}",
+        "options": {}
+      },
+      "id": "cisg-node-7",
+      "name": "Write SQL to Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        672,
+        176
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const timestamp = new Date().toISOString().replace(/[:.]/g, \"-\");\nreturn [{\n  json: {\n    ...$json,\n    filename: `coverage_insert_pending_${$json.product_company_id}_${timestamp}.json`\n  }\n}];"
+      },
+      "id": "cisg-node-8",
+      "name": "Generate error file name",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        256,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "toJson",
+        "options": {
+          "format": true,
+          "fileName": "={{$json.filename}}"
+        }
+      },
+      "id": "cisg-node-9",
+      "name": "Convert Error to File",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        464,
+        432
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/home/node/coverage_insert_outputs/{{$binary.data.fileName}}",
+        "options": {}
+      },
+      "id": "cisg-node-10",
+      "name": "Write Error to Disk",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        672,
+        432
+      ]
+    }
+  ],
+  "pinData": null,
+  "connections": {
+    "Generar SQL desde JSON revisado - On form submission": {
+      "main": [
+        [
+          {
+            "node": "Read Reviewed JSON",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Reviewed JSON": {
+      "main": [
+        [
+          {
+            "node": "Build Insert SQL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Insert SQL": {
+      "main": [
+        [
+          {
+            "node": "Review Complete?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review Complete?": {
+      "main": [
+        [
+          {
+            "node": "Generate SQL file name",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Generate error file name",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate SQL file name": {
+      "main": [
+        [
+          {
+            "node": "Convert SQL to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert SQL to File": {
+      "main": [
+        [
+          {
+            "node": "Write SQL to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate error file name": {
+      "main": [
+        [
+          {
+            "node": "Convert Error to File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert Error to File": {
+      "main": [
+        [
+          {
+            "node": "Write Error to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "7f237328-3de7-4843-bc19-70f2f1aa9725",
+  "meta": null,
+  "id": "Cu2mZPi8cb9aIGIv",
+  "tags": []
+}
