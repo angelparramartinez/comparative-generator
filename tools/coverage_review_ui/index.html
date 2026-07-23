@@ -129,6 +129,11 @@
     background: var(--bg);
   }
   .entry-card.is-removed { opacity: .55; }
+  .entry-card.just-added { animation: flashAdded 1.6s ease; }
+  @keyframes flashAdded {
+    0% { background: var(--purple-bg); border-color: var(--purple); }
+    100% { background: var(--bg); border-color: var(--border); }
+  }
   .entry-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
   .entry-head .badge-mod { font-size: 11px; color: var(--text-dim); border: 1px solid var(--border); border-radius: 5px; padding: 0 6px; }
   .entry-head .grow { flex: 1; }
@@ -731,7 +736,10 @@
 
   function showAddEntryForm(cover, body) {
     const slot = body.querySelector(".add-entry-slot");
-    if (slot.querySelector("form")) return;
+    if (slot.querySelector("form")) {
+      slot.scrollIntoView({ behavior: "smooth", block: "center" });
+      return;
+    }
     slot.innerHTML = `
       <form class="add-entry-form">
         <div class="field-row"><label>modality_id</label><input type="text" name="modality_id" placeholder="(vacio = todas las modalidades)"></div>
@@ -772,7 +780,18 @@
       cover.entries.push(entry);
       slot.innerHTML = "";
       rerenderCoverAfterListChange(cover);
+      highlightEntry(entry);
     });
+    slot.scrollIntoView({ behavior: "smooth", block: "center" });
+    slot.querySelector('[name="modality_id"]').focus();
+  }
+
+  function highlightEntry(entry) {
+    const card = document.querySelector(`[data-entry-card="${entry._uiId}"]`);
+    if (!card) return;
+    card.scrollIntoView({ behavior: "smooth", block: "center" });
+    card.classList.add("just-added");
+    setTimeout(() => card.classList.remove("just-added"), 1600);
   }
 
   // ---------------------------------------------------------------
