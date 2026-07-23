@@ -245,10 +245,28 @@
         "GD-FP-001",
         "GD-REF-001"
       ],
+      "description": "Caso real 23/07: 'propietario' con evidencia que menciona 'vivienda arrendada' -- housingRegime.contextOverrides reinterpreta Owner->Rental (el asegurado es arrendador, no ocupante).",
       "dependency": {
         "risk_field": "housingRegime",
         "operator": "=",
-        "value": "propietario"
+        "value": "propietario",
+        "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
+      },
+      "expected_translated_value": "Rental",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-013",
+      "source_case_refs": [
+        "GD-FP-001"
+      ],
+      "description": "'propietario' SIN mencion de vivienda arrendada en la evidencia -- se mantiene Owner, el contextOverride no debe dispararse sin la pista real.",
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "=",
+        "value": "propietario",
+        "evidence": "como miembro de la junta de copropietarios del edificio en que se halle la vivienda asegurada"
       },
       "expected_translated_value": "Owner",
       "expected_fully_translated": true,

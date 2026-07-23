@@ -38,7 +38,18 @@ const ENUM_VALUE_CATALOG = {
       Rental: ["arrendada", "vivienda alquilada"],
       Tenant: ["inquilino", "arrendatario"]
     },
-    knownLimitations: []
+    knownLimitations: [],
+    // Caso real 23/07 (su_00127): "propietario" es ambiguo en Hogar entre
+    // Owner (ocupa la vivienda) y Rental (la tiene arrendada) -- el
+    // condicionado no siempre usa una palabra distinta para cada caso, pero
+    // SI aporta la desambiguacion en la misma frase de evidencia cuando
+    // aplica ("propietario de una vivienda arrendada..."). Mismo mecanismo
+    // que `negative_aliases` de matcher/ontologia pero a nivel de VALOR: el
+    // dato (que ramo/campo/palabras) vive aqui, el motor (applyContextOverrides
+    // mas abajo) no conoce "housingRegime" ni "arrendada" -- es generico.
+    contextOverrides: [
+      { from: "Owner", to: "Rental", whenEvidenceContainsAny: ["arrendada", "arrendador", "alquilada", "alquiler"] }
+    ]
   },
   capitalInsuranceType: {
     values: {
@@ -83,6 +94,25 @@ function matchEnumValue(riskField, spanishValue) {
   return { matched: false, value: null, reason: "no_alias_match" };
 }
 
+// Reinterpreta un valor ya emparejado por matchEnumValue si el catalogo del
+// risk_field declara un `contextOverrides` que aplique -- generico por
+// diseno: no conoce ningun risk_field ni palabra concreta, solo ejecuta lo
+// que el catalogo (dato, no codigo) declare para el risk_field recibido. El
+// vocabulario/ramo especifico vive en ENUM_VALUE_CATALOG (mirror ejecutable
+// de la ontologia, ver value_context_overrides en ontology-home.md), nunca
+// aqui -- asi el motor sirve igual para el catalogo de cualquier ramo futuro.
+function applyContextOverrides(riskField, matchedValue, evidence) {
+  const rules = ENUM_VALUE_CATALOG[riskField] && ENUM_VALUE_CATALOG[riskField].contextOverrides;
+  if (!rules || !matchedValue) return matchedValue;
+  const normalizedEvidence = normalize(evidence || "");
+  for (const rule of rules) {
+    if (rule.from !== matchedValue) continue;
+    const hasCue = rule.whenEvidenceContainsAny.some(cue => normalizedEvidence.includes(normalize(cue)));
+    if (hasCue) return rule.to;
+  }
+  return matchedValue;
+}
+
 // Traduce el/los valor(es) de una dependencia completa {risk_field, operator,
 // value}. Para IN/NOT_IN, value es un array -- se traduce elemento a elemento
 // y se reportan por separado los que no se pudieron traducir (visibilidad,
@@ -105,7 +135,14 @@ function matchEnumValue(riskField, spanishValue) {
 function translateDependencyValue(dependency) {
   const isArray = Array.isArray(dependency.value);
   const rawValues = isArray ? dependency.value : [dependency.value];
-  const results = rawValues.map(v => ({ raw: v, ...matchEnumValue(dependency.risk_field, v) }));
+  const results = rawValues.map(v => {
+    const matched = matchEnumValue(dependency.risk_field, v);
+    if (!matched.matched) return { raw: v, ...matched };
+    const overridden = applyContextOverrides(dependency.risk_field, matched.value, dependency.evidence);
+    return overridden === matched.value
+      ? { raw: v, ...matched }
+      : { raw: v, matched: true, value: overridden, reason: "context_override" };
+  });
 
   const realFailures = results.filter(r => !r.matched && r.reason !== "risk_field_not_cataloged");
   const translatedValues = results
@@ -146,6 +183,7 @@ module.exports = {
   ENUM_VALUE_CATALOG,
   buildValueIndex,
   matchEnumValue,
+  applyContextOverrides,
   translateDependencyValue,
   translateDependencies
 };

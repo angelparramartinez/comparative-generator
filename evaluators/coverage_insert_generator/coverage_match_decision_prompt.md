@@ -42,6 +42,18 @@ Decide UNA de estas 3 categorías (`decision`):
    (copiado tal cual, sin parafrasear) de `cover_full_text` de ese candidato
    -- va a verificarse automáticamente por subcadena, si no es literal el
    match se rechaza.
+   IMPORTANTE -- qué certifica `excel_quote`: únicamente que el CANDIDATO (la
+   cobertura/bullet del Excel) es real y no te lo has inventado. NO certifica
+   que la CONDICIÓN de la dependencia (su `evidence`) esté también
+   documentada en el Excel -- esa frase viene siempre del condicionado
+   general, un documento DISTINTO del Excel, y en la inmensa mayoría de los
+   casos NUNCA va a aparecer ahí literalmente (esa es precisamente la
+   información que aporta esta dependencia, algo que el Excel por sí solo no
+   dice). Que la condición no se mencione en el Excel NO es motivo para
+   rechazar el match ni para clasificarlo como `general_policy_rule` -- solo
+   importa que el CONCEPTO/OBJETO de la cobertura de la dependencia (a qué
+   garantía se refiere) coincida con un candidato real; `excel_quote` cita el
+   texto de ESE candidato, no la condición.
 2. `out_of_scope_product`: el concepto existe en el condicionado pero esta
    compañía/producto NO comercializa esa garantía en este Excel (no aparece
    en ningún candidato, ni parecido). Ejemplo real: un condicionado que cubre
@@ -51,7 +63,12 @@ Decide UNA de estas 3 categorías (`decision`):
 3. `general_policy_rule`: el texto es una regla general de la póliza (p. ej.
    "Exclusiones generales para todas las garantías", artículo transversal sin
    `coverage_path`), no está ligado a una cobertura concreta y nunca debe
-   forzarse a ninguna.
+   forzarse a ninguna. Señal fuerte: `coverage_path` vacío, o el propio
+   artículo se titula como exclusiones/definiciones generales aplicables a
+   toda la póliza. Si el `coverage_path` SÍ apunta a una cobertura concreta
+   (aunque su condición no aparezca literalmente en el texto del Excel), NO
+   es este caso -- es `match` sobre esa cobertura (ver aclaración de la
+   categoría 1).
 
 Reglas estrictas (anti-alucinación):
 - `cover_id` SOLO puede ser uno de los `cover_id` que aparecen en la lista de
@@ -129,6 +146,24 @@ dudoso).
 `coverage_path: []` (vacío -- señal fuerte de regla transversal). No hay
 `coverage_dependencies` reales asociadas. `decision:
 "general_policy_rule"`, `cover_id: null`, `confidence: "alta"`.
+
+**Caso `match` aunque la CONDICIÓN no aparezca en el Excel** (real, hallado
+revisando manualmente una ejecución real -- 23/07, `su_00027`, Generali):
+evidencia *"Esta cobertura no se aplica cuando se trate de Vivienda de uso
+turístico o de alquiler vacacional o Vivienda sin ocupación"* bajo
+`coverage_path: ["5. Robo en la vivienda y Vandalismo", "5.4. Reposición de
+llaves y cerraduras"]`. El candidato correcto es `cover_id: 16` (Robo),
+bullet *"Reposición de llaves y cerraduras por robo, expoliación o hurto -
+2% (máx. 600 €)"* -- top candidato por score (0.37) y coincide en CONCEPTO
+con el `coverage_path`. `excel_quote` esperado: ese mismo texto del bullet
+(certifica que la cobertura existe), NUNCA la frase de exclusión (que no
+aparece ni va a aparecer en el Excel -- viene del condicionado). El primer
+intento real con LLM, sin esta aclaración, clasificó este caso como
+`general_policy_rule` razonando que "el texto de exclusión no aparece
+literalmente en ningún candidato" -- exactamente el antipatrón que corrige
+la aclaración añadida en la categoría 1. El mismo patrón se repitió en al
+menos 3 casos más de la misma ejecución (`su_00069`, `su_00088`,
+`su_00091`), todos con el candidato correcto entre los top ofrecidos.
 
 ## Pendiente
 

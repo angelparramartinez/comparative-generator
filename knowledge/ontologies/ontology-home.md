@@ -151,6 +151,9 @@ values:
 - Owner: propietario
 - Rental: arrendada, vivienda alquilada
 - Tenant: inquilino, arrendatario
+value_context_overrides:
+- Owner -> Rental cuando la evidencia de la MISMA dependencia tambien
+  contiene: arrendada, arrendador, alquilada, alquiler
 interpretation:
 Los negative_aliases excluyen el uso mas frecuente de "propietario" en el
 condicionado de Hogar: pertenencia a la comunidad de vecinos del edificio,
@@ -161,6 +164,20 @@ conocidas -- los 3 valores reales extraidos en el golden set ("propietario",
 "arrendada", "inquilino") encajan limpio en Owner/Rental/Tenant. Mismo
 criterio de fuente de verdad ejecutable que en `capitalInsuranceType` (ver
 value_matcher.js).
+`value_context_overrides`: caso real 23/07, su_00127 -- "propietario" en
+Hogar es AMBIGUO entre Owner (ocupa la vivienda) y Rental (la tiene
+arrendada), algo que ASM distingue en su enum pero que el condicionado no
+siempre marca con una palabra distinta ("propietario" sirve para ambos). El
+condicionado SI aporta la desambiguacion cuando corresponde, pero en la
+misma frase de evidencia, no en un alias distinto: "cuando el asegurado sea
+propietario de una vivienda arrendada..." (coverage_path "Responsabilidad
+civil del arrendador frente al inquilino"). El flujo 2 extrae correctamente
+`value: "propietario"` (confirmado, GD-REF-001) -- la desambiguacion no es
+tarea suya, es una relectura de esa MISMA evidencia contra el catalogo de
+valores del propio risk_field, mismo mecanismo de "override por contexto"
+que `negative_aliases` mas arriba pero a nivel de VALOR en vez de concepto.
+Mientras solo exista este caso real, es la unica regla del catalogo; si
+aparece un patron distinto, añadir aqui en vez de generalizar sin evidencia.
 
 ---
 
