@@ -1,0 +1,564 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_value_matcher_golden_set",
+  "description": "Golden set del matcher espanol->ingles de VALORES de enum (housingUse, housingRegime, capitalInsuranceType), paso previo a generator.translateToSpel. Casos reales extraidos de evaluators/coverage_dependency_extractor/golden_dataset.json (actual_coverage_dependencies), mas casos sinteticos para cubrir cada alias del catalogo de value_matcher.js.",
+  "source_dependency_golden_set": "evaluators/coverage_dependency_extractor/golden_dataset.json",
+  "schema_notes": {
+    "value_match_cases": "Un caso por VALOR individual (matchEnumValue). expected_reason en alias_match | known_limitation | no_alias_match | risk_field_not_cataloged. Cubre todos los alias de ENUM_VALUE_CATALOG para que un refactor no rompa nada en silencio.",
+    "dependency_translation_cases": "Un caso por DEPENDENCIA completa (translateDependencyValue), incluye operator IN/NOT_IN con arrays mixtos matched/known_limitation (ver GD-HALLUC-006). source_case_refs apunta a los casos reales de coverage_dependency_extractor/golden_dataset.json de los que sale cada caso.",
+    "pipeline_integration_cases": "Encadena translateDependencyValue -> generator.translateToSpel. SOLO para casos con expected_fully_translated=true en dependency_translation_cases -- que SPEL/SQL generar cuando una dependencia queda parcialmente traducida es una decision de negocio todavia sin tomar (Fase 4, nodo n8n real), no se inventa aqui.",
+    "dependency_set_translation_cases": "Casos de translateDependencies(dependencies) (adaptador real del nodo Translate Dependency Values, A15) -- confirma que dependencies_translated EXCLUYE por completo una dependencia con fallo real (nunca la incluye con su value ya vaciado, bug real 22/07 que producia FILTER_EXPR con lista vacia), pero SI incluye las de campo no-enum (nunca deberian excluirse solo por no ser enum)."
+  },
+  "value_match_cases": [
+    {
+      "id": "VM-VALUE-001",
+      "risk_field": "housingRegime",
+      "spanish_value": "propietario",
+      "expected_matched": true,
+      "expected_value": "Owner",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-FP-001"
+    },
+    {
+      "id": "VM-VALUE-002",
+      "risk_field": "housingRegime",
+      "spanish_value": "arrendada",
+      "expected_matched": true,
+      "expected_value": "Rental",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-REF-005"
+    },
+    {
+      "id": "VM-VALUE-003",
+      "risk_field": "housingRegime",
+      "spanish_value": "vivienda alquilada",
+      "expected_matched": true,
+      "expected_value": "Rental",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-004",
+      "risk_field": "housingRegime",
+      "spanish_value": "inquilino",
+      "expected_matched": true,
+      "expected_value": "Tenant",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-REF-006"
+    },
+    {
+      "id": "VM-VALUE-005",
+      "risk_field": "housingRegime",
+      "spanish_value": "arrendatario",
+      "expected_matched": true,
+      "expected_value": "Tenant",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-010",
+      "risk_field": "capitalInsuranceType",
+      "spanish_value": "primer riesgo",
+      "expected_matched": true,
+      "expected_value": "FirstRisk",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-TYPE-001"
+    },
+    {
+      "id": "VM-VALUE-011",
+      "risk_field": "capitalInsuranceType",
+      "spanish_value": "primer_riesgo",
+      "expected_matched": true,
+      "expected_value": "FirstRisk",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-FP-003",
+      "notes": "variante con guion bajo en vez de espacio, ambas presentes en el golden set real -- confirma que normalize() las trata igual"
+    },
+    {
+      "id": "VM-VALUE-012",
+      "risk_field": "capitalInsuranceType",
+      "spanish_value": "valor de reposición",
+      "expected_matched": true,
+      "expected_value": "VReplacementValue",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-013",
+      "risk_field": "capitalInsuranceType",
+      "spanish_value": "valor de reposicion",
+      "expected_matched": true,
+      "expected_value": "VReplacementValue",
+      "expected_reason": "alias_match",
+      "notes": "variante sin tilde -- normalize() debe ignorar acentos"
+    },
+    {
+      "id": "VM-VALUE-020",
+      "risk_field": "housingUse",
+      "spanish_value": "vivienda principal",
+      "expected_matched": true,
+      "expected_value": "MainResidence",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-HALLUC-001"
+    },
+    {
+      "id": "VM-VALUE-021",
+      "risk_field": "housingUse",
+      "spanish_value": "residencia principal",
+      "expected_matched": true,
+      "expected_value": "MainResidence",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-022",
+      "risk_field": "housingUse",
+      "spanish_value": "domicilio habitual",
+      "expected_matched": true,
+      "expected_value": "MainResidence",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-023",
+      "risk_field": "housingUse",
+      "spanish_value": "vivienda habitual",
+      "expected_matched": true,
+      "expected_value": "MainResidence",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-024",
+      "risk_field": "housingUse",
+      "spanish_value": "Vivienda Principal",
+      "expected_matched": true,
+      "expected_value": "MainResidence",
+      "expected_reason": "alias_match",
+      "notes": "regresion de normalizacion de mayusculas (CLAUDE.md SS5.9: inconsistencia real entre ejecuciones, 'vivienda principal' vs 'Vivienda principal')"
+    },
+    {
+      "id": "VM-VALUE-025",
+      "risk_field": "housingUse",
+      "spanish_value": "vivienda secundaria",
+      "expected_matched": true,
+      "expected_value": "SecondHome",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-HALLUC-001"
+    },
+    {
+      "id": "VM-VALUE-026",
+      "risk_field": "housingUse",
+      "spanish_value": "segunda residencia",
+      "expected_matched": true,
+      "expected_value": "SecondHome",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-027",
+      "risk_field": "housingUse",
+      "spanish_value": "vivienda de temporada",
+      "expected_matched": true,
+      "expected_value": "SecondHome",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-028",
+      "risk_field": "housingUse",
+      "spanish_value": "vivienda vacía",
+      "expected_matched": true,
+      "expected_value": "UnoccupiedProperty",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-029",
+      "risk_field": "housingUse",
+      "spanish_value": "vivienda desocupada",
+      "expected_matched": true,
+      "expected_value": "UnoccupiedProperty",
+      "expected_reason": "alias_match"
+    },
+    {
+      "id": "VM-VALUE-030",
+      "risk_field": "housingUse",
+      "spanish_value": "sin ocupación",
+      "expected_matched": true,
+      "expected_value": "UnoccupiedProperty",
+      "expected_reason": "alias_match",
+      "source_case_ref": "GD-HALLUC-006"
+    },
+    {
+      "id": "VM-VALUE-040",
+      "risk_field": "housingUse",
+      "spanish_value": "alquiler vacacional",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "known_limitation",
+      "source_case_ref": "GD-REF-004",
+      "notes": "decision ya tomada 20/07: no se mapea a ninguno de los 3 valores reales, no se fuerza ni se inventa un 4o valor"
+    },
+    {
+      "id": "VM-VALUE-041",
+      "risk_field": "housingUse",
+      "spanish_value": "uso turístico",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "known_limitation",
+      "source_case_ref": "GD-REF-004"
+    },
+    {
+      "id": "VM-VALUE-042",
+      "risk_field": "housingUse",
+      "spanish_value": "otros usos",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "known_limitation",
+      "source_case_ref": "GD-EVID-002"
+    },
+    {
+      "id": "VM-VALUE-043",
+      "risk_field": "housingUse",
+      "spanish_value": "arrendada",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "known_limitation",
+      "source_case_ref": "GD-HALLUC-006",
+      "notes": "OJO: 'arrendada' en housingUse es known_limitation, pero el MISMO texto en housingRegime (VM-VALUE-002) es alias_match a Rental -- el catalogo esta scoped por risk_field, no es un diccionario global"
+    },
+    {
+      "id": "VM-VALUE-050",
+      "risk_field": "housingRegime",
+      "spanish_value": "vivienda okupada",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "no_alias_match",
+      "notes": "valor sin alias conocido en un risk_field SI cabalogado -- distinto de known_limitation (que es una frase real ya vista y deliberadamente sin mapear)"
+    },
+    {
+      "id": "VM-VALUE-051",
+      "risk_field": "buildingType",
+      "spanish_value": "chalet",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "risk_field_not_cataloged",
+      "notes": "buildingType es enum de la ontologia pero SIN dependencias reales extraidas todavia -- YAGNI, confirma que el modulo no inventa catalogo para enums no exercised en produccion"
+    }
+  ],
+  "dependency_translation_cases": [
+    {
+      "id": "VM-DEP-001",
+      "source_case_refs": [
+        "GD-FP-001",
+        "GD-REF-001"
+      ],
+      "description": "Caso real 23/07: 'propietario' con evidencia que menciona 'vivienda arrendada' -- housingRegime.contextOverrides reinterpreta Owner->Rental (el asegurado es arrendador, no ocupante).",
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "=",
+        "value": "propietario",
+        "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
+      },
+      "expected_translated_value": "Rental",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-013",
+      "source_case_refs": [
+        "GD-FP-001"
+      ],
+      "description": "'propietario' SIN mencion de vivienda arrendada en la evidencia -- se mantiene Owner, el contextOverride no debe dispararse sin la pista real.",
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "=",
+        "value": "propietario",
+        "evidence": "como miembro de la junta de copropietarios del edificio en que se halle la vivienda asegurada"
+      },
+      "expected_translated_value": "Owner",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-002",
+      "source_case_refs": [
+        "GD-FP-003"
+      ],
+      "dependency": {
+        "risk_field": "capitalInsuranceType",
+        "operator": "=",
+        "value": "primer_riesgo"
+      },
+      "expected_translated_value": "FirstRisk",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-003",
+      "source_case_refs": [
+        "GD-HALLUC-001",
+        "GD-HALLUC-002",
+        "GD-HALLUC-003",
+        "GD-HALLUC-004",
+        "GD-EVID-002",
+        "GD-EVID-003"
+      ],
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "IN",
+        "value": [
+          "vivienda principal",
+          "vivienda secundaria"
+        ]
+      },
+      "expected_translated_value": [
+        "MainResidence",
+        "SecondHome"
+      ],
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-004",
+      "source_case_refs": [
+        "GD-HALLUC-006"
+      ],
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "NOT_IN",
+        "value": [
+          "arrendada",
+          "uso turístico",
+          "alquiler vacacional",
+          "sin ocupación"
+        ]
+      },
+      "expected_translated_value": [
+        "UnoccupiedProperty"
+      ],
+      "expected_fully_translated": false,
+      "expected_unmatched_raw_values": [
+        "arrendada",
+        "uso turístico",
+        "alquiler vacacional"
+      ],
+      "notes": "caso clave: array mixto matched/known_limitation -- demuestra por que translateDependencyValue reporta unmatched en vez de descartar en silencio"
+    },
+    {
+      "id": "VM-DEP-005",
+      "source_case_refs": [
+        "GD-REF-004"
+      ],
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "IN",
+        "value": [
+          "alquiler vacacional",
+          "uso turístico"
+        ]
+      },
+      "expected_translated_value": [],
+      "expected_fully_translated": false,
+      "expected_unmatched_raw_values": [
+        "alquiler vacacional",
+        "uso turístico"
+      ],
+      "notes": "los 2 valores son known_limitation -- ningun FILTER_EXPR de enum se puede dar por correcto para esta dependencia sin revision humana"
+    },
+    {
+      "id": "VM-DEP-006",
+      "source_case_refs": [
+        "GD-REF-005"
+      ],
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "IN",
+        "value": [
+          "arrendada"
+        ]
+      },
+      "expected_translated_value": [
+        "Rental"
+      ],
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-007",
+      "source_case_refs": [
+        "GD-REF-006"
+      ],
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "=",
+        "value": "inquilino"
+      },
+      "expected_translated_value": "Tenant",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-008",
+      "source_case_refs": [
+        "GD-REF-007"
+      ],
+      "dependency": {
+        "risk_field": "capitalInsuranceType",
+        "operator": "NOT_IN",
+        "value": [
+          "primer riesgo"
+        ]
+      },
+      "expected_translated_value": [
+        "FirstRisk"
+      ],
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-009",
+      "source_case_refs": [
+        "GD-EVID-002",
+        "GD-EVID-003"
+      ],
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "NOT_IN",
+        "value": [
+          "otros usos"
+        ]
+      },
+      "expected_translated_value": [],
+      "expected_fully_translated": false,
+      "expected_unmatched_raw_values": [
+        "otros usos"
+      ]
+    },
+    {
+      "id": "VM-DEP-010",
+      "source_case_refs": [
+        "GD-EVID-004"
+      ],
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "=",
+        "value": "arrendada"
+      },
+      "expected_translated_value": "Rental",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-011",
+      "source_case_refs": [
+        "GD-TYPE-001"
+      ],
+      "dependency": {
+        "risk_field": "capitalInsuranceType",
+        "operator": "=",
+        "value": "primer riesgo"
+      },
+      "expected_translated_value": "FirstRisk",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": []
+    },
+    {
+      "id": "VM-DEP-012",
+      "source_case_refs": [
+        "real-cover15-22-07-continent"
+      ],
+      "dependency": {
+        "risk_field": "continent",
+        "operator": ">",
+        "value": 0
+      },
+      "expected_translated_value": 0,
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "notes": "Bug real 22/07: risk_field no cataloged (no es enum) NO debe contar como fallo de traduccion -- antes fullyTranslated salia false para la inmensa mayoria de dependencias reales (5 de 6 en una ejecucion muestreada) que ni siquiera son enums."
+    }
+  ],
+  "pipeline_integration_cases": [
+    {
+      "id": "VM-PIPE-001",
+      "source_case_refs": [
+        "GD-FP-001"
+      ],
+      "dependency": {
+        "risk_field": "housingRegime",
+        "operator": "=",
+        "value": "propietario"
+      },
+      "expected_final_spel": "insurance[\"risk\"].housingRegime == 'Owner'"
+    },
+    {
+      "id": "VM-PIPE-002",
+      "source_case_refs": [
+        "GD-HALLUC-001",
+        "GD-HALLUC-002",
+        "GD-HALLUC-003",
+        "GD-HALLUC-004"
+      ],
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "IN",
+        "value": [
+          "vivienda principal",
+          "vivienda secundaria"
+        ]
+      },
+      "expected_final_spel": "insurance[\"risk\"].housingUse in {'MainResidence','SecondHome'}"
+    },
+    {
+      "id": "VM-PIPE-003",
+      "source_case_refs": [
+        "GD-REF-007"
+      ],
+      "dependency": {
+        "risk_field": "capitalInsuranceType",
+        "operator": "NOT_IN",
+        "value": [
+          "primer riesgo"
+        ]
+      },
+      "expected_final_spel": "!(insurance[\"risk\"].capitalInsuranceType in {'FirstRisk'})"
+    }
+  ],
+  "dependency_set_translation_cases": [
+    {
+      "id": "VM-SET-001",
+      "description": "Caso real (cover 15, 22/07): 1 dependencia no-enum (continent>0, no es un fallo) + 1 enum totalmente traducida (housingUse IN) + 1 enum con fallo real (housingUse NOT_IN [\"otros usos\"], known_limitation) -- dependencies_translated debe tener 2 elementos (excluye SOLO la tercera), fully_translated agregado debe ser false (para que review_assembly siga pudiendo marcar needs_review).",
+      "dependencies": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "vivienda principal",
+            "vivienda secundaria"
+          ]
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "NOT_IN",
+          "value": [
+            "otros usos"
+          ]
+        }
+      ],
+      "expected_dependencies_translated": [
+        {
+          "risk_field": "continent",
+          "operator": ">",
+          "value": 0
+        },
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "MainResidence",
+            "SecondHome"
+          ]
+        }
+      ],
+      "expected_fully_translated": false
+    }
+  ]
+}

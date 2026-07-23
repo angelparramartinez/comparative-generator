@@ -1,0 +1,172 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_review_assembly_golden_set",
+  "description": "Casos para los guardrails y el ensamblado del JSON intermedio revisable (A13 Grounding Guardrail, A19 Tuning Key Guardrail, A21 Assemble Human-Review JSON, B3 Validate Review Completeness) del diseno de Fase 4.",
+  "schema_notes": {
+    "grounding_cases": "Un caso por applyGroundingGuardrail(llmDecision, candidates). Cubre: decision != match (passthrough), match valido (cover_id + cita real), cover_id alucinado, excel_quote alucinado.",
+    "tuning_key_cases": "Un caso por applyTuningKeyGuardrail(tuningKey, tuningDictionary), usando claves reales de examples/tuning_generali_traducido.json (ya usado en tuning_key_golden_dataset.json).",
+    "review_status_cases": "Un caso por computeEntryReviewStatus(entry) -- confirma las 3 razones de needs_review y el caso auto_approved.",
+    "completeness_cases": "Un caso por validateReviewCompleteness(reviewJson) -- confirma que detecta needs_review sin human_decision, y que covers/entries auto_approved u ya decididos no bloquean."
+  },
+  "grounding_cases": [
+    {
+      "id": "RA-GROUND-001",
+      "description": "decision distinta de match (out_of_scope_product) -- el guardrail no aplica, grounding_ok true sin tocar nada mas.",
+      "llm_decision": { "decision": "out_of_scope_product", "cover_id": null, "confidence": "alta" },
+      "candidates": [{ "cover_id": 18, "cover_full_text": "Daños por agua Escapes de agua -100% Localización y reparación -100% Fontanería sin daños – 300€" }],
+      "expected": { "grounding_ok": true, "confidence": "alta", "degradation_reason": null }
+    },
+    {
+      "id": "RA-GROUND-002",
+      "description": "match valido: cover_id real entre los candidatos y excel_quote es cita literal real (normalizada) del cover_full_text.",
+      "llm_decision": { "decision": "match", "cover_id": 18, "excel_quote": "Localización y reparación", "confidence": "alta" },
+      "candidates": [{ "cover_id": 18, "cover_full_text": "Daños por agua Escapes de agua -100% Localización y reparación -100% Fontanería sin daños – 300€" }],
+      "expected": { "grounding_ok": true, "confidence": "alta", "degradation_reason": null }
+    },
+    {
+      "id": "RA-GROUND-003",
+      "description": "cover_id alucinado: no esta entre los candidatos ofrecidos -- degrada a confianza baja.",
+      "llm_decision": { "decision": "match", "cover_id": 999, "excel_quote": "Localización y reparación", "confidence": "alta" },
+      "candidates": [{ "cover_id": 18, "cover_full_text": "Daños por agua Escapes de agua -100% Localización y reparación -100% Fontanería sin daños – 300€" }],
+      "expected": { "grounding_ok": false, "confidence": "baja", "degradation_reason": "cover_id_not_in_candidates" }
+    },
+    {
+      "id": "RA-GROUND-004",
+      "description": "excel_quote alucinado: cover_id real pero la cita no aparece en el texto real del Excel -- degrada a confianza baja.",
+      "llm_decision": { "decision": "match", "cover_id": 18, "excel_quote": "Cobertura de plagas y roedores", "confidence": "alta" },
+      "candidates": [{ "cover_id": 18, "cover_full_text": "Daños por agua Escapes de agua -100% Localización y reparación -100% Fontanería sin daños – 300€" }],
+      "expected": { "grounding_ok": false, "confidence": "baja", "degradation_reason": "excel_quote_not_grounded" }
+    }
+  ],
+  "tuning_key_cases": [
+    {
+      "id": "RA-TUNE-001",
+      "description": "tuning_key real, existe en el diccionario real de Generali (examples/tuning_generali_traducido.json).",
+      "tuning_key": "jewelryInQuote",
+      "tuning_dictionary_keys": ["jewelryInQuote", "jewelryQuote", "commercialDiscountNumber"],
+      "expected": { "tuning_key": "jewelryInQuote", "valid": true }
+    },
+    {
+      "id": "RA-TUNE-002",
+      "description": "NOT_FOUND explicito del agente -- valido por definicion, no se comprueba contra el diccionario.",
+      "tuning_key": "NOT_FOUND",
+      "tuning_dictionary_keys": ["jewelryInQuote"],
+      "expected": { "tuning_key": "NOT_FOUND", "valid": true }
+    },
+    {
+      "id": "RA-TUNE-003",
+      "description": "tuning_key inventado por el LLM, no existe en el diccionario real -- se degrada a NOT_FOUND.",
+      "tuning_key": "garantiaOpcionalInventada",
+      "tuning_dictionary_keys": ["jewelryInQuote", "jewelryQuote"],
+      "expected": { "tuning_key": "NOT_FOUND", "valid": false, "original_tuning_key": "garantiaOpcionalInventada", "reason": "tuning_key_not_in_dictionary" }
+    }
+  ],
+  "review_status_cases": [
+    {
+      "id": "RA-STATUS-001",
+      "description": "confianza alta, grounding ok, traduccion completa -- auto_approved.",
+      "entry": { "match": { "confidence": "alta", "grounding_ok": true }, "value_translation": { "fully_translated": true } },
+      "expected": { "review_status": "auto_approved", "review_reasons": [] }
+    },
+    {
+      "id": "RA-STATUS-002",
+      "description": "confianza media -- needs_review por match_confidence_not_alta.",
+      "entry": { "match": { "confidence": "media", "grounding_ok": true }, "value_translation": { "fully_translated": true } },
+      "expected": { "review_status": "needs_review", "review_reasons": ["match_confidence_not_alta"] }
+    },
+    {
+      "id": "RA-STATUS-003",
+      "description": "grounding fallido -- needs_review por grounding_failed (ademas de confianza baja, que tambien dispara match_confidence_not_alta).",
+      "entry": { "match": { "confidence": "baja", "grounding_ok": false }, "value_translation": { "fully_translated": true } },
+      "expected": { "review_status": "needs_review", "review_reasons": ["match_confidence_not_alta", "grounding_failed"] }
+    },
+    {
+      "id": "RA-STATUS-004",
+      "description": "traduccion de valor de enum parcial (caso real GD-HALLUC-006 via value_matcher) -- needs_review por value_translation_partial aunque el match sea de confianza alta.",
+      "entry": { "match": { "confidence": "alta", "grounding_ok": true }, "value_translation": { "fully_translated": false, "unmatched": [{ "raw": "uso turístico", "reason": "known_limitation" }] } },
+      "expected": { "review_status": "needs_review", "review_reasons": ["value_translation_partial"] }
+    }
+  ],
+  "assembly_cases": [
+    {
+      "id": "RA-ASSEMBLY-001",
+      "description": "Bug real 21/07 (cover_id 15/16/21/22/23/104 de Generali, ejecucion 235): una cobertura con bullets heterogeneos entre modalidades (needsReview:true desde Build Per-Cover Bullet Groups) debe aparecer en el JSON final con review_status needs_review y su razon, NO desaparecer silenciosamente por tener 0 entries.",
+      "input": {
+        "productCompanyId": 235,
+        "ramo": "Hogar",
+        "sourceFlow2Artifact": "artifact.json",
+        "sourceExcel": "excel.xlsx",
+        "coverRecords": [
+          {
+            "coverId": 16,
+            "coverName": "Robo",
+            "coverOverride": null,
+            "entries": [],
+            "needsReview": true,
+            "reviewReason": "heterogeneous_bullets_across_modalities"
+          }
+        ],
+        "unmatchedDependencies": []
+      },
+      "expected": {
+        "covers_needing_review": 1,
+        "first_cover_review_status": "needs_review",
+        "first_cover_review_reasons": ["heterogeneous_bullets_across_modalities"],
+        "first_cover_entries_count": 0
+      }
+    },
+    {
+      "id": "RA-ASSEMBLY-002",
+      "description": "Cobertura normal (sin needsReview) con entries auto_approved -- sigue saliendo auto_approved, review_reasons vacio a nivel de cobertura.",
+      "input": {
+        "productCompanyId": 235,
+        "ramo": "Hogar",
+        "sourceFlow2Artifact": "artifact.json",
+        "sourceExcel": "excel.xlsx",
+        "coverRecords": [
+          {
+            "coverId": 18,
+            "coverName": "Daños por agua",
+            "coverOverride": null,
+            "entries": [
+              { "cover_id": 18, "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "source": "default", "lines": [] }
+            ]
+          }
+        ],
+        "unmatchedDependencies": []
+      },
+      "expected": {
+        "covers_needing_review": 0,
+        "first_cover_review_status": "auto_approved",
+        "first_cover_review_reasons": [],
+        "first_cover_entries_count": 1
+      }
+    }
+  ],
+  "completeness_cases": [
+    {
+      "id": "RA-COMPLETE-001",
+      "description": "todas las entradas auto_approved -- completo.",
+      "review_json": {
+        "covers": [{ "cover_id": 18, "entries": [{ "review_status": "auto_approved", "bullet_text": "Escapes de agua" }] }]
+      },
+      "expected": { "complete": true, "pending": [] }
+    },
+    {
+      "id": "RA-COMPLETE-002",
+      "description": "una entrada needs_review sin human_decision -- incompleto, se lista como pendiente.",
+      "review_json": {
+        "covers": [{ "cover_id": 16, "entries": [{ "review_status": "needs_review", "bullet_text": "Robo joyas y relojes de valor", "human_decision": null }] }]
+      },
+      "expected": { "complete": false, "pending": [{ "cover_id": 16, "bullet_text": "Robo joyas y relojes de valor" }] }
+    },
+    {
+      "id": "RA-COMPLETE-003",
+      "description": "needs_review pero YA con human_decision.action relleno -- completo, no bloquea.",
+      "review_json": {
+        "covers": [{ "cover_id": 16, "entries": [{ "review_status": "needs_review", "bullet_text": "Robo joyas y relojes de valor", "human_decision": { "action": "approve" } }] }]
+      },
+      "expected": { "complete": true, "pending": [] }
+    }
+  ]
+}

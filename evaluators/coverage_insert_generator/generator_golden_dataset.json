@@ -1,0 +1,1743 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_generator_golden_set",
+  "description": "Casos de prueba (unitarios + un caso real de Generali) para el generador de ENTRY/LINES: traduccion de dependencias a SPEL, y las reglas de granularidad/hoisting/optimizacion ya fijadas en knowledge/Modelo comparativa de coberturas - AI ready.md.",
+  "spel_translation_cases": [
+    {
+      "id": "GEN-SPEL-001",
+      "description": "igualdad enum",
+      "dependency": {
+        "risk_field": "occupancy",
+        "operator": "=",
+        "value": "mainresidence"
+      },
+      "expected_spel": "insurance[\"risk\"].occupancy == 'mainresidence'"
+    },
+    {
+      "id": "GEN-SPEL-002",
+      "description": "desigualdad enum",
+      "dependency": {
+        "risk_field": "capitalInsuranceType",
+        "operator": "!=",
+        "value": "primer riesgo"
+      },
+      "expected_spel": "insurance[\"risk\"].capitalInsuranceType != 'primer riesgo'"
+    },
+    {
+      "id": "GEN-SPEL-003",
+      "description": "comparacion numerica >",
+      "dependency": {
+        "risk_field": "continent",
+        "operator": ">",
+        "value": 0
+      },
+      "expected_spel": "insurance[\"risk\"].continent > 0"
+    },
+    {
+      "id": "GEN-SPEL-004",
+      "description": "comparacion numerica <=",
+      "dependency": {
+        "risk_field": "rooms",
+        "operator": "<=",
+        "value": 5
+      },
+      "expected_spel": "insurance[\"risk\"].rooms <= 5"
+    },
+    {
+      "id": "GEN-SPEL-005",
+      "description": "IN enum multivalor",
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "IN",
+        "value": [
+          "vivienda principal",
+          "vivienda secundaria"
+        ]
+      },
+      "expected_spel": "insurance[\"risk\"].housingUse in {'vivienda principal','vivienda secundaria'}"
+    },
+    {
+      "id": "GEN-SPEL-006",
+      "description": "NOT_IN enum multivalor",
+      "dependency": {
+        "risk_field": "housingUse",
+        "operator": "NOT_IN",
+        "value": [
+          "uso turistico",
+          "alquiler vacacional"
+        ]
+      },
+      "expected_spel": "!(insurance[\"risk\"].housingUse in {'uso turistico','alquiler vacacional'})"
+    },
+    {
+      "id": "GEN-SPEL-007",
+      "description": "igualdad boolean",
+      "dependency": {
+        "risk_field": "alarm",
+        "operator": "=",
+        "value": true
+      },
+      "expected_spel": "insurance[\"risk\"].alarm == true"
+    }
+  ],
+  "combine_cases": [
+    {
+      "id": "GEN-COMBINE-001",
+      "description": "2 dependencias de la misma condicion estructural se combinan con AND",
+      "dependencies": [
+        {
+          "risk_field": "housingUse",
+          "operator": "IN",
+          "value": [
+            "Vivienda principal",
+            "Vivienda secundaria"
+          ]
+        },
+        {
+          "risk_field": "content",
+          "operator": ">",
+          "value": 0
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].housingUse in {'Vivienda principal','Vivienda secundaria'}) && (insurance[\"risk\"].content > 0)"
+    }
+  ],
+  "entry_building_cases": [
+    {
+      "id": "GEN-ENTRY-001",
+      "description": "Caso real Generali COVER_ID 18 (Danos por agua): 1 bullet sin condicion (Escapes de agua) + 2 bullets con la MISMA condicion (continent > 0). El default entry (sin condicion) rompe la uniformidad -> NO debe fusionarse a nivel de cobertura.",
+      "input": {
+        "coverId": 18,
+        "coverName": "Daños por agua",
+        "defaultBullets": [
+          "Escapes de agua -100%"
+        ],
+        "conditionedBullets": [
+          {
+            "text": "Localización y reparación -100%",
+            "dependencies": [
+              {
+                "risk_field": "continent",
+                "operator": ">",
+                "value": 0
+              }
+            ]
+          },
+          {
+            "text": "Fontanería sin daños – 300€",
+            "dependencies": [
+              {
+                "risk_field": "continent",
+                "operator": ">",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 3,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1
+      }
+    },
+    {
+      "id": "GEN-ENTRY-002",
+      "description": "2 ENTRY, ambos SIN bullet por defecto, comparten exactamente la misma condicion -> debe trasladarse al HIRING_STATUS_EXPR de la cobertura (hoisting).",
+      "input": {
+        "coverId": 999,
+        "coverName": "Cobertura sintetica hoisting",
+        "defaultBullets": [],
+        "conditionedBullets": [
+          {
+            "text": "Bullet A",
+            "dependencies": [
+              {
+                "risk_field": "housingUse",
+                "operator": "=",
+                "value": "mainresidence"
+              }
+            ]
+          },
+          {
+            "text": "Bullet B",
+            "dependencies": [
+              {
+                "risk_field": "housingUse",
+                "operator": "=",
+                "value": "mainresidence"
+              }
+            ]
+          }
+        ],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": true,
+        "entries_with_null_filter_expr_count": 2
+      }
+    },
+    {
+      "id": "GEN-ENTRY-003",
+      "description": "2 ENTRY con condiciones DISTINTAS -> no debe fusionarse (cada bullet mantiene su propia condicion).",
+      "input": {
+        "coverId": 998,
+        "coverName": "Cobertura sintetica sin hoisting",
+        "defaultBullets": [],
+        "conditionedBullets": [
+          {
+            "text": "Bullet A",
+            "dependencies": [
+              {
+                "risk_field": "housingUse",
+                "operator": "=",
+                "value": "mainresidence"
+              }
+            ]
+          },
+          {
+            "text": "Bullet B",
+            "dependencies": [
+              {
+                "risk_field": "content",
+                "operator": ">",
+                "value": 0
+              }
+            ]
+          }
+        ],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 0
+      }
+    },
+    {
+      "id": "GEN-ENTRY-004",
+      "description": "Coberturas opcionales conservan su propio HIRING_STATUS_EXPR (normalmente OPTIONAL, ver bloque D).",
+      "input": {
+        "coverId": 105,
+        "coverName": "Vehículos/maq. autopropulsada en reposo.",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": [
+          {
+            "coverName": "Cargador vehículo eléctrico o híbrido",
+            "textContent": "Límite 1.500€.",
+            "hiringStatusExpr": "OPTIONAL"
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_hiring_status_expr": "OPTIONAL"
+      }
+    },
+    {
+      "id": "GEN-ENTRY-005",
+      "description": "Bug real 21/07 (cover_id 79, ejecucion 235): el text_content de una cobertura opcional trae varias frases separadas por salto de linea -- deben trocearse en varias LINES, no quedar todas juntas en una sola TEXT_EXPR con \\n literales dentro.",
+      "input": {
+        "coverId": 79,
+        "coverName": "Animales domésticos.",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": [
+          {
+            "coverName": "Accidentes en animales domésticos",
+            "textContent": "- Fallecimiento por accidente – 500 €\n- Gastos de entierro o incineración – 150 €\n- Estancia en residencia por hospitalización del propietario -300€.",
+            "hiringStatusExpr": "OPTIONAL"
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_hiring_status_expr": "OPTIONAL",
+        "first_entry_lines_count": 3
+      }
+    },
+    {
+      "id": "GEN-ENTRY-006",
+      "description": "Decision del usuario (21/07): una cobertura sin NINGUN bloque real (0 default, 0 conditioned, 0 opcionales) debe llevar HIRING_STATUS_EXPR = 'NOT_INCLUDED' EXPLICITO en PRODUCT_COMPANY_COVER, no NULL -- para que quede claro en el JSON de revision que se detecto como no incluida, sin depender de la agregacion implicita de 'cero bloques' del motor real.",
+      "input": {
+        "coverId": 80,
+        "coverName": "Asistencia en viaje./ Accidentes",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 0,
+        "cover_override_present": true,
+        "entries_with_null_filter_expr_count": 0,
+        "cover_override_value": "\"NOT_INCLUDED\""
+      }
+    },
+    {
+      "id": "GEN-BLOCK-001",
+      "description": "COVER_ID 15 'Responsabilidad Civil', las 11 modalidades reales via conditionedBlocks (rama heterogenea completa) + la dependencia real housingRegime=Tenant citando 'Como inquilino frente al arrendador (locativa)'. 28 entries (7 familias x variantes por modalidad), TODOS con filter_expr null a nivel de ENTRY (la condicion vive en la LINE), full_entries verifica byte a byte que exactamente 6 entries (las 6 modalidades de la familia 'vivienda-inquilino') tienen esa LINE con filter_expr real y el resto null. Actualizado 22/07: las entries ahora salen ordenadas por modality_id (peticion del usuario), no por familia/bloque. Re-actualizado tras el fix de blockIndex: dentro de cada modalidad, Capital sale siempre primero (antes del fix, el orden dependia de un artefacto interno del agrupamiento por familias).",
+      "input": {
+        "coverId": 15,
+        "coverName": "Responsabilidad Civil",
+        "conditionedBlocks": [
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 150.000€",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5571",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 150.000€",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5574",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 150.000€",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5577",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 150.000€",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5580",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como inquilino frente al arrendador (locativa)",
+                "Patronal sobre empleados domésticos",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5571",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "housingRegime",
+                  "operator": "=",
+                  "value": "Tenant"
+                }
+              ],
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como inquilino frente al arrendador (locativa)",
+                "Patronal sobre empleados domésticos",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5572",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "housingRegime",
+                  "operator": "=",
+                  "value": "Tenant"
+                }
+              ],
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como inquilino frente al arrendador (locativa)",
+                "Patronal sobre empleados domésticos",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5573",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "housingRegime",
+                  "operator": "=",
+                  "value": "Tenant"
+                }
+              ],
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como inquilino frente al arrendador (locativa)",
+                "Patronal sobre empleados domésticos",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5574",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "housingRegime",
+                  "operator": "=",
+                  "value": "Tenant"
+                }
+              ],
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como inquilino frente al arrendador (locativa)",
+                "Patronal sobre empleados domésticos",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5575",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "housingRegime",
+                  "operator": "=",
+                  "value": "Tenant"
+                }
+              ],
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como inquilino frente al arrendador (locativa)",
+                "Patronal sobre empleados domésticos",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5576",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "housingRegime",
+                  "operator": "=",
+                  "value": "Tenant"
+                }
+              ],
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad civil de la vida privada",
+              "lines": [
+                "Personal y familiar",
+                "Propiedad y tenencia de mascotas (no perros)",
+                "Estancias temporales en el extranjero (3 meses)"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5571",
+            "blockIndex": 2,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad civil de la vida privada",
+              "lines": [
+                "Personal y familiar",
+                "Propiedad y tenencia de mascotas (no perros)",
+                "Estancias temporales en el extranjero (3 meses)"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5572",
+            "blockIndex": 2,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad civil de la vida privada",
+              "lines": [
+                "Personal y familiar",
+                "Propiedad y tenencia de mascotas (no perros)",
+                "Estancias temporales en el extranjero (3 meses)"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5573",
+            "blockIndex": 2,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad civil por uso de bicicletas",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5571",
+            "blockIndex": 3,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad civil por uso de bicicletas",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5572",
+            "blockIndex": 3,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad civil por uso de bicicletas",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5573",
+            "blockIndex": 3,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 300.000€ (fianzas 150.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5572",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 300.000€ (fianzas 150.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5575",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 300.000€ (fianzas 150.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5578",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 300.000€ (fianzas 150.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5581",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5573",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5576",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "value",
+              "headerText": "Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)",
+              "lines": [],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5579",
+            "blockIndex": 0,
+            "headerDependencies": null,
+            "lineDependencies": []
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como arrendador frente al inquilino",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5577",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como arrendador frente al inquilino",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5578",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como arrendador frente al inquilino",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5579",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como arrendador frente al inquilino",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5580",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          },
+          {
+            "block": {
+              "kind": "dash",
+              "headerText": "-Responsabilidad Civil de la vivienda",
+              "lines": [
+                "Como propietario",
+                "Como arrendador frente al inquilino",
+                "Contaminación accidental"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "modalityId": "5581",
+            "blockIndex": 1,
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 28,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 28,
+        "full_entries": [
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5571",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 150.000€'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5571",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Patronal sobre empleados domésticos'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5571",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad civil de la vida privada'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Personal y familiar'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Propiedad y tenencia de mascotas (no perros)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Estancias temporales en el extranjero (3 meses)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5571",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad civil por uso de bicicletas'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5572",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 300.000€ (fianzas 150.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5572",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Patronal sobre empleados domésticos'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5572",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad civil de la vida privada'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Personal y familiar'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Propiedad y tenencia de mascotas (no perros)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Estancias temporales en el extranjero (3 meses)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5572",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad civil por uso de bicicletas'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5573",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5573",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Patronal sobre empleados domésticos'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5573",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad civil de la vida privada'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Personal y familiar'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Propiedad y tenencia de mascotas (no perros)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Estancias temporales en el extranjero (3 meses)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5573",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad civil por uso de bicicletas'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5574",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 150.000€'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5574",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Patronal sobre empleados domésticos'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5575",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 300.000€ (fianzas 150.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5575",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Patronal sobre empleados domésticos'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5576",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5576",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Patronal sobre empleados domésticos'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5577",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 150.000€'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5577",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como arrendador frente al inquilino'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5578",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 300.000€ (fianzas 150.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5578",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como arrendador frente al inquilino'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5579",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 450.000€ (Límite por víctima 300.000€; Fianzas 150.000€; Estancias Temporales Extranjero 300.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5579",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como arrendador frente al inquilino'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5580",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 150.000€'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5580",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como arrendador frente al inquilino'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5581",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Capital 300.000€ (fianzas 150.000€)'"
+              }
+            ]
+          },
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": "5581",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como propietario'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Como arrendador frente al inquilino'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Contaminación accidental'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-BLOCK-002",
+      "description": "COVER_ID 17 'Incendio', bloque compartido (defaultBlocks) via matchDependenciesToDefaultBlocks + una dependencia real (smokeDamageCovered) citando la linea 'Daños por humo'. 1 unico ENTRY con 5 LINES (cabecera + 4 causas), filter_expr del ENTRY null, la LINE 'Daños por humo' con su propio filter_expr.",
+      "input": {
+        "coverId": 17,
+        "coverName": "Incendio",
+        "defaultBlocks": [
+          {
+            "block": {
+              "kind": "label",
+              "headerText": "Incendio, explosión, caída del rayo e impactos -100% en Continente y Contenido por:",
+              "lines": [
+                "Incendio, Explosión e implosión y Caída del rayo",
+                "Daños por humo",
+                "Derrame o escape de instalaciones de extinción",
+                "Impactos desde el exterior"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              [
+                {
+                  "risk_field": "smokeDamageCovered",
+                  "operator": "=",
+                  "value": true
+                }
+              ],
+              null,
+              null
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_lines_count": 5,
+        "full_entries": [
+          {
+            "cover_id": 17,
+            "filter_expr": null,
+            "hiring_status_expr": "INCLUDED",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Incendio, explosión, caída del rayo e impactos -100% en Continente y Contenido por:'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Incendio, Explosión e implosión y Caída del rayo'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].smokeDamageCovered == true",
+                "text_expr": "'Daños por humo'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Derrame o escape de instalaciones de extinción'"
+              },
+              {
+                "filter_expr": null,
+                "text_expr": "'Impactos desde el exterior'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-001",
+      "description": "Caso real (cover 79 \"Animales domésticos\", solo 3 de 11 modalidades reales tienen contenido en Coberturas por modalidad) -- la cobertura opcional (Mascotas, tuning zresid) debe escoparse: 3 entries con la formula de tuning (una por modalidad presente) + 8 entries NOT_INCLUDED explicito (una por modalidad ausente), 0 entries con modality_id null.",
+      "input": {
+        "coverId": 79,
+        "coverName": "Animales domésticos.",
+        "opcionales": [
+          {
+            "coverName": "Mascotas",
+            "textContent": "Fallecimiento por accidente",
+            "hiringStatusExpr": "tuning?.zresid != null && tuning.zresid ? \"INCLUDED\" : \"OPTIONAL\""
+          }
+        ],
+        "presentModalityIds": [
+          "5571",
+          "5572",
+          "5573"
+        ],
+        "missingModalityIds": [
+          "5574",
+          "5575",
+          "5576",
+          "5577",
+          "5578",
+          "5579",
+          "5580",
+          "5581"
+        ]
+      },
+      "expected": {
+        "entry_count": 11,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 11,
+        "full_entries": [
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.zresid != null && tuning.zresid ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "5571",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Fallecimiento por accidente'"
+              }
+            ]
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.zresid != null && tuning.zresid ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "5572",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Fallecimiento por accidente'"
+              }
+            ]
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.zresid != null && tuning.zresid ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "5573",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Fallecimiento por accidente'"
+              }
+            ]
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5574",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5575",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5576",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5577",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5578",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5579",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5580",
+            "source": "optional_cover",
+            "lines": []
+          },
+          {
+            "cover_id": 79,
+            "filter_expr": null,
+            "hiring_status_expr": "NOT_INCLUDED",
+            "value_expr": null,
+            "modality_id": "5581",
+            "source": "optional_cover",
+            "lines": []
+          }
+        ]
+      }
+    }
+  ],
+  "optional_hiring_status_cases": [
+    {
+      "id": "GEN-OPTHS-001",
+      "description": "tuning_key resuelto -> formula SPEL real (patron confirmado en knowledge/Modelo.../Ejemplo completo 2): INCLUDED si el tuning tiene la opcion marcada, OPTIONAL si no.",
+      "tuningKey": "yvig24",
+      "expected_expr": "tuning?.yvig24 != null && tuning.yvig24 ? \"INCLUDED\" : \"OPTIONAL\""
+    },
+    {
+      "id": "GEN-OPTHS-002",
+      "description": "tuning_key NOT_FOUND -> no hay forma de construir la condicion real, se mantiene el literal OPTIONAL.",
+      "tuningKey": "NOT_FOUND",
+      "expected_expr": "OPTIONAL"
+    },
+    {
+      "id": "GEN-OPTHS-003",
+      "description": "tuning_key ausente/null -> mismo fallback que NOT_FOUND.",
+      "tuningKey": null,
+      "expected_expr": "OPTIONAL"
+    }
+  ],
+  "bullet_splitting_cases": [
+    {
+      "id": "GEN-BULLET-001",
+      "description": "Caso real Generali COVER_ID 18: la celda empieza repitiendo el nombre de la cobertura como cabecera -- debe descartarse.",
+      "cellText": "Daños por agua\n   Escapes de agua -100%\n   Localización y reparación -100%\n   Fontanería sin daños – 300€",
+      "coverName": "Daños por agua",
+      "expected_bullets": [
+        "Escapes de agua -100%",
+        "Localización y reparación -100%",
+        "Fontanería sin daños – 300€"
+      ]
+    }
+  ],
+  "insert_sql_cases": [
+    {
+      "id": "GEN-SQL-001",
+      "description": "Reproduce EXACTAMENTE el unico ejemplo real de INSERT de PRODUCT_COMPANY_COVER_LINES que trae knowledge/Modelo comparativa de coberturas - AI ready.md SS11 (envoltorio TEXT_EXPR entre /'...'/), para confirmar que el generador reproduce ese formato.",
+      "text": "• Texto visible.",
+      "expected_sql_line": "'/\\'• Texto visible.\\'/'"
+    }
+  ],
+  "schema_notes": {
+    "block_entry_cases": "Casos de entry_building_cases que usan defaultBlocks/conditionedBlocks (buildEntriesForCover, integracion 22/07 de rich_text_block_parser.js) en vez de defaultBullets/conditionedBullets -- verifica que la dependencia real (housingRegime=Tenant) aterriza en la LINE concreta que la cita, no en el FILTER_EXPR del ENTRY completo (ver excel_fixture_builder.matchDependenciesToBlockGroups).",
+    "entry_ordering_cases": "Verifica que buildEntriesForCover ordena las ENTRY finales: primero modality_id null (comunes), despues agrupadas por modality_id -- peticion del usuario 22/07 para poder revisar facilmente si una modalidad tiene todo su contenido (antes quedaban dispersas por familia/bloque, no por modalidad).",
+    "missing_modality_cases": "Casos de entry_building_cases que usan presentModalityIds/missingModalityIds -- bug real 22/07 (covers 79/81): una cobertura opcional no tiene por que ofrecerse en las 11 modalidades; las modalidades marcadas \"Sin cobertura\" en Coberturas por modalidad deben salir NOT_INCLUDED explicito para esa cobertura opcional, no la formula de tuning aplicada por igual a todas."
+  },
+  "entry_ordering_cases": [
+    {
+      "id": "GEN-ORDER-001",
+      "description": "Entries de entrada en orden mezclado (5580, 5571, 5571, 5572) -- salida debe quedar: null primero, luego 5571 (las 2, en su orden relativo original), 5572, 5580.",
+      "input": {
+        "coverId": 1,
+        "coverName": "Test orden",
+        "defaultBullets": [
+          "Comun"
+        ],
+        "conditionedBlocks": [
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "B modalidad 5580"
+              ]
+            },
+            "modalityId": "5580"
+          },
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "A modalidad 5571"
+              ]
+            },
+            "modalityId": "5571"
+          },
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "A2 modalidad 5571"
+              ]
+            },
+            "modalityId": "5571"
+          },
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "C modalidad 5572"
+              ]
+            },
+            "modalityId": "5572"
+          }
+        ]
+      },
+      "expected_modality_order": [
+        null,
+        "5571",
+        "5571",
+        "5572",
+        "5580"
+      ]
+    }
+  ]
+}
