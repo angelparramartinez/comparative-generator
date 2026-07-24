@@ -23,7 +23,7 @@
       "description": "Entry valida (misma forma que genera generator.buildEntriesForCover).",
       "entry": {
         "filter_expr": null,
-        "hiring_status_expr": "INCLUDED",
+        "hiring_status_expr": "\"INCLUDED\"",
         "value_expr": null,
         "modality_id": "5571",
         "lines": [{ "filter_expr": null, "text_expr": "'Robo de continente y daños - 100%'" }]
@@ -49,7 +49,7 @@
       "description": "lines no es un array (typo humano en la mini-app).",
       "entry": {
         "filter_expr": null,
-        "hiring_status_expr": "INCLUDED",
+        "hiring_status_expr": "\"INCLUDED\"",
         "value_expr": null,
         "modality_id": null,
         "lines": "no es un array"
@@ -62,7 +62,7 @@
       "description": "Una linea sin text_expr.",
       "entry": {
         "filter_expr": null,
-        "hiring_status_expr": "INCLUDED",
+        "hiring_status_expr": "\"INCLUDED\"",
         "value_expr": null,
         "modality_id": null,
         "lines": [{ "filter_expr": null, "text_expr": "" }]
@@ -75,7 +75,7 @@
       "description": "modality_id no numerico ('abc') -- distinto del caso real valido (string numerico '5571', como lo genera Trigger A).",
       "entry": {
         "filter_expr": null,
-        "hiring_status_expr": "INCLUDED",
+        "hiring_status_expr": "\"INCLUDED\"",
         "value_expr": null,
         "modality_id": "abc",
         "lines": [{ "filter_expr": null, "text_expr": "'texto'" }]
@@ -93,7 +93,7 @@
         "entries": [
           {
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": null,
             "lines": [
@@ -120,9 +120,9 @@
       "cover": {
         "cover_id": 900,
         "entries": [
-          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "human_decision": null },
-          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "human_decision": null },
-          { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "human_decision": null }
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "human_decision": null }
         ]
       },
       "product_company_id": 235,
@@ -138,16 +138,16 @@
       "cover": {
         "cover_id": 900,
         "entries": [
-          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "human_decision": null },
-          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "human_decision": null },
-          { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "human_decision": { "action": "removed", "original": { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'" }, "timestamp": "2026-07-23T11:03:25.008Z" } }
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "human_decision": null },
+          { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "human_decision": { "action": "removed", "original": { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'" }, "timestamp": "2026-07-23T11:03:25.008Z" } }
         ]
       },
       "product_company_id": 235,
       "expected_ok": true,
       "expected_active_entry_count": 2,
       "expected_statement_count": 8,
-      "expected_sql_contains": ["MainResidence", "INCLUDED\" : \"NOT_INCLUDED", "VALUES (NULL, '/INCLUDED/', 1"],
+      "expected_sql_contains": ["MainResidence", "INCLUDED\" : \"NOT_INCLUDED", "VALUES (NULL, '/\"INCLUDED\"/', 1"],
       "expected_sql_not_contains": ["Linea B", "Tenant"]
     },
     {
@@ -162,6 +162,33 @@
       "product_company_id": 235,
       "expected_ok": false,
       "expected_shape_error_count": 1
+    },
+    {
+      "id": "CI-005",
+      "description": "Bug real 23/07 (cover 15 'RC', diagnosticado tras la prueba de Trigger B en dev): buildInsertStatements omitia por completo la columna FILTER_EXPR del INSERT de PRODUCT_COMPANY_COVER_LINES, aunque la LINE trajera su propio filter_expr (caso real 'Como inquilino frente al arrendador (locativa)', housingRegime==Tenant). El INSERT de LINES debe incluir la columna FILTER_EXPR, con NULL para las lineas sin condicion propia y el valor envuelto para la que si la tiene.",
+      "cover": {
+        "cover_id": 15,
+        "entries": [
+          {
+            "filter_expr": null, "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": "5571",
+            "lines": [
+              { "filter_expr": null, "text_expr": "'-Responsabilidad Civil de la vivienda'" },
+              { "filter_expr": null, "text_expr": "'Como propietario'" },
+              { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "text_expr": "'Como inquilino frente al arrendador (locativa)'" }
+            ],
+            "human_decision": null
+          }
+        ]
+      },
+      "product_company_id": 235,
+      "expected_ok": true,
+      "expected_active_entry_count": 1,
+      "expected_statement_count": 7,
+      "expected_sql_contains": [
+        "INSERT INTO PRODUCT_COMPANY_COVER_LINES (FILTER_EXPR, TEXT_EXPR, PRODUCT_COMPANY_COVER_ENTRY_ID, LINE_ORDER) VALUES (NULL, '/\\'-Responsabilidad Civil de la vivienda\\'/'",
+        "INSERT INTO PRODUCT_COMPANY_COVER_LINES (FILTER_EXPR, TEXT_EXPR, PRODUCT_COMPANY_COVER_ENTRY_ID, LINE_ORDER) VALUES ('/insurance[\"risk\"].housingRegime == \\'Tenant\\'/', '/\\'Como inquilino frente al arrendador (locativa)\\'/'"
+      ],
+      "expected_sql_not_contains": []
     }
   ],
   "final_sql_cases": [
@@ -176,7 +203,7 @@
             "review_status": "auto_approved",
             "entries": [
               {
-                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "filter_expr": null, "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null,
                 "lines": [{ "filter_expr": null, "text_expr": "'Incendio, explosión...'" }],
                 "review_status": "auto_approved", "human_decision": null
               }
@@ -200,7 +227,7 @@
             "review_status": "needs_review",
             "entries": [
               {
-                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "filter_expr": null, "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null,
                 "lines": [{ "filter_expr": null, "text_expr": "'texto'" }],
                 "review_status": "needs_review", "review_reasons": ["match_confidence_not_alta"], "human_decision": null
               }
@@ -247,7 +274,7 @@
             "review_status": "auto_approved",
             "entries": [
               {
-                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "filter_expr": null, "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null,
                 "lines": [{ "filter_expr": null, "text_expr": "'Incendio, explosión...'" }],
                 "review_status": "auto_approved", "human_decision": null
               }
@@ -272,14 +299,14 @@
             "entries": [
               {
                 "filter_expr": "insurance[\"risk\"].housingRegime == 'Rental'",
-                "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": "5577",
+                "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": "5577",
                 "lines": [{ "filter_expr": null, "text_expr": "'Como arrendador frente al inquilino'" }],
                 "review_status": "auto_approved",
                 "human_decision": {
                   "action": "edited",
                   "original": {
                     "filter_expr": "insurance[\"risk\"].housingRegime == 'Owner'",
-                    "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": "5577",
+                    "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": "5577",
                     "lines": [{ "filter_expr": null, "text_expr": "'Como arrendador frente al inquilino'" }]
                   },
                   "timestamp": "2026-07-23T11:03:25.008Z"
@@ -306,7 +333,7 @@
             "review_status": "auto_approved",
             "entries": [
               {
-                "filter_expr": null, "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null,
+                "filter_expr": null, "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null,
                 "lines": [{ "filter_expr": null, "text_expr": "'texto'" }],
                 "review_status": "auto_approved", "human_decision": null
               }
@@ -330,9 +357,9 @@
             "cover_id": 900,
             "review_status": "auto_approved",
             "entries": [
-              { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "review_status": "auto_approved", "human_decision": null },
-              { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "review_status": "auto_approved", "human_decision": null },
-              { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "INCLUDED", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "review_status": "auto_approved", "human_decision": { "action": "removed", "original": { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'" }, "timestamp": "2026-07-23T11:03:25.008Z" } }
+              { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A1'" }], "review_status": "auto_approved", "human_decision": null },
+              { "filter_expr": "insurance[\"risk\"].housingUse == 'MainResidence'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea A2'" }], "review_status": "auto_approved", "human_decision": null },
+              { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'", "hiring_status_expr": "\"INCLUDED\"", "value_expr": null, "modality_id": null, "lines": [{ "filter_expr": null, "text_expr": "'Linea B'" }], "review_status": "auto_approved", "human_decision": { "action": "removed", "original": { "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'" }, "timestamp": "2026-07-23T11:03:25.008Z" } }
             ]
           }
         ],

@@ -500,7 +500,7 @@
           "vivienda secundaria"
         ]
       },
-      "expected_final_spel": "insurance[\"risk\"].housingUse in {'MainResidence','SecondHome'}"
+      "expected_final_spel": "{'MainResidence','SecondHome'}.contains(insurance[\"risk\"].housingUse)"
     },
     {
       "id": "VM-PIPE-003",
@@ -514,7 +514,7 @@
           "primer riesgo"
         ]
       },
-      "expected_final_spel": "!(insurance[\"risk\"].capitalInsuranceType in {'FirstRisk'})"
+      "expected_final_spel": "!{'FirstRisk'}.contains(insurance[\"risk\"].capitalInsuranceType)"
     }
   ],
   "dependency_set_translation_cases": [

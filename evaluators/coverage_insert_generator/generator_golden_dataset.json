@@ -54,7 +54,7 @@
           "vivienda secundaria"
         ]
       },
-      "expected_spel": "insurance[\"risk\"].housingUse in {'vivienda principal','vivienda secundaria'}"
+      "expected_spel": "{'vivienda principal','vivienda secundaria'}.contains(insurance[\"risk\"].housingUse)"
     },
     {
       "id": "GEN-SPEL-006",
@@ -67,7 +67,7 @@
           "alquiler vacacional"
         ]
       },
-      "expected_spel": "!(insurance[\"risk\"].housingUse in {'uso turistico','alquiler vacacional'})"
+      "expected_spel": "!{'uso turistico','alquiler vacacional'}.contains(insurance[\"risk\"].housingUse)"
     },
     {
       "id": "GEN-SPEL-007",
@@ -99,7 +99,7 @@
           "value": 0
         }
       ],
-      "expected_spel": "(insurance[\"risk\"].housingUse in {'Vivienda principal','Vivienda secundaria'}) && (insurance[\"risk\"].content > 0)"
+      "expected_spel": "({'Vivienda principal','Vivienda secundaria'}.contains(insurance[\"risk\"].housingUse)) && (insurance[\"risk\"].content > 0)"
     }
   ],
   "entry_building_cases": [
@@ -821,7 +821,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5571",
             "source": "modality_bullet",
@@ -835,7 +835,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5571",
             "source": "modality_bullet",
@@ -865,7 +865,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5571",
             "source": "modality_bullet",
@@ -891,7 +891,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5571",
             "source": "modality_bullet",
@@ -905,7 +905,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5572",
             "source": "modality_bullet",
@@ -919,7 +919,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5572",
             "source": "modality_bullet",
@@ -949,7 +949,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5572",
             "source": "modality_bullet",
@@ -975,7 +975,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5572",
             "source": "modality_bullet",
@@ -989,7 +989,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5573",
             "source": "modality_bullet",
@@ -1003,7 +1003,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5573",
             "source": "modality_bullet",
@@ -1033,7 +1033,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5573",
             "source": "modality_bullet",
@@ -1059,7 +1059,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5573",
             "source": "modality_bullet",
@@ -1073,7 +1073,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5574",
             "source": "modality_bullet",
@@ -1087,7 +1087,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5574",
             "source": "modality_bullet",
@@ -1117,7 +1117,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5575",
             "source": "modality_bullet",
@@ -1131,7 +1131,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5575",
             "source": "modality_bullet",
@@ -1161,7 +1161,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5576",
             "source": "modality_bullet",
@@ -1175,7 +1175,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5576",
             "source": "modality_bullet",
@@ -1205,7 +1205,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5577",
             "source": "modality_bullet",
@@ -1219,7 +1219,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5577",
             "source": "modality_bullet",
@@ -1245,7 +1245,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5578",
             "source": "modality_bullet",
@@ -1259,7 +1259,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5578",
             "source": "modality_bullet",
@@ -1285,7 +1285,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5579",
             "source": "modality_bullet",
@@ -1299,7 +1299,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5579",
             "source": "modality_bullet",
@@ -1325,7 +1325,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5580",
             "source": "modality_bullet",
@@ -1339,7 +1339,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5580",
             "source": "modality_bullet",
@@ -1365,7 +1365,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5581",
             "source": "modality_bullet",
@@ -1379,7 +1379,7 @@
           {
             "cover_id": 15,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": "5581",
             "source": "modality_bullet",
@@ -1450,7 +1450,7 @@
           {
             "cover_id": 17,
             "filter_expr": null,
-            "hiring_status_expr": "INCLUDED",
+            "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
             "modality_id": null,
             "source": "default",
@@ -1559,7 +1559,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5574",
             "source": "optional_cover",
@@ -1568,7 +1568,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5575",
             "source": "optional_cover",
@@ -1577,7 +1577,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5576",
             "source": "optional_cover",
@@ -1586,7 +1586,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5577",
             "source": "optional_cover",
@@ -1595,7 +1595,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5578",
             "source": "optional_cover",
@@ -1604,7 +1604,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5579",
             "source": "optional_cover",
@@ -1613,7 +1613,7 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5580",
             "source": "optional_cover",
@@ -1622,9 +1622,44 @@
           {
             "cover_id": 79,
             "filter_expr": null,
-            "hiring_status_expr": "NOT_INCLUDED",
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": "5581",
+            "source": "optional_cover",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-002",
+      "description": "Bug real 24/07 (cover 105 'Vehículos/maq. autopropulsada en reposo'): la cobertura opcional no esta disponible en NINGUNA de las 11 modalidades (presentModalityIds vacio, caso simetrico a GEN-MISSING-001) -- antes del fix se generaba una entry NOT_INCLUDED identica por cada una de las 11 modalidades; debe colapsarse en una UNICA entry con modality_id null (regla de optimizacion obligatoria del modelo: mismos valores en todas las modalidades).",
+      "input": {
+        "coverId": 105,
+        "coverName": "Vehículos/maq. autopropulsada en reposo.",
+        "opcionales": [
+          {
+            "coverName": "Cargador vehículo eléctrico o híbrido",
+            "textContent": "Límite 1.500€.",
+            "hiringStatusExpr": "\"OPTIONAL\""
+          }
+        ],
+        "presentModalityIds": [],
+        "missingModalityIds": [
+          "5571", "5572", "5573", "5574", "5575", "5576", "5577", "5578", "5579", "5580", "5581"
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "full_entries": [
+          {
+            "cover_id": 105,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": null,
             "source": "optional_cover",
             "lines": []
           }
@@ -1641,15 +1676,15 @@
     },
     {
       "id": "GEN-OPTHS-002",
-      "description": "tuning_key NOT_FOUND -> no hay forma de construir la condicion real, se mantiene el literal OPTIONAL.",
+      "description": "tuning_key NOT_FOUND -> no hay forma de construir la condicion real, se mantiene el literal SPEL \"OPTIONAL\" (con comillas, para que sea un string SPEL valido).",
       "tuningKey": "NOT_FOUND",
-      "expected_expr": "OPTIONAL"
+      "expected_expr": "\"OPTIONAL\""
     },
     {
       "id": "GEN-OPTHS-003",
       "description": "tuning_key ausente/null -> mismo fallback que NOT_FOUND.",
       "tuningKey": null,
-      "expected_expr": "OPTIONAL"
+      "expected_expr": "\"OPTIONAL\""
     }
   ],
   "bullet_splitting_cases": [
