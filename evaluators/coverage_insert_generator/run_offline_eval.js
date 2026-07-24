@@ -26,6 +26,12 @@
 //   --rich-text-blocks valida el parser de bloques/lines a partir de la
 //                      negrita real de "Coberturas por modalidad"
 //                      (rich_text_block_parser.js, diseno 22/07)
+//   --insert-generation valida Trigger B (insert_generation.js): recibe el
+//                      JSON revisado por un humano y genera el SQL final --
+//                      filtrado de entries eliminadas, guardrail de forma
+//                      de entries editadas/anadidas a mano, recalculo de la
+//                      condicion compartida por cobertura tras el filtrado
+//                      (workflow n8n nuevo, 23/07)
 //   (sin flags)       ejecuta todos los checks
 //
 // Nota sobre "grounding" del matcher lexico (matcher.js): se intento un check
@@ -50,6 +56,7 @@ const VALUE_MATCHER_DATASET_PATH = path.join(__dirname, "value_matcher_golden_da
 const EXCEL_FIXTURE_DATASET_PATH = path.join(__dirname, "excel_fixture_builder_golden_dataset.json");
 const REVIEW_ASSEMBLY_DATASET_PATH = path.join(__dirname, "review_assembly_golden_dataset.json");
 const RICH_TEXT_BLOCK_PARSER_DATASET_PATH = path.join(__dirname, "rich_text_block_parser_golden_dataset.json");
+const INSERT_GENERATION_DATASET_PATH = path.join(__dirname, "insert_generation_golden_dataset.json");
 const matcher = require("./matcher");
 const generator = require("./generator");
 const tuningMatcher = require("./tuning_matcher");
@@ -57,6 +64,7 @@ const valueMatcher = require("./value_matcher");
 const excelFixtureBuilder = require("./excel_fixture_builder");
 const reviewAssembly = require("./review_assembly");
 const richTextBlockParser = require("./rich_text_block_parser");
+const insertGeneration = require("./insert_generation");
 
 function loadGoldenDataset() {
   return JSON.parse(fs.readFileSync(DATASET_PATH, "utf8"));
@@ -84,6 +92,10 @@ function loadReviewAssemblyGoldenDataset() {
 
 function loadRichTextBlockParserGoldenDataset() {
   return JSON.parse(fs.readFileSync(RICH_TEXT_BLOCK_PARSER_DATASET_PATH, "utf8"));
+}
+
+function loadInsertGenerationGoldenDataset() {
+  return JSON.parse(fs.readFileSync(INSERT_GENERATION_DATASET_PATH, "utf8"));
 }
 
 // Compara el nivel de confianza esperado (etiqueta manual, ver schema_notes)
@@ -458,6 +470,72 @@ function checkRichTextBlockParser(golden) {
   return failures === 0 ? 0 : 1;
 }
 
+function checkInsertGeneration(golden) {
+  console.log("\n=== --insert-generation ===");
+  let failures = 0;
+  let total = 0;
+
+  for (const c of golden.unwrap_cases || []) {
+    total++;
+    const got = insertGeneration.unwrapReviewedJson(c.raw);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.entry_shape_cases || []) {
+    total++;
+    const got = insertGeneration.validateEntryShape(c.entry);
+    const validMatches = got.valid === c.expected_valid;
+    const errorsMatch = (c.expected_error_substrings || []).every(sub => got.errors.some(e => e.includes(sub)));
+    const pass = validMatches && errorsMatch;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: valid=${got.valid}, errors=${JSON.stringify(got.errors)} | esperado: valid=${c.expected_valid}, error_substrings=${JSON.stringify(c.expected_error_substrings)}`}`);
+  }
+
+  for (const c of golden.cover_insert_cases || []) {
+    total++;
+    const got = insertGeneration.buildCoverInserts(c.cover, c.product_company_id);
+    let pass;
+    if (c.expected_ok) {
+      const sql = (got.statements || []).join("\n");
+      const containsOk = (c.expected_sql_contains || []).every(sub => sql.includes(sub));
+      const notContainsOk = (c.expected_sql_not_contains || []).every(sub => !sql.includes(sub));
+      pass = got.ok === true
+        && got.activeEntryCount === c.expected_active_entry_count
+        && got.statements.length === c.expected_statement_count
+        && containsOk && notContainsOk;
+    } else {
+      pass = got.ok === false && (got.shapeErrors || []).length === c.expected_shape_error_count;
+    }
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got, null, 2)}`}`);
+  }
+
+  for (const c of golden.final_sql_cases || []) {
+    total++;
+    const got = insertGeneration.buildFinalSql(c.reviewed_json);
+    let pass;
+    if (c.expected_ok) {
+      const containsOk = (c.expected_sql_contains || []).every(sub => got.sql.includes(sub));
+      const notContainsOk = (c.expected_sql_not_contains || []).every(sub => !got.sql.includes(sub));
+      pass = got.ok === true
+        && JSON.stringify(got.stats) === JSON.stringify(c.expected_stats)
+        && containsOk && notContainsOk;
+    } else {
+      const pendingCoverIds = (got.pending || []).map(p => p.cover_id);
+      const pendingOk = !c.expected_pending_cover_ids
+        || JSON.stringify(pendingCoverIds) === JSON.stringify(c.expected_pending_cover_ids);
+      pass = got.ok === false && got.reason === c.expected_reason && pendingOk;
+    }
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify({ ok: got.ok, reason: got.reason, stats: got.stats, pending: got.pending, errors: got.errors }, null, 2)}`}`);
+  }
+
+  console.log(`--insert-generation: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
@@ -468,6 +546,7 @@ function main() {
   const excelFixtureGolden = loadExcelFixtureGoldenDataset();
   const reviewAssemblyGolden = loadReviewAssemblyGoldenDataset();
   const richTextBlockParserGolden = loadRichTextBlockParserGoldenDataset();
+  const insertGenerationGolden = loadInsertGenerationGoldenDataset();
 
   let exitCode = 0;
   if (runAll || args.includes("--matching")) {
@@ -490,6 +569,9 @@ function main() {
   }
   if (runAll || args.includes("--rich-text-blocks")) {
     exitCode = Math.max(exitCode, checkRichTextBlockParser(richTextBlockParserGolden));
+  }
+  if (runAll || args.includes("--insert-generation")) {
+    exitCode = Math.max(exitCode, checkInsertGeneration(insertGenerationGolden));
   }
   process.exit(exitCode);
 }

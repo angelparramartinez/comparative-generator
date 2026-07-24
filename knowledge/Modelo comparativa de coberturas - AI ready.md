@@ -472,16 +472,19 @@ como contratable, no como excluido).
 
 ### Operadores `IN` / `NOT_IN` (dependencias enum del flujo 2)
 
-SPEL tiene operador `in` nativo para pertenencia a una lista, y `!` para
-negación. Una dependencia `risk_field IN [v1, v2, v3]` (del flujo 2, ya con los
+Corregido 24/07 (bug real detectado probando el motor real de ASM, Spring
+SpEL 5.3.39): SpEL **no tiene** operador `in` — la pertenencia a una lista se
+expresa como método de colección, `.contains(...)`, y la negación con `!`
+delante (sin paréntesis adicionales, `.contains(...)` liga más fuerte que
+`!`). Una dependencia `risk_field IN [v1, v2, v3]` (del flujo 2, ya con los
 valores traducidos al texto en inglés del enum — ver nota de la sección
 anterior) se traduce como:
 
-    insurance["risk"].housingUse in {'MainResidence','SecondHome'}
+    {'MainResidence','SecondHome'}.contains(insurance["risk"].housingUse)
 
 Y `NOT_IN` como su negación:
 
-    !(insurance["risk"].housingUse in {'MainResidence','SecondHome'})
+    !{'MainResidence','SecondHome'}.contains(insurance["risk"].housingUse)
 
 ---
 

@@ -28,7 +28,11 @@ function quoteSpelValue(value) {
 
 // Traduce una dependencia {risk_field, operator, value} (esquema del flujo 2)
 // a una condicion SPEL sobre insurance["risk"]. Sintaxis de IN/NOT_IN
-// confirmada por el usuario: `campo in {v1,v2,v3}` / `!(campo in {v1,v2,v3})`.
+// corregida 24/07 (bug real detectado probando el motor real de ASM,
+// Spring SpEL 5.3.39): SpEL no tiene operador `in` -- la sintaxis
+// `campo in {v1,v2,v3}` usada originalmente no es valida en ese motor, hay
+// que expresar la pertenencia como metodo de coleccion:
+// `{v1,v2,v3}.contains(campo)` / `!{v1,v2,v3}.contains(campo)`.
 function translateToSpel(dependency) {
   const field = `insurance["risk"].${dependency.risk_field}`;
 
@@ -37,8 +41,8 @@ function translateToSpel(dependency) {
       throw new Error(`operator ${dependency.operator} requiere value como array (dependency: ${JSON.stringify(dependency)})`);
     }
     const list = `{${dependency.value.map(quoteSpelValue).join(",")}}`;
-    const membership = `${field} in ${list}`;
-    return dependency.operator === "IN" ? membership : `!(${membership})`;
+    const membership = `${list}.contains(${field})`;
+    return dependency.operator === "IN" ? membership : `!${membership}`;
   }
 
   const spelOp = OPERATOR_TO_SPEL[dependency.operator];
@@ -136,7 +140,7 @@ function buildEntriesForCover({
     entries.push({
       cover_id: coverId,
       filter_expr: null,
-      hiring_status_expr: "INCLUDED",
+      hiring_status_expr: '"INCLUDED"',
       value_expr: null,
       modality_id: null,
       source: "default",
@@ -148,7 +152,7 @@ function buildEntriesForCover({
     entries.push({
       cover_id: coverId,
       filter_expr: null,
-      hiring_status_expr: "INCLUDED",
+      hiring_status_expr: '"INCLUDED"',
       value_expr: null,
       modality_id: null,
       source: "default",
@@ -160,7 +164,7 @@ function buildEntriesForCover({
     entries.push({
       cover_id: coverId,
       filter_expr: combineFilterExpr(bullet.dependencies),
-      hiring_status_expr: "INCLUDED",
+      hiring_status_expr: '"INCLUDED"',
       value_expr: null,
       modality_id: bullet.modalityId ?? null,
       source: "modality_bullet",
@@ -172,7 +176,7 @@ function buildEntriesForCover({
     entries.push({
       cover_id: coverId,
       filter_expr: null,
-      hiring_status_expr: "INCLUDED",
+      hiring_status_expr: '"INCLUDED"',
       value_expr: null,
       modality_id: cond.modalityId ?? null,
       source: "modality_bullet",
@@ -199,7 +203,7 @@ function buildEntriesForCover({
       entries.push({
         cover_id: coverId,
         filter_expr: opt.filterExpr ?? null,
-        hiring_status_expr: opt.hiringStatusExpr || "OPTIONAL",
+        hiring_status_expr: opt.hiringStatusExpr || '"OPTIONAL"',
         value_expr: null,
         modality_id: null,
         source: "optional_cover",
@@ -208,11 +212,33 @@ function buildEntriesForCover({
       continue;
     }
 
+    // Caso simetrico al de arriba: la cobertura opcional no esta disponible
+    // en NINGUNA modalidad (presentModalityIds vacio) -- incluida la propia
+    // cobertura base, no solo el opcional (bug real 24/07, cover 105
+    // "Vehiculos/maq. autopropulsada en reposo"). Todas las entries
+    // resultarian identicas (mismo NOT_INCLUDED, mismas 0 lineas) salvo por
+    // el modality_id, asi que aplica la regla de optimizacion obligatoria
+    // del modelo (Paso 2: mismos valores en todas las modalidades ->
+    // PRODUCT_COMPANY_MODALITY_ID = NULL) -- una unica ENTRY, no una por
+    // modalidad.
+    if (presentModalityIds.length === 0) {
+      entries.push({
+        cover_id: coverId,
+        filter_expr: null,
+        hiring_status_expr: '"NOT_INCLUDED"',
+        value_expr: null,
+        modality_id: null,
+        source: "optional_cover",
+        lines: []
+      });
+      continue;
+    }
+
     for (const modalityId of missingModalityIds) {
       entries.push({
         cover_id: coverId,
         filter_expr: null,
-        hiring_status_expr: "NOT_INCLUDED",
+        hiring_status_expr: '"NOT_INCLUDED"',
         value_expr: null,
         modality_id: modalityId,
         source: "optional_cover",
@@ -223,7 +249,7 @@ function buildEntriesForCover({
       entries.push({
         cover_id: coverId,
         filter_expr: opt.filterExpr ?? null,
-        hiring_status_expr: opt.hiringStatusExpr || "OPTIONAL",
+        hiring_status_expr: opt.hiringStatusExpr || '"OPTIONAL"',
         value_expr: null,
         modality_id: modalityId,
         source: "optional_cover",
@@ -297,7 +323,7 @@ function sortEntriesByModality(entries) {
 // esa condicion -- se mantiene el literal "OPTIONAL" tal cual (mismo
 // comportamiento que antes para ese caso).
 function buildOptionalHiringStatusExpr(tuningKey) {
-  if (!tuningKey || tuningKey === "NOT_FOUND") return "OPTIONAL";
+  if (!tuningKey || tuningKey === "NOT_FOUND") return '"OPTIONAL"';
   return `tuning?.${tuningKey} != null && tuning.${tuningKey} ? "INCLUDED" : "OPTIONAL"`;
 }
 
@@ -369,7 +395,7 @@ function buildInsertStatements({ coverId, productCompanyId, coverOverride, entri
 
     entry.lines.forEach((line, lineIndex) => {
       statements.push(
-        `INSERT INTO PRODUCT_COMPANY_COVER_LINES (TEXT_EXPR, PRODUCT_COMPANY_COVER_ENTRY_ID, LINE_ORDER) VALUES (${sqlLiteral(wrapAsSpelExpression(line.text_expr))}, ${entryVar}, ${lineIndex + 1});`
+        `INSERT INTO PRODUCT_COMPANY_COVER_LINES (FILTER_EXPR, TEXT_EXPR, PRODUCT_COMPANY_COVER_ENTRY_ID, LINE_ORDER) VALUES (${sqlLiteral(wrapAsSpelExpression(line.filter_expr))}, ${sqlLiteral(wrapAsSpelExpression(line.text_expr))}, ${entryVar}, ${lineIndex + 1});`
       );
     });
   });
