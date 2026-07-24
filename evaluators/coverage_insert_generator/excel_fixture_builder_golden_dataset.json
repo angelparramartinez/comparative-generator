@@ -1533,7 +1533,7 @@
   "block_dependency_matching_cases": [
     {
       "id": "BLOCK-DEP-001",
-      "description": "COVER_ID 15, familia heterogenea 'RC de la vivienda' (6 modalidades, contenido IDENTICO en todas -- misma forma). La dependencia real (housingRegime=Tenant) cita literalmente la linea 'Como inquilino frente al arrendador (locativa)' -- debe aterrizar en lineDependencies[2] (indice de esa linea dentro del bloque) de las 6 variantes, headerDependencies null, el resto de lineDependencies null.",
+      "description": "COVER_ID 15, familia heterogenea 'RC de la vivienda' (6 modalidades, contenido IDENTICO en todas -- misma forma). La dependencia real (use=Tenant) cita literalmente la linea 'Como inquilino frente al arrendador (locativa)' -- debe aterrizar en lineDependencies[2] (indice de esa linea dentro del bloque) de las 6 variantes, headerDependencies null, el resto de lineDependencies null.",
       "perModalityBlocks": [
         {
           "modalityId": "5571",
@@ -1940,7 +1940,7 @@
           "excel_quote": "Como inquilino frente al arrendador (locativa)",
           "dependencies_translated": [
             {
-              "risk_field": "housingRegime",
+              "risk_field": "use",
               "operator": "=",
               "value": "Tenant"
             }
@@ -2021,7 +2021,7 @@
             null,
             [
               {
-                "risk_field": "housingRegime",
+                "risk_field": "use",
                 "operator": "=",
                 "value": "Tenant"
               }
@@ -2050,7 +2050,7 @@
             null,
             [
               {
-                "risk_field": "housingRegime",
+                "risk_field": "use",
                 "operator": "=",
                 "value": "Tenant"
               }
@@ -2079,7 +2079,7 @@
             null,
             [
               {
-                "risk_field": "housingRegime",
+                "risk_field": "use",
                 "operator": "=",
                 "value": "Tenant"
               }
@@ -2108,7 +2108,7 @@
             null,
             [
               {
-                "risk_field": "housingRegime",
+                "risk_field": "use",
                 "operator": "=",
                 "value": "Tenant"
               }
@@ -2137,7 +2137,7 @@
             null,
             [
               {
-                "risk_field": "housingRegime",
+                "risk_field": "use",
                 "operator": "=",
                 "value": "Tenant"
               }
@@ -2166,7 +2166,7 @@
             null,
             [
               {
-                "risk_field": "housingRegime",
+                "risk_field": "use",
                 "operator": "=",
                 "value": "Tenant"
               }
@@ -2694,7 +2694,7 @@
           "excel_quote": "Robo joyas y relojes de valor - 10% (máx. 5.000€)",
           "dependencies_translated": [
             {
-              "risk_field": "jewelryOutSafeBox",
+              "risk_field": "jewelsOutSafeBoxLimit",
               "operator": ">",
               "value": 0
             }
@@ -2728,7 +2728,7 @@
             null,
             [
               {
-                "risk_field": "jewelryOutSafeBox",
+                "risk_field": "jewelsOutSafeBoxLimit",
                 "operator": ">",
                 "value": 0
               }
@@ -2821,7 +2821,7 @@
             null,
             [
               {
-                "risk_field": "jewelryOutSafeBox",
+                "risk_field": "jewelsOutSafeBoxLimit",
                 "operator": ">",
                 "value": 0
               }

@@ -69,7 +69,7 @@
       "source_text": "-Mobiliario y enseres: Hasta el 100% del capital contratado para esta partida.\n\n-Joyas y relojes de valor fuera de caja fuerte:\n\nHasta el 100% del capital contratado para esta partida, con un límite máximo de indemnización por pieza o pareja de 6.000 euros, salvo para las joyas y relojes que figuren expresamente declarados en las condiciones particulares con un valor concreto, el cual será su límite de indemnización.\n\n-Joyas y relojes de valor en caja fuerte:\n\nHasta el 100% del capital contratado para esta partida, con un límite máximo de indemnización por pieza o pareja de 6.000 euros, salvo para las joyas y relojes que figuren expresamente declarados en las condiciones particulares con un valor concreto, el cual será su límite de indemnización.\n\n-Bienes especiales (Obras de arte y objetos de valor especial):\n\nHasta el 100% del capital contratado para esta partida, con un límite máximo de indemnización por pieza o colección de 6.000 euros, salvo para los bienes que figuren expresamente declarados en las condiciones particulares con un valor concreto, el cual será su límite de indemnización.\n\nEn anexos de la vivienda:\n\nHasta el 10% del capital contratado para Mobiliario y enseres con un máximo de 1.500 euros por objeto, por robos o expoliaciones dentro de trasteros, garajes y otras dependencias anexas, siempre que sean de uso privativo, dispongan de cierre individual y no tengan zonas al aire libre o al descubierto, se encuentren en el mismo edificio o finca que la vivienda asegurada o en otra situación que haya sido expresamente declarada en las condiciones particulares. Esta cobertura no se aplica cuando se trate de Vivienda arrendada, Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "Vivienda arrendada",
@@ -97,7 +97,7 @@
       "source_text": "Hasta el 2% del capital contratado para Contenido, con un máximo de 600 euros por siniestro, el importe de los gastos necesarios para la reposición de las llaves y cerraduras de las puertas de acceso a la vivienda asegurada por otras de similares características, como consecuencia de robo, expoliación o hurto de las llaves legítimas. Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional o Vivienda sin ocupación.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "uso turístico",
@@ -124,7 +124,7 @@
       "source_text": "Hasta la cantidad contratada en las condiciones particulares, con máximo de un mes, y siempre que se acredite la existencia de reservas turísticas o haya un contrato de alquiler vacacional, se garantiza la indemnización por la pérdida de los ingresos por alquiler a consecuencia de la inhabitabilidad temporal de la vivienda, durante el tiempo que se precise para la reparación de los daños cubiertos en esta póliza. La consideración y duración de la inhabitabilidad serán establecidas por el perito o peritos intervinientes. En todo caso, debe impedir completamente el acceso a la vivienda o a la cocina o el uso de la totalidad de los baños de la vivienda.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "alquiler vacacional",
@@ -173,7 +173,7 @@
       "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "Vivienda principal",
@@ -182,7 +182,7 @@
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "resto de usos de vivienda"
@@ -207,7 +207,7 @@
       "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 500 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -216,7 +216,7 @@
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "otros usos"
@@ -241,7 +241,7 @@
       "source_text": "Hasta 150 euros, cuando se contrate capital de Mobiliario, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos previstos en el punto anterior cuando sean debidos a un salto de diferencial. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.\n\n1.8. Rotura de cristal de placa vitrocerámica o inducción Hasta el 100% del capital de Mobiliario, la indemnización por los gastos relativos a los daños previstos en el punto 4.2 c) del artículo 2º Garantías principales, con sus mismas condiciones y exclusiones.\n\n1.9. Rotura de cristales de electrodomésticos Hasta el 100% del capital de Mobiliario, la indemnización por los gastos de reparación o reposición por resquebrajamiento o fragmentación accidental de los cristales de electrodomésticos.\n\n1.10. Rotura de encimeras y tapas de mármol, granito y piedra artificial\n\nHasta el 100% de los capitales contratados para el Continente y/o Mo- biliario, la indemnización por gastos relativos a los daños previstos en los puntos 4.1 d) y 4.2 d) del artículo 2º Garantías principales, con sus mismas condiciones y exclusiones.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -256,7 +256,7 @@
           "evidence": "Hasta 150 euros, cuando se contrate capital de Mobiliario"
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "vivienda principal",
@@ -282,7 +282,7 @@
       "source_text": "Hasta el 2% del capital contratado para Contenido, con un máximo de 600 euros por siniestro, la indemnización por los gastos necesarios para la reposición de las llaves y cerraduras de las puertas de acceso a la vivienda asegurada por otras de similares características, como consecuencia de extravío de las llaves legítimas. Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "uso turístico",
@@ -308,7 +308,7 @@
       "source_text": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición en los que deba incurrir el asegurado por los daños materiales sobre estos bienes como consecuencia de la acción accidental y repentina de una fuente de calor sobre objetos cercanos a ella, siempre que no estén en contacto directo. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "Vivienda principal",
@@ -317,7 +317,7 @@
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "resto de usos de vivienda"
@@ -365,7 +365,7 @@
       "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 1.000 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "principal",
@@ -391,7 +391,7 @@
       "source_text": "Hasta 150 euros, cuando se contrate capital de Mobiliario, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos previstos en el punto anterior cuando sean debidos a un salto de diferencial. El asegurado deberá guardar vestigios o pruebas documentales de las pérdidas. En viviendas secundarias esta cobertura queda restringida a los periodos de habitación efectiva. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -423,7 +423,7 @@
       "source_text": "Hasta el 25% del capital contratado para Contenido con máximo de 3.000 euros, la indemnización por el hurto de cualquier bien de la vivienda asegurada por su personal doméstico legalmente a su servicio, y siempre que este hurto motive el despido del empleado que lo cometió. Límite parcial dinero (cheques dinero en efectivo, cheques bancarios y otros documentos que representen un valor en dinero):\n\n300 euros Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -432,7 +432,7 @@
           "evidence": "Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "otros usos"
@@ -457,7 +457,7 @@
       "source_text": "Hasta el 2% del capital contratado para Contenido, con un máximo de 1.000 euros por siniestro, la indemnización por los gastos necesarios para la reposición de las llaves y cerraduras de las puertas de acceso a la vivienda asegurada por otras de similares características, como consecuencia de extravío de las llaves legítimas, además de su robo, expoliación o hurto. Esta cobertura no se aplica cuando se trate de Vivienda de uso turístico o de alquiler vacacional.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "uso turístico",
@@ -511,7 +511,7 @@
       "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia). No obstante, el asegurador renuncia a aplicar este plazo de carencia cuando la póliza se emite en reemplazo de otra que hubiese garantizado el impago para la misma vivienda e inquilino.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "arrendada",
           "evidence": "Impago de rentas (solo en Vivienda arrendada)"
@@ -553,7 +553,7 @@
       "source_text": "La responsabilidad del punto anterior se extiende a los daños corporales y materiales derivados de la propiedad asegurada causados involuntariamente a los inquilinos o huéspedes turísticos, mientras habiten la vivienda en virtud de un contrato legal según el tipo de alquiler, cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional. Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios donde está la vivienda por hechos involuntarios derivados por el uso de sus instalaciones y mobiliario, con un límite máximo de 30.000 euros, y sin perjuicio de reserva de derecho de repetición contra otro seguro que cubra los mismos hechos. Dentro de la responsabilidad como usuario, además, se cubre:",
       "coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "uso turístico",
@@ -562,7 +562,7 @@
           "evidence": "Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios"
         },
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "propietario",
           "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
@@ -585,7 +585,7 @@
       "source_text": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad por los daños que pueda sufrir la vivienda en elementos del continente o del mobiliario que forme parte del equipamiento cedido por el propietario, siempre que dichos daños deriven de incendio y sus efectos, explosión e implosión o daños por agua como consecuencia del uso negligente de las instalaciones o con origen en bienes muebles asegurados y propiedad del asegurado.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "inquilino",
           "evidence": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad"
@@ -607,7 +607,7 @@
       "source_text": "Siempre que se haya hecho constar en las condiciones particulares, por el plazo temporal indicado en las mismas y dentro de la vigencia del seguro, se extiende la Responsabilidad civil de la vida privada del punto anterior a la derivada por estancias temporales fuera del hogar que realicen el asegurado o los miembros de la unidad familiar con fines privados. Se incluyen los daños causados involuntariamente como inquilino o huésped turístico en la vivienda en la que se habite durante esta estancia temporal.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "IN",
           "value": [
             "inquilino",
@@ -650,7 +650,7 @@
       "source_text": "Hechos anteriores a la vigencia de la póliza y los que, aun pudiendo haber tenido cobertura, sean declarados después de transcurrir dos años desde la fecha de rescisión o anulación de este contrato, salvo en materia fiscal en la que el plazo será de cinco años.\n\nLa defensa por actos dolosos o la mala fe por parte del asegurado.\n\nReclamaciones que tengan su origen o estén relacionadas con el proyecto, construcción, transformación o derribo del inmueble o instalaciones donde se halle ubicado el inmueble, así como los relacionados con canteras, explotaciones mineras e instalaciones fabriles.\n\nReclamaciones contra el asegurado por la no realización de las obras necesarias de conservación del inmueble objeto del seguro.\n\nLos litigios sobre cuestiones de propiedad intelectual o industrial, así como los procedimientos judiciales en materia de urbanismo, concentración parcelaria y expropiación o que dimanen de contratos sobre cesión de derechos a su favor.\n\nReclamaciones a personas sin responsabilidad legal que se hallen de forma permanente o temporal bajo control o vigilancia del asegurado o de las personas que convivan con el asegurado.\n\nReclamaciones a propietarios de cosas o animales que por cualquier razón se hallen en su poder o bajo su responsabilidad o de la de personas de las que el asegurado deba responder\n\nLos relacionados con el uso y circulación de vehículos a motor, sus remolques y de embarcaciones náuticas, salvo cuando el asegurado actúe como peatón u ocupante de uno de estos vehículos que no sean de su propiedad ni estén bajo su control.\n\nLos relacionados con el uso y circulación de vehículos personales ligeros, salvo cuando el asegurado actúe como peatón.\n\nLas reclamaciones a inquilinos por arrendamientos de temporada o de duración inferior a un año sin cláusula de renovación, subarrendamientos y arrendamientos comerciales o rústicos.\n\nLas reclamaciones por impagos de alquileres legitimados por disposición de algún tipo de autoridad competente o causados por inhabitabilidad o problemas estructurales del inmueble.\n\nEl cumplimiento de las obligaciones que le sean impuestas al asegurado por sentencia o resolución administrativa.\n\nLos gastos originados por una acumulación o reconvención judicial, cuando se refieran a materias no garantizadas por la presente póliza.\n\nLos gastos que no hayan sido comunicados previamente y aquellos para los que no se hubiera obtenido la correspondiente autorización.\n\nEl propio importe de los daños o pérdidas objeto de la reclamación.\n\nEl pago de multas y la indemnización de cualquier gasto originado por sanciones impuestas al asegurado por las autoridades administrativas o judiciales.\n\nLos impuestos y otros pagos de carácter fiscal, dimanantes de la presentación de documentos públicos o privados ante los organismos oficiales.",
       "coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "NOT_IN",
           "value": [
             "temporada",

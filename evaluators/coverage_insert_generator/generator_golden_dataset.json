@@ -37,37 +37,37 @@
       "id": "GEN-SPEL-004",
       "description": "comparacion numerica <=",
       "dependency": {
-        "risk_field": "rooms",
+        "risk_field": "roomsNumber",
         "operator": "<=",
         "value": 5
       },
-      "expected_spel": "insurance[\"risk\"].rooms <= 5"
+      "expected_spel": "insurance[\"risk\"].roomsNumber <= 5"
     },
     {
       "id": "GEN-SPEL-005",
       "description": "IN enum multivalor",
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "IN",
         "value": [
           "vivienda principal",
           "vivienda secundaria"
         ]
       },
-      "expected_spel": "{'vivienda principal','vivienda secundaria'}.contains(insurance[\"risk\"].housingUse)"
+      "expected_spel": "{'vivienda principal','vivienda secundaria'}.contains(insurance[\"risk\"].occupancy)"
     },
     {
       "id": "GEN-SPEL-006",
       "description": "NOT_IN enum multivalor",
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "NOT_IN",
         "value": [
           "uso turistico",
           "alquiler vacacional"
         ]
       },
-      "expected_spel": "!{'uso turistico','alquiler vacacional'}.contains(insurance[\"risk\"].housingUse)"
+      "expected_spel": "!{'uso turistico','alquiler vacacional'}.contains(insurance[\"risk\"].occupancy)"
     },
     {
       "id": "GEN-SPEL-007",
@@ -86,7 +86,7 @@
       "description": "2 dependencias de la misma condicion estructural se combinan con AND",
       "dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "Vivienda principal",
@@ -99,7 +99,7 @@
           "value": 0
         }
       ],
-      "expected_spel": "({'Vivienda principal','Vivienda secundaria'}.contains(insurance[\"risk\"].housingUse)) && (insurance[\"risk\"].content > 0)"
+      "expected_spel": "({'Vivienda principal','Vivienda secundaria'}.contains(insurance[\"risk\"].occupancy)) && (insurance[\"risk\"].content > 0)"
     }
   ],
   "entry_building_cases": [
@@ -154,7 +154,7 @@
             "text": "Bullet A",
             "dependencies": [
               {
-                "risk_field": "housingUse",
+                "risk_field": "occupancy",
                 "operator": "=",
                 "value": "mainresidence"
               }
@@ -164,7 +164,7 @@
             "text": "Bullet B",
             "dependencies": [
               {
-                "risk_field": "housingUse",
+                "risk_field": "occupancy",
                 "operator": "=",
                 "value": "mainresidence"
               }
@@ -191,7 +191,7 @@
             "text": "Bullet A",
             "dependencies": [
               {
-                "risk_field": "housingUse",
+                "risk_field": "occupancy",
                 "operator": "=",
                 "value": "mainresidence"
               }
@@ -359,7 +359,7 @@
               null,
               [
                 {
-                  "risk_field": "housingRegime",
+                  "risk_field": "use",
                   "operator": "=",
                   "value": "Tenant"
                 }
@@ -388,7 +388,7 @@
               null,
               [
                 {
-                  "risk_field": "housingRegime",
+                  "risk_field": "use",
                   "operator": "=",
                   "value": "Tenant"
                 }
@@ -417,7 +417,7 @@
               null,
               [
                 {
-                  "risk_field": "housingRegime",
+                  "risk_field": "use",
                   "operator": "=",
                   "value": "Tenant"
                 }
@@ -446,7 +446,7 @@
               null,
               [
                 {
-                  "risk_field": "housingRegime",
+                  "risk_field": "use",
                   "operator": "=",
                   "value": "Tenant"
                 }
@@ -475,7 +475,7 @@
               null,
               [
                 {
-                  "risk_field": "housingRegime",
+                  "risk_field": "use",
                   "operator": "=",
                   "value": "Tenant"
                 }
@@ -504,7 +504,7 @@
               null,
               [
                 {
-                  "risk_field": "housingRegime",
+                  "risk_field": "use",
                   "operator": "=",
                   "value": "Tenant"
                 }
@@ -849,7 +849,7 @@
                 "text_expr": "'Como propietario'"
               },
               {
-                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
                 "text_expr": "'Como inquilino frente al arrendador (locativa)'"
               },
               {
@@ -933,7 +933,7 @@
                 "text_expr": "'Como propietario'"
               },
               {
-                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
                 "text_expr": "'Como inquilino frente al arrendador (locativa)'"
               },
               {
@@ -1017,7 +1017,7 @@
                 "text_expr": "'Como propietario'"
               },
               {
-                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
                 "text_expr": "'Como inquilino frente al arrendador (locativa)'"
               },
               {
@@ -1101,7 +1101,7 @@
                 "text_expr": "'Como propietario'"
               },
               {
-                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
                 "text_expr": "'Como inquilino frente al arrendador (locativa)'"
               },
               {
@@ -1145,7 +1145,7 @@
                 "text_expr": "'Como propietario'"
               },
               {
-                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
                 "text_expr": "'Como inquilino frente al arrendador (locativa)'"
               },
               {
@@ -1189,7 +1189,7 @@
                 "text_expr": "'Como propietario'"
               },
               {
-                "filter_expr": "insurance[\"risk\"].housingRegime == 'Tenant'",
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
                 "text_expr": "'Como inquilino frente al arrendador (locativa)'"
               },
               {

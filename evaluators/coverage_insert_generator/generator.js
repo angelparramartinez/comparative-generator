@@ -100,7 +100,7 @@ function splitBulletsFromCellText(cellText, coverName) {
 // -- NUNCA al ENTRY completo. Motivo: un bloque puede agrupar varias lineas
 // (ej. "-Responsabilidad Civil de la vivienda" con 4 lineas) donde solo UNA
 // tiene una condicion real extraida del condicionado (ej. "Como inquilino
-// frente al arrendador (locativa)" -> housingRegime == 'Tenant'); si esa
+// frente al arrendador (locativa)" -> use == 'Tenant'); si esa
 // condicion se pusiera en el FILTER_EXPR del ENTRY, ocultaria tambien las
 // otras 3 lineas sin relacion. La cabecera (negrita o "-") se mantiene como
 // primera linea visible -- ya se mostraba asi antes de este parser. Un

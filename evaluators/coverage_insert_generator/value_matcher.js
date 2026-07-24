@@ -8,11 +8,17 @@
 //
 // Alcance deliberado (YAGNI): solo se cataloga el vocabulario de los enums que
 // ya han aparecido con dependencias reales extraidas en produccion
-// (housingUse, housingRegime, capitalInsuranceType -- ver golden set de
+// (occupancy, use, capitalInsuranceType -- ver golden set de
 // evaluators/coverage_dependency_extractor/golden_dataset.json). El resto de
 // enums de la ontologia (buildingType, buildQuality, materials, location,
 // alarm) no tiene todavia ningun caso real de dependencia -- no se inventa su
 // catalogo de valores hasta que aparezca uno.
+//
+// Claves corregidas 24/07: eran housingUse/housingRegime (nombres de
+// risk_field NO accesibles desde el motor SPEL real de ASM, ver
+// knowledge/ontologies/ontology-home.md) -- ahora occupancy/use, los campos
+// reales. El concepto de negocio sigue siendo "uso de la vivienda"/"regimen
+// de tenencia", solo cambia la clave tecnica.
 
 const { normalize } = require("./matcher");
 
@@ -24,7 +30,7 @@ const { normalize } = require("./matcher");
 // vacacional): el usuario opto por dejarlo como limitacion conocida en vez de
 // forzar un mapeo o inventar un 4o valor de enum.
 const ENUM_VALUE_CATALOG = {
-  housingUse: {
+  occupancy: {
     values: {
       MainResidence: ["vivienda principal", "residencia principal", "domicilio habitual", "vivienda habitual"],
       SecondHome: ["vivienda secundaria", "segunda residencia", "vivienda de temporada"],
@@ -32,7 +38,7 @@ const ENUM_VALUE_CATALOG = {
     },
     knownLimitations: ["alquiler vacacional", "uso turístico", "otros usos", "arrendada"]
   },
-  housingRegime: {
+  use: {
     values: {
       Owner: ["propietario"],
       Rental: ["arrendada", "vivienda alquilada"],
@@ -46,7 +52,7 @@ const ENUM_VALUE_CATALOG = {
     // aplica ("propietario de una vivienda arrendada..."). Mismo mecanismo
     // que `negative_aliases` de matcher/ontologia pero a nivel de VALOR: el
     // dato (que ramo/campo/palabras) vive aqui, el motor (applyContextOverrides
-    // mas abajo) no conoce "housingRegime" ni "arrendada" -- es generico.
+    // mas abajo) no conoce "use" ni "arrendada" -- es generico.
     contextOverrides: [
       { from: "Owner", to: "Rental", whenEvidenceContainsAny: ["arrendada", "arrendador", "alquilada", "alquiler"] }
     ]

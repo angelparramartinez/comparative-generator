@@ -12,7 +12,7 @@
   "value_match_cases": [
     {
       "id": "VM-VALUE-001",
-      "risk_field": "housingRegime",
+      "risk_field": "use",
       "spanish_value": "propietario",
       "expected_matched": true,
       "expected_value": "Owner",
@@ -21,7 +21,7 @@
     },
     {
       "id": "VM-VALUE-002",
-      "risk_field": "housingRegime",
+      "risk_field": "use",
       "spanish_value": "arrendada",
       "expected_matched": true,
       "expected_value": "Rental",
@@ -30,7 +30,7 @@
     },
     {
       "id": "VM-VALUE-003",
-      "risk_field": "housingRegime",
+      "risk_field": "use",
       "spanish_value": "vivienda alquilada",
       "expected_matched": true,
       "expected_value": "Rental",
@@ -38,7 +38,7 @@
     },
     {
       "id": "VM-VALUE-004",
-      "risk_field": "housingRegime",
+      "risk_field": "use",
       "spanish_value": "inquilino",
       "expected_matched": true,
       "expected_value": "Tenant",
@@ -47,7 +47,7 @@
     },
     {
       "id": "VM-VALUE-005",
-      "risk_field": "housingRegime",
+      "risk_field": "use",
       "spanish_value": "arrendatario",
       "expected_matched": true,
       "expected_value": "Tenant",
@@ -91,7 +91,7 @@
     },
     {
       "id": "VM-VALUE-020",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "vivienda principal",
       "expected_matched": true,
       "expected_value": "MainResidence",
@@ -100,7 +100,7 @@
     },
     {
       "id": "VM-VALUE-021",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "residencia principal",
       "expected_matched": true,
       "expected_value": "MainResidence",
@@ -108,7 +108,7 @@
     },
     {
       "id": "VM-VALUE-022",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "domicilio habitual",
       "expected_matched": true,
       "expected_value": "MainResidence",
@@ -116,7 +116,7 @@
     },
     {
       "id": "VM-VALUE-023",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "vivienda habitual",
       "expected_matched": true,
       "expected_value": "MainResidence",
@@ -124,7 +124,7 @@
     },
     {
       "id": "VM-VALUE-024",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "Vivienda Principal",
       "expected_matched": true,
       "expected_value": "MainResidence",
@@ -133,7 +133,7 @@
     },
     {
       "id": "VM-VALUE-025",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "vivienda secundaria",
       "expected_matched": true,
       "expected_value": "SecondHome",
@@ -142,7 +142,7 @@
     },
     {
       "id": "VM-VALUE-026",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "segunda residencia",
       "expected_matched": true,
       "expected_value": "SecondHome",
@@ -150,7 +150,7 @@
     },
     {
       "id": "VM-VALUE-027",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "vivienda de temporada",
       "expected_matched": true,
       "expected_value": "SecondHome",
@@ -158,7 +158,7 @@
     },
     {
       "id": "VM-VALUE-028",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "vivienda vacía",
       "expected_matched": true,
       "expected_value": "UnoccupiedProperty",
@@ -166,7 +166,7 @@
     },
     {
       "id": "VM-VALUE-029",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "vivienda desocupada",
       "expected_matched": true,
       "expected_value": "UnoccupiedProperty",
@@ -174,7 +174,7 @@
     },
     {
       "id": "VM-VALUE-030",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "sin ocupación",
       "expected_matched": true,
       "expected_value": "UnoccupiedProperty",
@@ -183,7 +183,7 @@
     },
     {
       "id": "VM-VALUE-040",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "alquiler vacacional",
       "expected_matched": false,
       "expected_value": null,
@@ -193,7 +193,7 @@
     },
     {
       "id": "VM-VALUE-041",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "uso turístico",
       "expected_matched": false,
       "expected_value": null,
@@ -202,7 +202,7 @@
     },
     {
       "id": "VM-VALUE-042",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "otros usos",
       "expected_matched": false,
       "expected_value": null,
@@ -211,7 +211,7 @@
     },
     {
       "id": "VM-VALUE-043",
-      "risk_field": "housingUse",
+      "risk_field": "occupancy",
       "spanish_value": "arrendada",
       "expected_matched": false,
       "expected_value": null,
@@ -221,7 +221,7 @@
     },
     {
       "id": "VM-VALUE-050",
-      "risk_field": "housingRegime",
+      "risk_field": "use",
       "spanish_value": "vivienda okupada",
       "expected_matched": false,
       "expected_value": null,
@@ -247,7 +247,7 @@
       ],
       "description": "Caso real 23/07: 'propietario' con evidencia que menciona 'vivienda arrendada' -- housingRegime.contextOverrides reinterpreta Owner->Rental (el asegurado es arrendador, no ocupante).",
       "dependency": {
-        "risk_field": "housingRegime",
+        "risk_field": "use",
         "operator": "=",
         "value": "propietario",
         "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
@@ -263,7 +263,7 @@
       ],
       "description": "'propietario' SIN mencion de vivienda arrendada en la evidencia -- se mantiene Owner, el contextOverride no debe dispararse sin la pista real.",
       "dependency": {
-        "risk_field": "housingRegime",
+        "risk_field": "use",
         "operator": "=",
         "value": "propietario",
         "evidence": "como miembro de la junta de copropietarios del edificio en que se halle la vivienda asegurada"
@@ -297,7 +297,7 @@
         "GD-EVID-003"
       ],
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "IN",
         "value": [
           "vivienda principal",
@@ -317,7 +317,7 @@
         "GD-HALLUC-006"
       ],
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "NOT_IN",
         "value": [
           "arrendada",
@@ -343,7 +343,7 @@
         "GD-REF-004"
       ],
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "IN",
         "value": [
           "alquiler vacacional",
@@ -364,7 +364,7 @@
         "GD-REF-005"
       ],
       "dependency": {
-        "risk_field": "housingRegime",
+        "risk_field": "use",
         "operator": "IN",
         "value": [
           "arrendada"
@@ -382,7 +382,7 @@
         "GD-REF-006"
       ],
       "dependency": {
-        "risk_field": "housingRegime",
+        "risk_field": "use",
         "operator": "=",
         "value": "inquilino"
       },
@@ -415,7 +415,7 @@
         "GD-EVID-003"
       ],
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "NOT_IN",
         "value": [
           "otros usos"
@@ -433,7 +433,7 @@
         "GD-EVID-004"
       ],
       "dependency": {
-        "risk_field": "housingRegime",
+        "risk_field": "use",
         "operator": "=",
         "value": "arrendada"
       },
@@ -478,11 +478,11 @@
         "GD-FP-001"
       ],
       "dependency": {
-        "risk_field": "housingRegime",
+        "risk_field": "use",
         "operator": "=",
         "value": "propietario"
       },
-      "expected_final_spel": "insurance[\"risk\"].housingRegime == 'Owner'"
+      "expected_final_spel": "insurance[\"risk\"].use == 'Owner'"
     },
     {
       "id": "VM-PIPE-002",
@@ -493,14 +493,14 @@
         "GD-HALLUC-004"
       ],
       "dependency": {
-        "risk_field": "housingUse",
+        "risk_field": "occupancy",
         "operator": "IN",
         "value": [
           "vivienda principal",
           "vivienda secundaria"
         ]
       },
-      "expected_final_spel": "{'MainResidence','SecondHome'}.contains(insurance[\"risk\"].housingUse)"
+      "expected_final_spel": "{'MainResidence','SecondHome'}.contains(insurance[\"risk\"].occupancy)"
     },
     {
       "id": "VM-PIPE-003",
@@ -528,7 +528,7 @@
           "value": 0
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -536,7 +536,7 @@
           ]
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "otros usos"
@@ -550,7 +550,7 @@
           "value": 0
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "MainResidence",
