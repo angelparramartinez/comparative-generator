@@ -20,7 +20,7 @@
       "ontology_matches_stub": [
         {
           "concept_id": "housingRegime",
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "data_type": "enum",
           "score": 0.62,
           "alias_match": true,
@@ -31,7 +31,7 @@
       ],
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "propietario",
           "evidence": "La defensa y reclamación de sus intereses frente a la comunidad de propietarios, siempre que estuviese al corriente de pago de las cuotas legalmente acordadas."
@@ -43,7 +43,7 @@
       ],
       "alias_match_expectations": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "expected_alias_match": false
         }
       ],
@@ -58,7 +58,7 @@
       "ontology_matches_stub": [
         {
           "concept_id": "lastReformYear",
-          "risk_field": "lastReformYear",
+          "risk_field": "lastReformDate",
           "data_type": "integer",
           "score": 0.58,
           "alias_match": true,
@@ -69,7 +69,7 @@
       ],
       "actual_coverage_dependencies": [
         {
-          "risk_field": "lastReformYear",
+          "risk_field": "lastReformDate",
           "operator": "!=",
           "value": null,
           "evidence": "Las reclamaciones a inquilinos por arrendamientos de temporada o de duración inferior a un año sin cláusula de renovación"
@@ -81,11 +81,11 @@
       ],
       "alias_match_expectations": [
         {
-          "risk_field": "lastReformYear",
+          "risk_field": "lastReformDate",
           "expected_alias_match": false
         },
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "expected_alias_match": true
         }
       ],
@@ -184,7 +184,7 @@
           "evidence": "Hasta el 100% del capital asegurado para Mobiliario, la indemnización por los gastos de reparación o reposición"
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -236,7 +236,7 @@
           "evidence": "cuando se contrate capital de Mobiliario"
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -272,7 +272,7 @@
       ],
       "expected_coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -304,7 +304,7 @@
       ],
       "expected_coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -372,7 +372,7 @@
       ],
       "expected_coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "arrendada",
@@ -394,13 +394,13 @@
       "source_text": "La responsabilidad del punto anterior se extiende a los daños corporales y materiales derivados de la propiedad asegurada causados involuntariamente a los inquilinos o huéspedes turísticos, mientras habiten la vivienda en virtud de un contrato legal según el tipo de alquiler, cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional. Exclusivamente en el caso de viviendas de uso turístico o alquiler vacacional, se garantizan los daños que los inquilinos temporales o huéspedes turísticos puedan causar a elementos de la comunidad de propietarios donde está la vivienda por hechos involuntarios derivados por el uso de sus instalaciones y mobiliario, con un límite máximo de 30.000 euros, y sin perjuicio de reserva de derecho de repetición contra otro seguro que cubra los mismos hechos.",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "propietario",
           "evidence": "cuando el asegurado sea propietario de una vivienda arrendada, de uso turístico o alquiler vacacional"
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "uso turístico",
@@ -412,7 +412,7 @@
       "expected_coverage_dependencies": "same_as_actual",
       "alias_match_expectations": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "expected_alias_match": true
         }
       ],
@@ -443,7 +443,7 @@
       "source_text": "Hasta la cantidad contratada en las condiciones particulares, con máximo de un mes, y siempre que se acredite la existencia de reservas turísticas o haya un contrato de alquiler vacacional, se garantiza la indemnización por la pérdida de los ingresos por alquiler a consecuencia de la inhabitabilidad temporal de la vivienda, durante el tiempo que se precise para la reparación de los daños cubiertos en esta póliza.",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "alquiler vacacional",
@@ -463,7 +463,7 @@
       "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia).",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "IN",
           "value": [
             "arrendada"
@@ -482,7 +482,7 @@
       "source_text": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad por los daños que pueda sufrir la vivienda en elementos del continente o del mobiliario que forme parte del equipamiento cedido por el propietario, siempre que dichos daños deriven de incendio y sus efectos, explosión e implosión o daños por agua como consecuencia del uso negligente de las instalaciones o con origen en bienes muebles asegurados y propiedad del asegurado.",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "inquilino",
           "evidence": "Cuando el asegurado tenga la condición de inquilino permanente de la vivienda asegurada, se extiende la anterior responsabilidad"
@@ -491,7 +491,7 @@
       "expected_coverage_dependencies": "same_as_actual",
       "alias_match_expectations": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "expected_alias_match": true
         }
       ],
@@ -561,7 +561,7 @@
       "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 500 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -570,7 +570,7 @@
           "evidence": "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "otros usos"
@@ -591,7 +591,7 @@
       "source_text": "Hasta el 1% del capital contratado para Mobiliario, con máximo de 1.000 euros, y siempre que se trate de su vivienda principal o secundaria, la indemnización por los gastos de reposición de los alimentos depositados en frigoríficos y/o congeladores que formen parte del mobiliario asegurado cuando resulten inutilizados para el consumo, debido a la ocurrencia de un siniestro cubierto por otra garantía del artículo 2º Garantías principales, avería del aparato o fallo en el suministro público de electricidad. También quedan cubiertos los medicamentos con prescripción médica que requieran refrigeración y quedan inutilizados. En este caso, la cobertura se limita a la parte del precio que no esté financiada por el sistema público de salud. Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria.\n\nNo se aplica en resto de usos de vivienda.",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "IN",
           "value": [
             "vivienda principal",
@@ -600,7 +600,7 @@
           "evidence": "siempre que se trate de su vivienda principal o secundaria... Esta cobertura solo se aplica cuando se trate de Vivienda principal o Vivienda secundaria."
         },
         {
-          "risk_field": "housingUse",
+          "risk_field": "occupancy",
           "operator": "NOT_IN",
           "value": [
             "otros usos"
@@ -621,7 +621,7 @@
       "source_text": "Hasta el importe de renta mensual y el número de mensualidades establecidos en las condiciones particulares, el reembolso de los alquileres devengados que hayan sido impagados por el inquilino, siempre que el impago, tanto parcial como total, comience pasados tres meses desde el efecto del seguro (plazo de carencia). No obstante, el asegurador renuncia a aplicar este plazo de carencia cuando la póliza se emite en reemplazo de otra que hubiese garantizado el impago para la misma vivienda e inquilino.",
       "actual_coverage_dependencies": [
         {
-          "risk_field": "housingRegime",
+          "risk_field": "use",
           "operator": "=",
           "value": "arrendada",
           "evidence": "Impago de rentas (solo en Vivienda arrendada)"

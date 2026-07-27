@@ -20,33 +20,13 @@
             "possibleValues": "0-GroundFloor, 1-MiddleFloor, 2-TopFloor, 3-TerracedHouse, 4-DetachedHouse",
             "type": "String"
         },
-        "buildingsLimit": {
-            "constraints": "Alias de continent; mínimo 0, máximo 9999999",
-            "possibleValues": "0-9999999",
-            "type": "Integer"
-        },
         "capitalInsuranceType": {
             "constraints": "Enum",
             "possibleValues": "1-VReplacementValue, 2-FirstRisk",
             "type": "HomeCapitalInsuranceType"
         },
-        "closedUrbanization": {
-            "constraints": "Requerido",
-            "possibleValues": "true, false",
-            "type": "Boolean"
-        },
-        "constructionYear": {
-            "constraints": "Mínimo 1800, requerido",
-            "possibleValues": ">= 1800",
-            "type": "Integer"
-        },
         "content": {
             "constraints": "Mínimo 0, máximo 500000, requerido en algunos grupos",
-            "possibleValues": "0-500000",
-            "type": "Integer"
-        },
-        "contentsLimit": {
-            "constraints": "Alias de content; mínimo 0, máximo 500000",
             "possibleValues": "0-500000",
             "type": "Integer"
         },
@@ -54,11 +34,6 @@
             "constraints": "Mínimo 0, máximo 9999999, requerido en algunos grupos",
             "possibleValues": "0-9999999",
             "type": "Integer"
-        },
-        "contractingPattern": {
-            "constraints": "Enum",
-            "possibleValues": "1-VReplacementValue, 2-FirstRisk",
-            "type": "String"
         },
         "dangerousDogs": {
             "constraints": "Mínimo 0, máximo 30, requerido",
@@ -70,30 +45,15 @@
             "possibleValues": "Lista de objetos BreakdownDangerousDogs",
             "type": "BreakdownList<breakdowndangerousdogs>"
         },
-        "dangerousDogsNumber": {
-            "constraints": "Privado, mapeado a dangerousDogs; mínimo 0, máximo 30",
-            "possibleValues": "0-30",
-            "type": "Integer"
-        },
         "floorArea": {
-            "constraints": "Privado, mapeado a meters; mínimo 10",
+            "constraints": "Mínimo 10, requerido",
             "possibleValues": ">= 10",
             "type": "Integer"
         },
         "gatedCommunity": {
-            "constraints": "Privado, mapeado a closedUrbanization; requerido",
+            "constraints": "Requerido",
             "possibleValues": "true, false",
             "type": "Boolean"
-        },
-        "housingRegime": {
-            "constraints": "Requerido, Enum",
-            "possibleValues": "0-Owner, 1-Rental, 2-Tenant",
-            "type": "String"
-        },
-        "housingUse": {
-            "constraints": "Requerido, Enum",
-            "possibleValues": "0-MainResidence, 1-SecondHome, 2-UnoccupiedProperty",
-            "type": "String"
         },
         "id": {
             "constraints": "Heredado de Risk",
@@ -106,24 +66,14 @@
             "type": "Integer"
         },
         "isReformed": {
-            "constraints": "Basado en lastReformYear",
+            "constraints": "Basado en lastReformDate",
             "possibleValues": "true, false",
             "type": "Boolean"
-        },
-        "jewelryInSafeBox": {
-            "constraints": "Mínimo 0, máximo 100000, requerido",
-            "possibleValues": "0-100000",
-            "type": "Integer"
         },
         "jewelryInSafeBoxBreakdown": {
             "constraints": "",
             "possibleValues": "Lista de objetos BreakdownJewelry",
             "type": "BreakdownList<breakdownjewelry>"
-        },
-        "jewelryOutSafeBox": {
-            "constraints": "Mínimo 0, máximo 100000, requerido",
-            "possibleValues": "0-100000",
-            "type": "Integer"
         },
         "jewelryOutSafeBoxBreakdown": {
             "constraints": "",
@@ -136,7 +86,7 @@
             "type": "BreakdownList<breakdownjewelry>"
         },
         "jewelsInSafeBoxLimit": {
-            "constraints": "Protegido, alias de jewelryInSafeBox; mínimo 0, máximo 100000",
+            "constraints": "Mínimo 0, máximo 100000, requerido",
             "possibleValues": "0-100000",
             "type": "Integer"
         },
@@ -146,18 +96,13 @@
             "type": "BreakdownList<breakdownjewelry>"
         },
         "jewelsOutSafeBoxLimit": {
-            "constraints": "Protegido, alias de jewelryOutSafeBox; mínimo 0, máximo 100000",
+            "constraints": "Mínimo 0, máximo 100000, requerido",
             "possibleValues": "0-100000",
             "type": "Integer"
         },
         "lastReformDate": {
-            "constraints": "Privado, alias de lastReformYear",
-            "possibleValues": "Cualquier Integer",
-            "type": "Integer"
-        },
-        "lastReformYear": {
-            "constraints": "Año actual o pasado, puede ser null si 0",
-            "possibleValues": "Año válido o null",
+            "constraints": "Devuelve 0 (no null) cuando la vivienda no ha sido reformada",
+            "possibleValues": "Año válido o 0",
             "type": "Integer"
         },
         "location": {
@@ -170,13 +115,8 @@
             "possibleValues": "0-NonCombustible, 1-LessThan25Combustible, 2-MoreThan25Combustible",
             "type": "String"
         },
-        "meters": {
-            "constraints": "Mínimo 10, requerido",
-            "possibleValues": ">= 10",
-            "type": "Integer"
-        },
         "occupancy": {
-            "constraints": "Privado, enum",
+            "constraints": "Requerido, tipo enum HomeOccupancy",
             "possibleValues": "0-MainResidence, 1-SecondHome, 2-UnoccupiedProperty",
             "type": "HomeOccupancy"
         },
@@ -185,29 +125,14 @@
             "possibleValues": "Objeto Person válido",
             "type": "Person"
         },
-        "principalDoorSecurity": {
-            "constraints": "Requerido",
-            "possibleValues": "true, false",
-            "type": "Boolean"
-        },
-        "rooms": {
+        "roomsNumber": {
             "constraints": "Mínimo 1, requerido",
             "possibleValues": ">= 1",
             "type": "Integer"
         },
-        "roomsNumber": {
-            "constraints": "Privado, alias de rooms",
-            "possibleValues": "Cualquier Integer",
-            "type": "Integer"
-        },
-        "secondaryDoorsSecurity": {
-            "constraints": "Requerido",
-            "possibleValues": "true, false",
-            "type": "Boolean"
-        },
         "secondaryDoorsType": {
-            "constraints": "Privado, enum; valores: REINFORCED o SECURITY",
-            "possibleValues": "1 (SECURITY), 2 (REINFORCED)",
+            "constraints": "Requerido, tipo enum DoorType",
+            "possibleValues": "SECURITY, REINFORCED",
             "type": "DoorType"
         },
         "securityGuard": {
@@ -216,12 +141,12 @@
             "type": "Boolean"
         },
         "securityMainDoor": {
-            "constraints": "Privado, mapeado a principalDoorSecurity; requerido",
+            "constraints": "Requerido",
             "possibleValues": "true, false",
             "type": "Boolean"
         },
         "securityWindows": {
-            "constraints": "Privado, mapeado a windowSecurity; requerido",
+            "constraints": "Requerido",
             "possibleValues": "true, false",
             "type": "Boolean"
         },
@@ -236,18 +161,13 @@
             "type": "BreakdownList<breakdownspecialvalueobject>"
         },
         "use": {
-            "constraints": "Privado, enum",
+            "constraints": "Requerido, tipo enum BuildingUse",
             "possibleValues": "0-Owner, 1-Rental, 2-Tenant",
             "type": "BuildingUse"
         },
-        "windowSecurity": {
-            "constraints": "Requerido",
-            "possibleValues": "true, false",
-            "type": "Boolean"
-        },
         "yearBuilt": {
-            "constraints": "Privado, mapeado a constructionYear",
-            "possibleValues": "Cualquier Integer",
+            "constraints": "Mínimo 1800, requerido",
+            "possibleValues": ">= 1800",
             "type": "Integer"
         }
     }

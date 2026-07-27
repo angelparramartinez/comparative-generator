@@ -72,9 +72,13 @@ function matchCoverToTuningKey(coverName, tuningIndex) {
   const confidence = best ? confidenceLevel(best.score) : "sin_match";
 
   if (!best || confidence === "sin_match") {
-    return { tuning_key: "NOT_FOUND", confidence: "sin_match", candidates: scored.slice(0, 3) };
+    return { tuning_key: "NOT_FOUND", matched_label: null, confidence: "sin_match", candidates: scored.slice(0, 3) };
   }
-  return { tuning_key: best.key, confidence, candidates: scored.slice(0, 3) };
+  // matched_label: necesario cuando el label del campo es un ternario SPEL
+  // con varios literales (ej. yvig24) -- generator.resolveTuningSelectConfig
+  // lo usa para saber a que grupo de options[] corresponde esta cobertura
+  // (ver bug real 27/07, HIRING_STATUS_EXPR de selects de varios capitales).
+  return { tuning_key: best.key, matched_label: best.matched_label, confidence, candidates: scored.slice(0, 3) };
 }
 
 module.exports = {

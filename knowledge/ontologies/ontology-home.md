@@ -79,7 +79,7 @@ mano si cambia esta seccion, igual que valid_risk_fields.json.
 ---
 
 ## housingUse
-risk_field: housingUse
+risk_field: occupancy
 data_type: enum
 meaning: Usage category of the insured dwelling (main residence, secondary residence, seasonal/tourist use, vacant, etc).
 aliases:
@@ -132,11 +132,20 @@ traducir en vez de forzar un mapeo o inventar un 4o valor de enum. Nota:
 "arrendada" aqui es una limitacion de `housingUse`, distinta de su alias_match
 valido en `housingRegime` (mismo texto, campo distinto -- el catalogo de
 valores esta scoped por risk_field).
+`risk_field` corregido 24/07: era `housingUse`, que no es accesible desde
+SPEL real (el motor evalua sobre un Map construido por Jackson con
+`@JsonView(Views.ASM.class)` sobre `HomeRisk`, y el getter de `housingUse`
+solo lleva `@JsonView(Views.V1_B2C.class)` -- se descarta al serializar).
+El campo real accesible es `occupancy` (getter con `@JsonView({V1,
+COMPARATIVE_REQUEST})`, `V1` es ancestro de `ASM`), que ademas serializa via
+`CrmEnumJsonSerializer` al mismo texto de enum (`MainResidence`, etc.) ya
+usado en `values`. El nombre del concepto (`housingUse`, el titulo de este
+bloque) no cambia -- es una etiqueta de negocio, no el campo tecnico.
 
 ---
 
 ## housingRegime
-risk_field: housingRegime
+risk_field: use
 data_type: enum
 aliases:
 - propietario
@@ -178,11 +187,15 @@ valores del propio risk_field, mismo mecanismo de "override por contexto"
 que `negative_aliases` mas arriba pero a nivel de VALOR en vez de concepto.
 Mientras solo exista este caso real, es la unica regla del catalogo; si
 aparece un patron distinto, añadir aqui en vez de generalizar sin evidencia.
+`risk_field` corregido 24/07 (mismo motivo que `housingUse` -- ver ese
+bloque): era `housingRegime` (`@JsonView(V1_B2C)`, no accesible desde SPEL
+real), el campo real es `use` (`@JsonView({V1, COMPARATIVE_REQUEST})`,
+mismo serializador de enum a texto). El nombre del concepto no cambia.
 
 ---
 
 ## constructionYear
-risk_field: constructionYear
+risk_field: yearBuilt
 data_type: integer
 aliases:
 - año de construcción
@@ -191,7 +204,7 @@ aliases:
 ---
 
 ## lastReformYear
-risk_field: lastReformYear
+risk_field: lastReformDate
 data_type: integer
 aliases:
 - reforma integral
@@ -204,6 +217,14 @@ interpretation:
 El negative_alias excluye el sentido de "renovación" como renovación de un
 contrato de alquiler, sin relacion con reformar la vivienda. Ver caso real
 su_00196 (CLAUDE.md §5.1).
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era
+`lastReformYear` (`@JsonView({V1_B2C, API.V1})`, no accesible desde SPEL
+real), el campo real es `lastReformDate` (`@JsonView({ASM,
+COMPARATIVE_REQUEST})`). Diferencia de comportamiento a tener en cuenta:
+`lastReformYear` traducia `renovationYear == 0` a `null`; `lastReformDate`
+devuelve el valor crudo (puede ser `0` en vez de `null` cuando la vivienda
+no se ha reformado nunca) -- no afecta a comparaciones `> año`, pero si a
+comprobaciones explicitas de nulidad.
 
 ---
 
@@ -227,7 +248,7 @@ aliases:
 ---
 
 ## rooms
-risk_field: rooms
+risk_field: roomsNumber
 data_type: integer
 aliases:
 - habitaciones
@@ -236,6 +257,10 @@ aliases:
 contractual_examples:
 - viviendas con más de cinco habitaciones
 - cuando la vivienda disponga de cuatro cuartos
+interpretation:
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era `rooms`
+(`@JsonView({API.V1, V1_B2C})`, no accesible desde SPEL real), el campo
+real es `roomsNumber` (`@JsonView({ASM, COMPARATIVE_REQUEST})`).
 
 ---
 
@@ -307,7 +332,7 @@ condiciones (mismo motivo que housingUse/isMainResidence).
 ---
 
 ## principalDoorSecurity
-risk_field: principalDoorSecurity
+risk_field: securityMainDoor
 data_type: boolean
 aliases:
 - puerta blindada
@@ -315,24 +340,45 @@ aliases:
 - puerta de seguridad
 - cerradura de seguridad
 - puerta reforzada
+interpretation:
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era
+`principalDoorSecurity` (`@JsonView(V1_B2C)`, no accesible desde SPEL
+real), el campo real es `securityMainDoor` (`@JsonView({V1,
+COMPARATIVE_REQUEST})`).
 
 ---
 
 ## secondaryDoorsSecurity
-risk_field: secondaryDoorsSecurity
-data_type: boolean
+risk_field: secondaryDoorsType
+data_type: enum
 aliases:
 - accesos secundarios protegidos
 - puertas traseras protegidas
+interpretation:
+`risk_field` corregido 24/07: era `secondaryDoorsSecurity` (`boolean`,
+`@JsonView(V1_B2C)`, no accesible desde SPEL real). El campo real
+(`@JsonView({V1, COMPARATIVE_REQUEST})`) es `secondaryDoorsType`, que
+ADEMAS cambia de tipo: ya no es booleano, es un enum de texto (`SECURITY` /
+`REINFORCED`, via `CrmEnumJsonSerializer`) -- no basta con renombrar,
+cualquier dependencia real que use este campo necesita `values:` con la
+correspondencia semantica (aprox. `true` -> `REINFORCED`, `false` ->
+`SECURITY`, a falta de un caso real que lo confirme). Sin `values:` todavia
+porque no hay ninguna dependencia real extraida sobre este campo (mismo
+criterio YAGNI que el resto de enums en `value_matcher.js`) -- si aparece
+una, resolver el mapeo con el usuario antes de traducir, no asumir.
 
 ---
 
 ## windowSecurity
-risk_field: windowSecurity
+risk_field: securityWindows
 data_type: boolean
 aliases:
 - rejas
 - ventanas protegidas
+interpretation:
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era
+`windowSecurity` (`@JsonView(V1_B2C)`, no accesible desde SPEL real), el
+campo real es `securityWindows` (`@JsonView({V1, COMPARATIVE_REQUEST})`).
 
 ---
 
@@ -346,18 +392,22 @@ aliases:
 ---
 
 ## closedUrbanization
-risk_field: closedUrbanization
+risk_field: gatedCommunity
 data_type: boolean
 aliases:
 - urbanización cerrada
 - recinto privado
 - urbanización privada
 - recinto cerrado
+interpretation:
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era
+`closedUrbanization` (`@JsonView(V1_B2C)`, no accesible desde SPEL real),
+el campo real es `gatedCommunity` (`@JsonView({V1, COMPARATIVE_REQUEST})`).
 
 ---
 
 ## jewelryInSafeBox
-risk_field: jewelryInSafeBox
+risk_field: jewelsInSafeBoxLimit
 data_type: integer
 aliases:
 - joyas en caja fuerte
@@ -365,11 +415,16 @@ aliases:
 - relojes de valor en caja fuerte
 - joyas depositadas en caja fuerte
 - alhajas en caja fuerte
+interpretation:
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era
+`jewelryInSafeBox` (`@JsonView({V1_B2C, CRM})`, no accesible desde SPEL
+real), el campo real es `jewelsInSafeBoxLimit` (`@JsonView({V1,
+COMPARATIVE_REQUEST})`).
 
 ---
 
 ## jewelryOutSafeBox
-risk_field: jewelryOutSafeBox
+risk_field: jewelsOutSafeBoxLimit
 data_type: integer
 aliases:
 - joyas fuera de caja fuerte
@@ -377,6 +432,11 @@ aliases:
 - relojes de valor fuera de caja fuerte
 - joyas no depositadas en caja fuerte
 - alhajas fuera de caja fuerte
+interpretation:
+`risk_field` corregido 24/07 (mismo motivo que `housingUse`): era
+`jewelryOutSafeBox` (`@JsonView({V1_B2C, CRM})`, no accesible desde SPEL
+real), el campo real es `jewelsOutSafeBoxLimit` (`@JsonView({V1,
+COMPARATIVE_REQUEST})`).
 
 ---
 

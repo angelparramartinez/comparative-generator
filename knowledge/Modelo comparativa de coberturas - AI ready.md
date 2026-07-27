@@ -437,7 +437,7 @@ varios a la vez. No hay una regla de "FILTER_EXPR es siempre insurance" o
 
 ### Ejemplo completo 1 — condición estructural del riesgo
 
-    FILTER_EXPR         = insurance["risk"].housingUse == "MainResidence"
+    FILTER_EXPR         = insurance["risk"].occupancy == "MainResidence"
     HIRING_STATUS_EXPR  = "INCLUDED"
     VALUE_EXPR           = NULL
 
@@ -446,12 +446,18 @@ Si la vivienda es residencia principal: el bloque es visible y su estado es
 completamente (no visible), y por tanto no aporta ningún estado `INCLUDED` al
 agregado de la cobertura (§5).
 
-**Convenciones de valor confirmadas (20/07):** el `risk_field` es el que usa
-`knowledge/ontologies/ontology-home.md` (`housingUse`, no `occupancy` — hay
-varios campos duplicados/alias entre la ontología y
-`knowledge/risks/datos_riesgo_hogar.json`, cualquiera de los dos nombres es
-accesible en `insurance.risk`, pero para no romper nada se mantienen los de la
-ontología). El valor de un enum es su texto en **inglés** con el casing exacto
+**Convenciones de valor confirmadas (20/07, corregidas 24/07):** el
+`risk_field` NO siempre es el que usa `knowledge/ontologies/ontology-home.md`
+como nombre de concepto — la ontología tiene varios campos duplicados/alias
+respecto a `knowledge/risks/datos_riesgo_hogar.json` (`housingUse`/`occupancy`,
+`housingRegime`/`use`...), y **NO cualquiera de los dos nombres es accesible**:
+el motor real de ASM evalúa `insurance["risk"]` sobre un `Map` que Jackson
+construye serializando `HomeRisk` con `@JsonView(Views.ASM.class)` — solo el
+getter cuyo `@JsonView` sea compatible con esa vista sobrevive a la
+serialización (`housingUse` no lo es, `occupancy` sí; ver
+`knowledge/ontologies/ontology-home.md`, nota "corregido 24/07" en cada
+concepto afectado, y `datos_riesgo_hogar.json` que ya solo lista el nombre
+real). El valor de un enum es su texto en **inglés** con el casing exacto
 del catálogo (`MainResidence`, no `mainresidence` ni el código numérico) — el
 flujo 2 extrae el texto libre en **español** del condicionado, así que hace
 falta un paso de traducción antes de generar este `FILTER_EXPR`; ver
@@ -480,11 +486,11 @@ delante (sin paréntesis adicionales, `.contains(...)` liga más fuerte que
 valores traducidos al texto en inglés del enum — ver nota de la sección
 anterior) se traduce como:
 
-    {'MainResidence','SecondHome'}.contains(insurance["risk"].housingUse)
+    {'MainResidence','SecondHome'}.contains(insurance["risk"].occupancy)
 
 Y `NOT_IN` como su negación:
 
-    !{'MainResidence','SecondHome'}.contains(insurance["risk"].housingUse)
+    !{'MainResidence','SecondHome'}.contains(insurance["risk"].occupancy)
 
 ---
 
