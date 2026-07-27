@@ -245,6 +245,38 @@ function checkGenerator(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected_expr}`}`);
   }
 
+  for (const c of golden.line_formatting_cases || []) {
+    total++;
+    const got = generator.formatLineText(c.text, c.isHeader);
+    const pass = got === c.expected;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${JSON.stringify(got)}${pass ? "" : ` | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.tuning_value_format_cases || []) {
+    total++;
+    const got = generator.formatTuningValueText(c.label);
+    const pass = got === c.expected;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${JSON.stringify(got)}${pass ? "" : ` | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.trailing_period_cases || []) {
+    total++;
+    const got = generator.ensureTrailingPeriod(c.text);
+    const pass = got === c.expected;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${JSON.stringify(got)}${pass ? "" : ` | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.tuning_select_config_cases || []) {
+    total++;
+    const got = generator.resolveTuningSelectConfig(c.tuningFieldDef, c.matchedLabel);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
   for (const c of golden.insert_sql_cases || []) {
     total++;
     const spelLiteral = generator.spelStringLiteral(c.text);

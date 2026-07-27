@@ -218,7 +218,7 @@
     },
     {
       "id": "GEN-ENTRY-004",
-      "description": "Coberturas opcionales conservan su propio HIRING_STATUS_EXPR (normalmente OPTIONAL, ver bloque D).",
+      "description": "Coberturas opcionales conservan su propio HIRING_STATUS_EXPR (normalmente OPTIONAL, ver bloque D). Rediseno 27/07 (feedback visual en ASM, sin negrita): el nombre de la cobertura opcional y el texto libre de 1 sola linea se combinan en una UNICA linea ('{coverName}. {texto}') -- 1 linea en total (antes 2, cabecera+cuerpo por separado).",
       "input": {
         "coverId": 105,
         "coverName": "Vehículos/maq. autopropulsada en reposo.",
@@ -236,12 +236,13 @@
         "entry_count": 1,
         "cover_override_present": false,
         "entries_with_null_filter_expr_count": 1,
-        "first_entry_hiring_status_expr": "OPTIONAL"
+        "first_entry_hiring_status_expr": "OPTIONAL",
+        "first_entry_lines_count": 1
       }
     },
     {
       "id": "GEN-ENTRY-005",
-      "description": "Bug real 21/07 (cover_id 79, ejecucion 235): el text_content de una cobertura opcional trae varias frases separadas por salto de linea -- deben trocearse en varias LINES, no quedar todas juntas en una sola TEXT_EXPR con \\n literales dentro.",
+      "description": "Bug real 21/07 (cover_id 79, ejecucion 235): el text_content de una cobertura opcional trae varias frases separadas por salto de linea -- deben trocearse en varias LINES, no quedar todas juntas en una sola TEXT_EXPR con \\n literales dentro. Ademas (27/07) el nombre de la cobertura opcional va como primera linea de cabecera -- 1 (cabecera) + 3 (bullets) = 4 lineas.",
       "input": {
         "coverId": 79,
         "coverName": "Animales domésticos.",
@@ -260,7 +261,7 @@
         "cover_override_present": false,
         "entries_with_null_filter_expr_count": 1,
         "first_entry_hiring_status_expr": "OPTIONAL",
-        "first_entry_lines_count": 3
+        "first_entry_lines_count": 4
       }
     },
     {
@@ -842,23 +843,23 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
-                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+                "text_expr": "'  • Como inquilino frente al arrendador (locativa)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Patronal sobre empleados domésticos'"
+                "text_expr": "'  • Patronal sobre empleados domésticos'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -872,19 +873,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad civil de la vida privada'"
+                "text_expr": "'Responsabilidad civil de la vida privada'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Personal y familiar'"
+                "text_expr": "'  • Personal y familiar'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Propiedad y tenencia de mascotas (no perros)'"
+                "text_expr": "'  • Propiedad y tenencia de mascotas (no perros)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Estancias temporales en el extranjero (3 meses)'"
+                "text_expr": "'  • Estancias temporales en el extranjero (3 meses)'"
               }
             ]
           },
@@ -898,7 +899,7 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad civil por uso de bicicletas'"
+                "text_expr": "'Responsabilidad civil por uso de bicicletas'"
               }
             ]
           },
@@ -926,23 +927,23 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
-                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+                "text_expr": "'  • Como inquilino frente al arrendador (locativa)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Patronal sobre empleados domésticos'"
+                "text_expr": "'  • Patronal sobre empleados domésticos'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -956,19 +957,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad civil de la vida privada'"
+                "text_expr": "'Responsabilidad civil de la vida privada'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Personal y familiar'"
+                "text_expr": "'  • Personal y familiar'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Propiedad y tenencia de mascotas (no perros)'"
+                "text_expr": "'  • Propiedad y tenencia de mascotas (no perros)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Estancias temporales en el extranjero (3 meses)'"
+                "text_expr": "'  • Estancias temporales en el extranjero (3 meses)'"
               }
             ]
           },
@@ -982,7 +983,7 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad civil por uso de bicicletas'"
+                "text_expr": "'Responsabilidad civil por uso de bicicletas'"
               }
             ]
           },
@@ -1010,23 +1011,23 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
-                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+                "text_expr": "'  • Como inquilino frente al arrendador (locativa)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Patronal sobre empleados domésticos'"
+                "text_expr": "'  • Patronal sobre empleados domésticos'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1040,19 +1041,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad civil de la vida privada'"
+                "text_expr": "'Responsabilidad civil de la vida privada'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Personal y familiar'"
+                "text_expr": "'  • Personal y familiar'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Propiedad y tenencia de mascotas (no perros)'"
+                "text_expr": "'  • Propiedad y tenencia de mascotas (no perros)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Estancias temporales en el extranjero (3 meses)'"
+                "text_expr": "'  • Estancias temporales en el extranjero (3 meses)'"
               }
             ]
           },
@@ -1066,7 +1067,7 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad civil por uso de bicicletas'"
+                "text_expr": "'Responsabilidad civil por uso de bicicletas'"
               }
             ]
           },
@@ -1094,23 +1095,23 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
-                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+                "text_expr": "'  • Como inquilino frente al arrendador (locativa)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Patronal sobre empleados domésticos'"
+                "text_expr": "'  • Patronal sobre empleados domésticos'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1138,23 +1139,23 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
-                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+                "text_expr": "'  • Como inquilino frente al arrendador (locativa)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Patronal sobre empleados domésticos'"
+                "text_expr": "'  • Patronal sobre empleados domésticos'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1182,23 +1183,23 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
-                "text_expr": "'Como inquilino frente al arrendador (locativa)'"
+                "text_expr": "'  • Como inquilino frente al arrendador (locativa)'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Patronal sobre empleados domésticos'"
+                "text_expr": "'  • Patronal sobre empleados domésticos'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1226,19 +1227,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como arrendador frente al inquilino'"
+                "text_expr": "'  • Como arrendador frente al inquilino'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1266,19 +1267,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como arrendador frente al inquilino'"
+                "text_expr": "'  • Como arrendador frente al inquilino'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1306,19 +1307,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como arrendador frente al inquilino'"
+                "text_expr": "'  • Como arrendador frente al inquilino'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1346,19 +1347,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como arrendador frente al inquilino'"
+                "text_expr": "'  • Como arrendador frente al inquilino'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           },
@@ -1386,19 +1387,19 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'-Responsabilidad Civil de la vivienda'"
+                "text_expr": "'Responsabilidad Civil de la vivienda'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como propietario'"
+                "text_expr": "'  • Como propietario'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Como arrendador frente al inquilino'"
+                "text_expr": "'  • Como arrendador frente al inquilino'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Contaminación accidental'"
+                "text_expr": "'  • Contaminación accidental'"
               }
             ]
           }
@@ -1461,19 +1462,19 @@
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Incendio, Explosión e implosión y Caída del rayo'"
+                "text_expr": "'  • Incendio, Explosión e implosión y Caída del rayo'"
               },
               {
                 "filter_expr": "insurance[\"risk\"].smokeDamageCovered == true",
-                "text_expr": "'Daños por humo'"
+                "text_expr": "'  • Daños por humo'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Derrame o escape de instalaciones de extinción'"
+                "text_expr": "'  • Derrame o escape de instalaciones de extinción'"
               },
               {
                 "filter_expr": null,
-                "text_expr": "'Impactos desde el exterior'"
+                "text_expr": "'  • Impactos desde el exterior'"
               }
             ]
           }
@@ -1482,7 +1483,7 @@
     },
     {
       "id": "GEN-MISSING-001",
-      "description": "Caso real (cover 79 \"Animales domésticos\", solo 3 de 11 modalidades reales tienen contenido en Coberturas por modalidad) -- la cobertura opcional (Mascotas, tuning zresid) debe escoparse: 3 entries con la formula de tuning (una por modalidad presente) + 8 entries NOT_INCLUDED explicito (una por modalidad ausente), 0 entries con modality_id null.",
+      "description": "Caso real (cover 79 \"Animales domésticos\", solo 3 de 11 modalidades reales tienen contenido en Coberturas por modalidad) -- la cobertura opcional (Mascotas, tuning zresid) debe escoparse: 3 entries con la formula de tuning (una por modalidad presente) + 8 entries NOT_INCLUDED explicito (una por modalidad ausente), 0 entries con modality_id null. Las 3 entries presentes llevan (27/07) 2 lineas: cabecera 'Mascotas' + cuerpo 'Fallecimiento por accidente'. Las NOT_INCLUDED siguen con 0 lineas (no aplica cabecera a una cobertura no ofrecida).",
       "input": {
         "coverId": 79,
         "coverName": "Animales domésticos.",
@@ -1524,7 +1525,7 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'Fallecimiento por accidente'"
+                "text_expr": "'Mascotas. Fallecimiento por accidente'"
               }
             ]
           },
@@ -1538,7 +1539,7 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'Fallecimiento por accidente'"
+                "text_expr": "'Mascotas. Fallecimiento por accidente'"
               }
             ]
           },
@@ -1552,7 +1553,7 @@
             "lines": [
               {
                 "filter_expr": null,
-                "text_expr": "'Fallecimiento por accidente'"
+                "text_expr": "'Mascotas. Fallecimiento por accidente'"
               }
             ]
           },
@@ -1646,7 +1647,17 @@
         ],
         "presentModalityIds": [],
         "missingModalityIds": [
-          "5571", "5572", "5573", "5574", "5575", "5576", "5577", "5578", "5579", "5580", "5581"
+          "5571",
+          "5572",
+          "5573",
+          "5574",
+          "5575",
+          "5576",
+          "5577",
+          "5578",
+          "5579",
+          "5580",
+          "5581"
         ]
       },
       "expected": {
@@ -1662,6 +1673,166 @@
             "modality_id": null,
             "source": "optional_cover",
             "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-TIER-001",
+      "description": "Bug real 27/07: HIRING_STATUS_EXPR de una cobertura opcional ligada a un campo de tuning 'select' de varios capitales (zasihb: 0=No contratada, 1-6=capitales) rompia el motor SPEL real al usar la formula booleana de siempre (comparaba una String contra un booleano). Con tieredConfig: 1 ENTRY, HIRING_STATUS_EXPR por comparacion de valor (no truthy), y 1 LINE por cada uno de los 7 valores (incluido 'No contratada', decision del usuario 27/07: evita una entry OPTIONAL sin ningun texto).",
+      "input": {
+        "coverId": 200,
+        "coverName": "Otras garantías / Extensión garantías.",
+        "opcionales": [
+          {
+            "coverName": "Daños a placas solares y otros sistemas de energía renovable",
+            "textContent": "Primer riesgo",
+            "tuningKey": "zasihb",
+            "tieredConfig": {
+              "items": [
+                {
+                  "label": "No contratada",
+                  "value": "0"
+                },
+                {
+                  "label": "5.000",
+                  "value": "1"
+                },
+                {
+                  "label": "10.000",
+                  "value": "2"
+                },
+                {
+                  "label": "15.000",
+                  "value": "3"
+                },
+                {
+                  "label": "20.000",
+                  "value": "4"
+                },
+                {
+                  "label": "25.000",
+                  "value": "5"
+                },
+                {
+                  "label": "30.000",
+                  "value": "6"
+                }
+              ],
+              "notContractedValue": "0",
+              "groupFilterExpr": null
+            }
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_hiring_status_expr": "tuning?.zasihb == null || tuning.zasihb == '0' ? \"OPTIONAL\" : \"INCLUDED\"",
+        "first_entry_lines_count": 7,
+        "full_entries": [
+          {
+            "cover_id": 200,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.zasihb == null || tuning.zasihb == '0' ? \"OPTIONAL\" : \"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": "tuning?.zasihb == '0'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. No contratada'"
+              },
+              {
+                "filter_expr": "tuning?.zasihb == '1'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. 5.000€'"
+              },
+              {
+                "filter_expr": "tuning?.zasihb == '2'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. 10.000€'"
+              },
+              {
+                "filter_expr": "tuning?.zasihb == '3'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. 15.000€'"
+              },
+              {
+                "filter_expr": "tuning?.zasihb == '4'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. 20.000€'"
+              },
+              {
+                "filter_expr": "tuning?.zasihb == '5'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. 25.000€'"
+              },
+              {
+                "filter_expr": "tuning?.zasihb == '6'",
+                "text_expr": "'Daños a placas solares y otros sistemas de energía renovable. Primer riesgo. 30.000€'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-TIER-002",
+      "description": "Caso real yvig24 (select de 2 grupos condicionados por yactsm, fila Excel 'Danos malintencionados del inquilino turistica', textContent vacio): el FILTER_EXPR del grupo ('tuning?.yactsm') se traslada al ENTRY (opt.tieredConfig.groupFilterExpr) para que esta fila solo se muestre cuando el grupo turistica es el vigente -- confirma que entries_with_null_filter_expr_count baja a 0 (a diferencia de GEN-TIER-001, sin grupo).",
+      "input": {
+        "coverId": 201,
+        "coverName": "Otras garantías / Extensión garantías.",
+        "opcionales": [
+          {
+            "coverName": "Daños malintencionados del inquilino turística",
+            "textContent": null,
+            "tuningKey": "yvig24",
+            "tieredConfig": {
+              "items": [
+                {
+                  "label": "No contratada",
+                  "value": "0"
+                },
+                {
+                  "label": "1.000",
+                  "value": "1"
+                },
+                {
+                  "label": "2.000",
+                  "value": "2"
+                }
+              ],
+              "notContractedValue": "0",
+              "groupFilterExpr": "tuning?.yactsm"
+            }
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 0,
+        "first_entry_hiring_status_expr": "tuning?.yvig24 == null || tuning.yvig24 == '0' ? \"OPTIONAL\" : \"INCLUDED\"",
+        "first_entry_lines_count": 3,
+        "full_entries": [
+          {
+            "cover_id": 201,
+            "filter_expr": "tuning?.yactsm",
+            "hiring_status_expr": "tuning?.yvig24 == null || tuning.yvig24 == '0' ? \"OPTIONAL\" : \"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": "tuning?.yvig24 == '0'",
+                "text_expr": "'Daños malintencionados del inquilino turística. No contratada'"
+              },
+              {
+                "filter_expr": "tuning?.yvig24 == '1'",
+                "text_expr": "'Daños malintencionados del inquilino turística. 1.000€'"
+              },
+              {
+                "filter_expr": "tuning?.yvig24 == '2'",
+                "text_expr": "'Daños malintencionados del inquilino turística. 2.000€'"
+              }
+            ]
           }
         ]
       }
@@ -1773,6 +1944,440 @@
         "5572",
         "5580"
       ]
+    }
+  ],
+  "tuning_select_config_cases": [
+    {
+      "id": "TSC-001",
+      "description": "Caso real zasihb (Danos a placas solares): select de UN grupo, 7 valores (0=No contratada + 6 capitales) -- se usa tal cual, sin condicion de grupo.",
+      "tuningFieldDef": {
+        "component": "select",
+        "label": "Daños a placas solares y otros sistemas de energía renovable",
+        "options": [
+          {
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "5.000",
+                "value": "1"
+              },
+              {
+                "label": "10.000",
+                "value": "2"
+              },
+              {
+                "label": "15.000",
+                "value": "3"
+              },
+              {
+                "label": "20.000",
+                "value": "4"
+              },
+              {
+                "label": "25.000",
+                "value": "5"
+              },
+              {
+                "label": "30.000",
+                "value": "6"
+              }
+            ]
+          }
+        ],
+        "required": true,
+        "section": "section.covers",
+        "type": "string",
+        "value": "0",
+        "visible": true
+      },
+      "matchedLabel": null,
+      "expected": {
+        "items": [
+          {
+            "label": "No contratada",
+            "value": "0"
+          },
+          {
+            "label": "5.000",
+            "value": "1"
+          },
+          {
+            "label": "10.000",
+            "value": "2"
+          },
+          {
+            "label": "15.000",
+            "value": "3"
+          },
+          {
+            "label": "20.000",
+            "value": "4"
+          },
+          {
+            "label": "25.000",
+            "value": "5"
+          },
+          {
+            "label": "30.000",
+            "value": "6"
+          }
+        ],
+        "notContractedValue": "0",
+        "groupFilterExpr": null
+      }
+    },
+    {
+      "id": "TSC-002",
+      "description": "Caso real yvig24 (Danos malintencionados del inquilino, NO turistica): select de 2 grupos condicionados por yactsm -- matchedLabel resuelve al grupo 1 (condition '!tuning?.yactsm'), envoltorio SPEL quitado.",
+      "tuningFieldDef": {
+        "component": "select",
+        "label": "/!tuning?.yactsm ? 'Daños malintencionados del inquilino' : 'Daños malintencionados del inquilino turística'/",
+        "options": [
+          {
+            "condition": "/!tuning?.yactsm/",
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "1.500",
+                "value": "1"
+              },
+              {
+                "label": "3.000",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "condition": "/tuning?.yactsm/",
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "1.000",
+                "value": "1"
+              },
+              {
+                "label": "2.000",
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "required": true,
+        "section": "section.covers",
+        "type": "string",
+        "value": "0",
+        "visible": "/insurance.risk.use=='Rental'/"
+      },
+      "matchedLabel": "Daños malintencionados del inquilino",
+      "expected": {
+        "items": [
+          {
+            "label": "No contratada",
+            "value": "0"
+          },
+          {
+            "label": "1.500",
+            "value": "1"
+          },
+          {
+            "label": "3.000",
+            "value": "2"
+          }
+        ],
+        "notContractedValue": "0",
+        "groupFilterExpr": "!tuning?.yactsm"
+      }
+    },
+    {
+      "id": "TSC-003",
+      "description": "Mismo campo yvig24, pero matchedLabel es la variante turistica -- debe resolver al SEGUNDO grupo (condition 'tuning?.yactsm'), con sus propios capitales (1.000/2.000, distintos de los del primer grupo).",
+      "tuningFieldDef": {
+        "component": "select",
+        "label": "/!tuning?.yactsm ? 'Daños malintencionados del inquilino' : 'Daños malintencionados del inquilino turística'/",
+        "options": [
+          {
+            "condition": "/!tuning?.yactsm/",
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "1.500",
+                "value": "1"
+              },
+              {
+                "label": "3.000",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "condition": "/tuning?.yactsm/",
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "1.000",
+                "value": "1"
+              },
+              {
+                "label": "2.000",
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "required": true,
+        "section": "section.covers",
+        "type": "string",
+        "value": "0",
+        "visible": "/insurance.risk.use=='Rental'/"
+      },
+      "matchedLabel": "Daños malintencionados del inquilino turística",
+      "expected": {
+        "items": [
+          {
+            "label": "No contratada",
+            "value": "0"
+          },
+          {
+            "label": "1.000",
+            "value": "1"
+          },
+          {
+            "label": "2.000",
+            "value": "2"
+          }
+        ],
+        "notContractedValue": "0",
+        "groupFilterExpr": "tuning?.yactsm"
+      }
+    },
+    {
+      "id": "TSC-004",
+      "description": "yvig24 sin matchedLabel -- select de varios grupos sin forma de saber cual usar, no se asume ninguno: null.",
+      "tuningFieldDef": {
+        "component": "select",
+        "label": "/!tuning?.yactsm ? 'Daños malintencionados del inquilino' : 'Daños malintencionados del inquilino turística'/",
+        "options": [
+          {
+            "condition": "/!tuning?.yactsm/",
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "1.500",
+                "value": "1"
+              },
+              {
+                "label": "3.000",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "condition": "/tuning?.yactsm/",
+            "items": [
+              {
+                "label": "No contratada",
+                "value": "0"
+              },
+              {
+                "label": "1.000",
+                "value": "1"
+              },
+              {
+                "label": "2.000",
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "required": true,
+        "section": "section.covers",
+        "type": "string",
+        "value": "0",
+        "visible": "/insurance.risk.use=='Rental'/"
+      },
+      "matchedLabel": null,
+      "expected": null
+    },
+    {
+      "id": "TSC-005",
+      "description": "Campo booleano real (zresid, type=boolean) -- no es un select de varios valores, sigue usando el formato de siempre: null.",
+      "tuningFieldDef": {
+        "component": "radio",
+        "label": "Accidentes de perros y otras mascotas",
+        "required": true,
+        "section": "section.covers",
+        "type": "boolean",
+        "value": false,
+        "visible": "/(insurance.risk.use=='Owner' || insurance.risk.use=='Tenant') && insurance.risk.occupancy=='MainResidence'/"
+      },
+      "matchedLabel": null,
+      "expected": null
+    },
+    {
+      "id": "TSC-006",
+      "description": "Select real SIN item 'No contratada' (qfrqu1, Franquicia general: 4 opciones obligatorias, ninguna es un estado apagado) -- no representa un on/off de cobertura opcional: null.",
+      "tuningFieldDef": {
+        "allowSavedTuning": true,
+        "component": "select",
+        "label": "Franquicia general",
+        "options": [
+          {
+            "items": [
+              {
+                "label": "Sin franquicia",
+                "value": "1"
+              },
+              {
+                "label": "200 euros",
+                "value": "2"
+              },
+              {
+                "label": "400 euros",
+                "value": "3"
+              },
+              {
+                "label": "600 euros",
+                "value": "4"
+              }
+            ]
+          }
+        ],
+        "required": false,
+        "section": "section.additionalData",
+        "type": "string",
+        "value": "1"
+      },
+      "matchedLabel": null,
+      "expected": null
+    }
+  ],
+  "line_formatting_cases": [
+    {
+      "id": "FMT-001",
+      "description": "Linea de cabecera (isHeader=true) con guion inicial del Excel -- se quita, sin viñeta propia.",
+      "text": "- Fallecimiento por accidente",
+      "isHeader": true,
+      "expected": "Fallecimiento por accidente"
+    },
+    {
+      "id": "FMT-002",
+      "description": "Linea de cuerpo (isHeader=false) sin ningun simbolo previo -- se le anade la viñeta unica + indentado.",
+      "text": "Fallecimiento por accidente",
+      "isHeader": false,
+      "expected": "  • Fallecimiento por accidente"
+    },
+    {
+      "id": "FMT-003",
+      "description": "Linea de cuerpo que YA trae bullet '•' del Excel -- se quita el original antes de anadir el nuestro (evita '••').",
+      "text": "• Fallecimiento por accidente",
+      "isHeader": false,
+      "expected": "  • Fallecimiento por accidente"
+    },
+    {
+      "id": "FMT-004",
+      "description": "Linea de cuerpo con punto medio '·' -- tambien se reconoce como simbolo de enumeracion a quitar.",
+      "text": "· Fallecimiento por accidente",
+      "isHeader": false,
+      "expected": "  • Fallecimiento por accidente"
+    },
+    {
+      "id": "FMT-005",
+      "description": "Linea de cuerpo con asterisco '*' -- tambien se reconoce como simbolo de enumeracion a quitar.",
+      "text": "* Fallecimiento por accidente",
+      "isHeader": false,
+      "expected": "  • Fallecimiento por accidente"
+    },
+    {
+      "id": "FMT-006",
+      "description": "Texto vacio/null -- no debe romper (cadena vacia).",
+      "text": null,
+      "isHeader": false,
+      "expected": "  • "
+    },
+    {
+      "id": "FMT-007",
+      "description": "Viñeta 'o' seguida de espacio (sub-lista) -- se quita, igual que el resto de simbolos.",
+      "text": "o Texto con o minuscula",
+      "isHeader": false,
+      "expected": "  • Texto con o minuscula"
+    },
+    {
+      "id": "FMT-008",
+      "description": "Palabra real que empieza por 'o' ('objeto') -- NO debe confundirse con la viñeta, se conserva integra.",
+      "text": "objeto asegurado",
+      "isHeader": false,
+      "expected": "  • objeto asegurado"
+    },
+    {
+      "id": "FMT-009",
+      "description": "Otra palabra real que empieza por 'o' ('otros') -- mismo caso, no se quita la 'o'.",
+      "text": "otros daños",
+      "isHeader": false,
+      "expected": "  • otros daños"
+    }
+  ],
+  "tuning_value_format_cases": [
+    {
+      "id": "TVF-001",
+      "description": "Label numerico con separador de miles (caso real zasihb) -- se le anade € al final.",
+      "label": "5.000",
+      "expected": "5.000€"
+    },
+    {
+      "id": "TVF-002",
+      "description": "Label numerico de 6 cifras con 2 separadores -- tambien detectado como capital.",
+      "label": "1.500.000",
+      "expected": "1.500.000€"
+    },
+    {
+      "id": "TVF-003",
+      "description": "Label 'No contratada' -- no es numerico, se deja tal cual (sin €).",
+      "label": "No contratada",
+      "expected": "No contratada"
+    },
+    {
+      "id": "TVF-004",
+      "description": "Label con texto + numero (caso real qfrqu1, 'Franquicia general') -- NO es un capital puro, se deja tal cual (sin € duplicado).",
+      "label": "200 euros",
+      "expected": "200 euros"
+    }
+  ],
+  "trailing_period_cases": [
+    {
+      "id": "TP-001",
+      "description": "Texto sin puntuacion final -- se le anade un punto.",
+      "text": "Primer riesgo",
+      "expected": "Primer riesgo."
+    },
+    {
+      "id": "TP-002",
+      "description": "Texto que YA termina en punto (caso real zasite, 'Limite 1.500€.') -- no se duplica.",
+      "text": "Límite 1.500€.",
+      "expected": "Límite 1.500€."
+    },
+    {
+      "id": "TP-003",
+      "description": "Texto que termina en exclamacion -- tambien se respeta, no se anade punto extra.",
+      "text": "Cuidado!",
+      "expected": "Cuidado!"
     }
   ]
 }

@@ -48,10 +48,20 @@ Protocolo de actuacion:
 5. Control de errores: solo si no hay absolutamente ninguna relacion tematica
    entre la cobertura y el diccionario, devuelve "NOT_FOUND" -- no inventes
    una key.
+6. Etiqueta emparejada (matched_label): algunos labels del diccionario son una
+   expresion dinamica SPEL con VARIOS textos entre comillas simples (ej.
+   "/!tuning?.yactsm ? 'Danos malintencionados del inquilino' : 'Danos
+   malintencionados del inquilino turistica'/") -- el campo representa varias
+   variantes segun otro dato de tuning. En ese caso, identifica EXACTAMENTE
+   cual de esos textos entrecomillados corresponde a la cobertura del Excel y
+   devuelvelo tal cual (sin comillas) en `matched_label`. Si el label es un
+   texto plano normal (sin ese formato dinamico), `matched_label` es ese mismo
+   texto de label. Si el mapeo es "NOT_FOUND", `matched_label` es null.
 
 Restriccion de salida: devuelve unicamente un objeto JSON valido con el array
-`mappings`, sin explicaciones ni bloques de codigo markdown. No modifiques el
-cover_name/bullet_text de entrada.
+`mappings` (cada mapping con `excel_name`, `tuning_key`, `matched_label`,
+`confidence`, `reasoning`), sin explicaciones ni bloques de codigo markdown.
+No modifiques el cover_name/bullet_text de entrada.
 
 Input Data:
 - Coberturas por modalidad (Excel): {{ JSON.stringify($json.context.data.modalities) }}
@@ -65,6 +75,21 @@ El legacy solo pasaba `context.data.optionals` como origen; aqui se generaliza
 para incluir tambien `context.data.modalities`, porque un `ENTRY` de la hoja
 principal tambien puede necesitar referenciar `tuning` (no solo los
 `ENTRY` que vienen de "Coberturas opcionales").
+
+## Ampliacion 27/07: `matched_label`
+
+Anadido para resolver un bug real: el `HIRING_STATUS_EXPR` de una cobertura
+opcional ligada a un campo de tuning "select"/"radio" de varios valores (no
+booleano, ej. `zasihb`: 0 = no contratada, 1-6 = capitales distintos) rompia
+el motor SPEL real de ASM al usar siempre la formula booleana de
+`buildOptionalHiringStatusExpr` (comparaba una String contra un booleano).
+`generator.resolveTuningSelectConfig(tuningFieldDef, matchedLabel)` calcula en
+su lugar el `HIRING_STATUS_EXPR` correcto (comparacion de valor) y 1 LINE por
+cada valor posible del desplegable -- ver `generator.js`. Para campos cuyo
+label es un ternario SPEL con varias variantes (`yvig24`), hace falta saber
+cual de esas variantes emparejo el LLM, de ahi el nuevo campo `matched_label`
+en el esquema de salida (`Structured Output Parser (Tuning)`) y en
+`Tuning Key Guardrail`.
 
 ## Pendiente
 
