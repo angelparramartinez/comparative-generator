@@ -1935,7 +1935,7 @@
     },
     {
       "id": "GEN-BLOCK-003",
-      "description": "Bug real de Allianz (29/07, revisado tras feedback del usuario), cover 15 'Responsabilidad civil obligatoria', modalidad 5105 (Estandar): celda SIN negrita real (bloque 'flat') con 2 lineas al mismo nivel. Ninguna linea de un bloque flat lleva viñeta/indentado -- homogeneo con las lineas de coberturas opcionales, que tampoco la llevan.",
+      "description": "Cover 15 'Responsabilidad civil obligatoria', modalidad 5105 (Estandar): celda SIN negrita real (bloque 'flat') con 2 lineas al mismo nivel, la segunda con marcador [[sólo para inquilinos]] real del Excel de Allianz. Ninguna linea de un bloque flat lleva viñeta/indentado; la linea con marcador ademas resuelve su propio filter_expr y queda con el texto limpio (sin el corchete visible).",
       "input": {
         "coverId": 15,
         "coverName": "Responsabilidad civil obligatoria",
@@ -1981,8 +1981,8 @@
                 "text_expr": "'Responsabilidad civil de daños a terceros 300.000€'"
               },
               {
-                "filter_expr": null,
-                "text_expr": "'Responsabilidad civil del inquilino frente al propietario [[sólo para inquilinos]]'"
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
+                "text_expr": "'Responsabilidad civil del inquilino frente al propietario'"
               }
             ]
           }
@@ -2660,6 +2660,189 @@
       "description": "Texto que termina en exclamacion -- tambien se respeta, no se anade punto extra.",
       "text": "Cuidado!",
       "expected": "Cuidado!"
+    }
+  ],
+  "bracket_marker_cases": [
+    {
+      "id": "BRK-MARK-001",
+      "description": "Caso real Allianz (cover 15, modalidad 5105): marcador al final de la linea, tras un espacio.",
+      "text": "Responsabilidad civil del inquilino frente al propietario [[sólo para inquilinos]]",
+      "expected": {
+        "cleanText": "Responsabilidad civil del inquilino frente al propietario",
+        "markerText": "sólo para inquilinos"
+      }
+    },
+    {
+      "id": "BRK-MARK-002",
+      "description": "Texto real sin ningun marcador -- markerText null, cleanText sin cambios.",
+      "text": "Responsabilidad civil de daños a terceros 300.000€",
+      "expected": {
+        "cleanText": "Responsabilidad civil de daños a terceros 300.000€",
+        "markerText": null
+      }
+    },
+    {
+      "id": "BRK-MARK-003",
+      "description": "Caso real Allianz (cover 20, opcional 'Placas solares'): el marcador queda entre 2 puntos ya anadidos por ensureTrailingPeriod al componer la frase -- se colapsa el '. .' resultante a un unico punto.",
+      "text": "Placas solares. [[sólo para propietarios]]. No",
+      "expected": {
+        "cleanText": "Placas solares. No",
+        "markerText": "sólo para propietarios"
+      }
+    },
+    {
+      "id": "BRK-MARK-004",
+      "description": "Caso real Allianz: el marcador ocupa TODO el texto de la celda -- cleanText vacio, sin fallar.",
+      "text": "[[Dinero solo en vivienda habitual]]",
+      "expected": {
+        "cleanText": "",
+        "markerText": "Dinero solo en vivienda habitual"
+      }
+    }
+  ],
+  "bracket_dependency_cases": [
+    {
+      "id": "BRK-DEP-001",
+      "description": "Caso real Allianz: 'sólo para inquilinos' -> use = Tenant.",
+      "markerText": "sólo para inquilinos",
+      "expected": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "Tenant"
+      }
+    },
+    {
+      "id": "BRK-DEP-002",
+      "description": "Caso real Allianz: 'sólo para propietarios' -> use = Owner.",
+      "markerText": "sólo para propietarios",
+      "expected": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "Owner"
+      }
+    },
+    {
+      "id": "BRK-DEP-003",
+      "description": "Caso real Allianz: 'no en uso alquiler' (negado) -> use != Rental.",
+      "markerText": "no en uso alquiler",
+      "expected": {
+        "risk_field": "use",
+        "operator": "!=",
+        "value": "Rental"
+      }
+    },
+    {
+      "id": "BRK-DEP-004",
+      "description": "Caso real Allianz: 'sólo para uso alquiler' -> use = Rental.",
+      "markerText": "sólo para uso alquiler",
+      "expected": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "Rental"
+      }
+    },
+    {
+      "id": "BRK-DEP-005",
+      "description": "Caso real Allianz: 'sólo para vivienda habitual y secundaria' -> occupancy IN [MainResidence, SecondHome] (no solo MainResidence).",
+      "markerText": "sólo para vivienda habitual y secundaria",
+      "expected": {
+        "risk_field": "occupancy",
+        "operator": "IN",
+        "value": [
+          "MainResidence",
+          "SecondHome"
+        ]
+      }
+    },
+    {
+      "id": "BRK-DEP-006",
+      "description": "Caso real Allianz: 'solo en vivienda habitual' (sin 'secundaria') -> occupancy = MainResidence.",
+      "markerText": "solo en vivienda habitual",
+      "expected": {
+        "risk_field": "occupancy",
+        "operator": "=",
+        "value": "MainResidence"
+      }
+    },
+    {
+      "id": "BRK-DEP-007",
+      "description": "Caso real Allianz con una palabra de mas dentro del corchete por error de transcripcion ('Dinero solo en vivienda habitual') -- el matching por keyword ('habitual') resuelve igual, sin necesitar corregir el Excel.",
+      "markerText": "Dinero solo en vivienda habitual",
+      "expected": {
+        "risk_field": "occupancy",
+        "operator": "=",
+        "value": "MainResidence"
+      }
+    },
+    {
+      "id": "BRK-DEP-008",
+      "description": "Caso real Allianz: 'sólo para unifamiliares' -> buildingType IN [TerracedHouse, DetachedHouse] (confirmado por el usuario 29/07: unifamiliar puede ser cualquiera de los 2, no uno solo).",
+      "markerText": "sólo para unifamiliares",
+      "expected": {
+        "risk_field": "buildingType",
+        "operator": "IN",
+        "value": [
+          "TerracedHouse",
+          "DetachedHouse"
+        ]
+      }
+    },
+    {
+      "id": "BRK-DEP-009",
+      "description": "Caso real Allianz: 'No en destinada alquiler' (negado, con mayuscula inicial) -> use != Rental.",
+      "markerText": "No en destinada alquiler",
+      "expected": {
+        "risk_field": "use",
+        "operator": "!=",
+        "value": "Rental"
+      }
+    },
+    {
+      "id": "BRK-DEP-010",
+      "description": "markerText null (celda sin ningun marcador) -- no debe fallar, devuelve null.",
+      "markerText": null,
+      "expected": null
+    },
+    {
+      "id": "BRK-DEP-011",
+      "description": "Texto entre corchetes no reconocido (ningun keyword conocido) -- no se inventa ningun risk_field, devuelve null.",
+      "markerText": "texto no reconocido de ejemplo",
+      "expected": null
+    }
+  ],
+  "bracket_finalize_line_cases": [
+    {
+      "id": "BRK-FIN-001",
+      "description": "Linea de cuerpo con marcador [[...]] y SIN ninguna dependencia previa de flujo 2 -- el filter_expr final es solo el del corchete, el texto visible queda limpio.",
+      "text": "Responsabilidad civil del inquilino frente al propietario [[sólo para inquilinos]]",
+      "filterExpr": null,
+      "isHeader": false,
+      "expected": {
+        "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
+        "text_expr": "'  • Responsabilidad civil del inquilino frente al propietario'"
+      }
+    },
+    {
+      "id": "BRK-FIN-002",
+      "description": "Decision del usuario (29/07): linea con marcador [[...]] Y una dependencia real de flujo 2 YA presente -- se combinan con AND, ninguna se descarta.",
+      "text": "texto [[sólo para inquilinos]]",
+      "filterExpr": "insurance[\"risk\"].occupancy == \"MainResidence\"",
+      "isHeader": false,
+      "expected": {
+        "filter_expr": "(insurance[\"risk\"].occupancy == \"MainResidence\") && (insurance[\"risk\"].use == 'Tenant')",
+        "text_expr": "'  • texto'"
+      }
+    },
+    {
+      "id": "BRK-FIN-003",
+      "description": "Caso real Allianz (cover 20, opcional 'Placas solares', isHeader=true -- linea de cabecera de buildTieredOptionalCoverLines): el marcador vive dentro de una frase ya compuesta con puntos, se limpia el texto y se resuelve el filter_expr igual que en cualquier otra linea (mismo punto unico de entrada, finalizeLine).",
+      "text": "Placas solares. [[sólo para propietarios]]. No",
+      "filterExpr": null,
+      "isHeader": true,
+      "expected": {
+        "filter_expr": "insurance[\"risk\"].use == 'Owner'",
+        "text_expr": "'Placas solares. No'"
+      }
     }
   ]
 }

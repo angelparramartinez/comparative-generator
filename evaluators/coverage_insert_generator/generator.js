@@ -92,14 +92,105 @@ function formatLineText(text, isHeader) {
   return isHeader ? clean : `  • ${clean}`;
 }
 
+// Marcador [[...]] embebido en el texto libre del Excel (convenio del
+// prompt excel_coverage_sheet_builder.md, caso real Allianz 29/07): senala
+// una condicion de riesgo que aplica SOLO a esa LINE concreta (nunca al
+// ENTRY completo) -- el Excel ya distingue por uso de vivienda/regimen de
+// tenencia/tipo de construccion en vez de depender de que el flujo 2 lo
+// haya extraido del condicionado. Se quita del texto visible (no debe
+// aparecer literal en la comparativa) y se traduce a un FILTER_EXPR real.
+const BRACKET_MARKER_PATTERN = /\[\[([^\]]+)\]\]/;
+
+function extractBracketMarker(text) {
+  const match = BRACKET_MARKER_PATTERN.exec(text || "");
+  if (!match) return { cleanText: (text || "").trim(), markerText: null };
+  // Caso real (cover 20 "Cristales", opcional "Placas solares", 28-29/07):
+  // el marcador puede quedar rodeado de puntos ya anadidos por
+  // ensureTrailingPeriod en la composicion de la frase ("Placas solares.
+  // [[sólo para propietarios]]. No") -- al quitar el corchete quedaria un
+  // ". ." duplicado. Se colapsa a un unico punto tras la limpieza de
+  // espacios.
+  const cleanText = `${text.slice(0, match.index)}${text.slice(match.index + match[0].length)}`
+    .replace(/\s+/g, " ")
+    .replace(/\.\s*\./g, ".")
+    .trim();
+  return { cleanText, markerText: match[1].trim() };
+}
+
+// Vocabulario real observado en el Excel de Allianz (29/07) -- 4 conceptos,
+// los 4 ya existentes en la ontologia (occupancy/use/buildingType), sin
+// necesidad de ningun risk_field nuevo. Matching por PALABRA CLAVE (no
+// frase exacta) para no depender de la redaccion exacta de cada compania
+// (cubre "sólo para vivienda habitual" y "Solo en vivienda habitual" con
+// la misma regla, incluido el caso real con una palabra de mas dentro del
+// corchete por error de transcripcion: "[[Dinero solo en vivienda
+// habitual]]"). "unifamiliar" cubre AMBOS valores reales de vivienda
+// unifamiliar (adosado y chalet independiente -- confirmado por el usuario
+// 29/07: "unifamiliar puede ser TerracedHouse o DetachedHouse", ninguno de
+// los 2 por separado). Negacion: el marcador empieza por "no" -> invierte
+// el operador. Ampliar solo cuando aparezca una quinta convencion real, no
+// adivinar variantes hipoteticas -- mismo criterio que
+// TUNING_NOT_CONTRACTED_LABELS.
+function resolveBracketDependency(markerText) {
+  if (!markerText) return null;
+  const normalized = markerText
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+  const negated = /^no\b/.test(normalized);
+
+  if (normalized.includes("unifamiliar")) {
+    return { risk_field: "buildingType", operator: negated ? "NOT_IN" : "IN", value: ["TerracedHouse", "DetachedHouse"] };
+  }
+  if (normalized.includes("inquilino")) {
+    return { risk_field: "use", operator: negated ? "!=" : "=", value: "Tenant" };
+  }
+  if (normalized.includes("propietario")) {
+    return { risk_field: "use", operator: negated ? "!=" : "=", value: "Owner" };
+  }
+  if (normalized.includes("alquiler")) {
+    return { risk_field: "use", operator: negated ? "!=" : "=", value: "Rental" };
+  }
+  if (normalized.includes("habitual")) {
+    if (normalized.includes("secundari")) {
+      return { risk_field: "occupancy", operator: negated ? "NOT_IN" : "IN", value: ["MainResidence", "SecondHome"] };
+    }
+    return { risk_field: "occupancy", operator: negated ? "!=" : "=", value: "MainResidence" };
+  }
+  if (normalized.includes("secundari")) {
+    return { risk_field: "occupancy", operator: negated ? "!=" : "=", value: "SecondHome" };
+  }
+  return null;
+}
+
+// Decision del usuario (29/07): si la MISMA linea ya tiene un filter_expr
+// (de una dependencia real extraida por flujo 2) Y ademas trae un marcador
+// [[...]], se combinan con AND -- ninguna de las 2 se descarta. Revisar mas
+// adelante si aparece un caso real que necesite otra regla (el corchete
+// manda siempre, por ejemplo).
+function combineTwoFilterExprStrings(a, b) {
+  if (a && b) return `(${a}) && (${b})`;
+  return a || b || null;
+}
+
 // Construye una LINE final {filter_expr, text_expr} aplicando el formato de
 // arriba. isHeader: true para la LINE que actua de titulo de la ENTRY (ver
 // formatLineText) -- normalmente la primera que se construye, salvo en
 // coberturas opcionales con varios capitales posibles (buildTieredOptionalCoverLines),
 // donde varias LINES son candidatas a "titulo" (mutuamente excluyentes via
-// su propio FILTER_EXPR, solo una visible a la vez).
+// su propio FILTER_EXPR, solo una visible a la vez). El marcador [[...]] se
+// extrae y resuelve aqui (punto unico por el que pasan TODAS las lineas,
+// tanto de "Coberturas por modalidad" como de "Coberturas opcionales") para
+// que aplique en cualquier sitio sin tener que tocar cada función que
+// construye lineas por separado.
 function finalizeLine(text, filterExpr, isHeader) {
-  return { filter_expr: filterExpr, text_expr: spelStringLiteral(formatLineText(text, isHeader)) };
+  const { cleanText, markerText } = extractBracketMarker(text);
+  const bracketDependency = resolveBracketDependency(markerText);
+  const bracketExpr = bracketDependency ? translateToSpel(bracketDependency) : null;
+  const combinedExpr = combineTwoFilterExprStrings(filterExpr, bracketExpr);
+  return { filter_expr: combinedExpr, text_expr: spelStringLiteral(formatLineText(cleanText, isHeader)) };
 }
 
 // Trocea el texto libre de una celda del Excel en bullets (una linea por
@@ -770,5 +861,8 @@ module.exports = {
   computeCoverOverride,
   wrapAsSpelExpression,
   sqlLiteral,
-  buildInsertStatements
+  buildInsertStatements,
+  extractBracketMarker,
+  resolveBracketDependency,
+  finalizeLine
 };

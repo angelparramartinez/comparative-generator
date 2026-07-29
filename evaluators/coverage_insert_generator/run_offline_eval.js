@@ -302,6 +302,30 @@ function checkGenerator(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
   }
 
+  for (const c of golden.bracket_marker_cases || []) {
+    total++;
+    const got = generator.extractBracketMarker(c.text);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.bracket_dependency_cases || []) {
+    total++;
+    const got = generator.resolveBracketDependency(c.markerText);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.bracket_finalize_line_cases || []) {
+    total++;
+    const got = generator.finalizeLine(c.text, c.filterExpr, c.isHeader);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
   for (const c of golden.insert_sql_cases || []) {
     total++;
     const spelLiteral = generator.spelStringLiteral(c.text);
