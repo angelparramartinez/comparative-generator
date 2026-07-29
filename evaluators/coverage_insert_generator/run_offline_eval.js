@@ -32,6 +32,10 @@
 //                      de entries editadas/anadidas a mano, recalculo de la
 //                      condicion compartida por cobertura tras el filtrado
 //                      (workflow n8n nuevo, 23/07)
+//   --tuning-merge    valida la fusion de 1+ diccionarios de tuning en uno
+//                      solo (tuning_dictionary_merger.js) -- necesario para
+//                      companias que entregan el tuning partido por fase
+//                      (tarificacion/preemision, caso real Allianz, 28/07)
 //   (sin flags)       ejecuta todos los checks
 //
 // Nota sobre "grounding" del matcher lexico (matcher.js): se intento un check
@@ -57,6 +61,7 @@ const EXCEL_FIXTURE_DATASET_PATH = path.join(__dirname, "excel_fixture_builder_g
 const REVIEW_ASSEMBLY_DATASET_PATH = path.join(__dirname, "review_assembly_golden_dataset.json");
 const RICH_TEXT_BLOCK_PARSER_DATASET_PATH = path.join(__dirname, "rich_text_block_parser_golden_dataset.json");
 const INSERT_GENERATION_DATASET_PATH = path.join(__dirname, "insert_generation_golden_dataset.json");
+const TUNING_MERGER_DATASET_PATH = path.join(__dirname, "tuning_dictionary_merger_golden_dataset.json");
 const matcher = require("./matcher");
 const generator = require("./generator");
 const tuningMatcher = require("./tuning_matcher");
@@ -65,6 +70,7 @@ const excelFixtureBuilder = require("./excel_fixture_builder");
 const reviewAssembly = require("./review_assembly");
 const richTextBlockParser = require("./rich_text_block_parser");
 const insertGeneration = require("./insert_generation");
+const tuningDictionaryMerger = require("./tuning_dictionary_merger");
 
 function loadGoldenDataset() {
   return JSON.parse(fs.readFileSync(DATASET_PATH, "utf8"));
@@ -96,6 +102,10 @@ function loadRichTextBlockParserGoldenDataset() {
 
 function loadInsertGenerationGoldenDataset() {
   return JSON.parse(fs.readFileSync(INSERT_GENERATION_DATASET_PATH, "utf8"));
+}
+
+function loadTuningMergerGoldenDataset() {
+  return JSON.parse(fs.readFileSync(TUNING_MERGER_DATASET_PATH, "utf8"));
 }
 
 // Compara el nivel de confianza esperado (etiqueta manual, ver schema_notes)
@@ -568,6 +578,35 @@ function checkInsertGeneration(golden) {
   return failures === 0 ? 0 : 1;
 }
 
+function checkTuningMerge(golden) {
+  console.log("\n=== --tuning-merge ===");
+  let failures = 0;
+  let total = 0;
+
+  for (const c of golden.cases || []) {
+    total++;
+    const merged = tuningDictionaryMerger.mergeTuningDictionaries(c.dictionaries);
+    const mismatches = [];
+
+    if (Object.keys(merged).length !== c.expected_field_count) {
+      mismatches.push(`field_count: got=${Object.keys(merged).length}, esperado=${c.expected_field_count}`);
+    }
+    for (const [key, sourceIndex] of Object.entries(c.expected_source_index_by_key || {})) {
+      const expectedDef = c.dictionaries[sourceIndex] ? c.dictionaries[sourceIndex][key] : undefined;
+      if (JSON.stringify(merged[key]) !== JSON.stringify(expectedDef)) {
+        mismatches.push(`"${key}": no coincide con dictionaries[${sourceIndex}]`);
+      }
+    }
+
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.join("; ")}`}`);
+  }
+
+  console.log(`--tuning-merge: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
 function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
@@ -579,6 +618,7 @@ function main() {
   const reviewAssemblyGolden = loadReviewAssemblyGoldenDataset();
   const richTextBlockParserGolden = loadRichTextBlockParserGoldenDataset();
   const insertGenerationGolden = loadInsertGenerationGoldenDataset();
+  const tuningMergerGolden = loadTuningMergerGoldenDataset();
 
   let exitCode = 0;
   if (runAll || args.includes("--matching")) {
@@ -604,6 +644,9 @@ function main() {
   }
   if (runAll || args.includes("--insert-generation")) {
     exitCode = Math.max(exitCode, checkInsertGeneration(insertGenerationGolden));
+  }
+  if (runAll || args.includes("--tuning-merge")) {
+    exitCode = Math.max(exitCode, checkTuningMerge(tuningMergerGolden));
   }
   process.exit(exitCode);
 }

@@ -1,0 +1,525 @@
+{
+  "cases": [
+    {
+      "id": "GD-MERGE-001",
+      "description": "Allianz real (tarificacion + preemision): union completa de campos, preemision gana en los campos donde el contenido difiere entre fases (tramos por modalidad ya resueltos), tarificacion se conserva tal cual en los campos que preemision no describe.",
+      "dictionaries": [
+        {
+          "dtoCap": {
+            "section": "section.discounts",
+            "label": "Descuento comercial % (CAP)",
+            "type": "number",
+            "component": "number",
+            "step": 1,
+            "required": false,
+            "min": 0,
+            "max": 100,
+            "value": 0,
+            "allowSavedTuning": true
+          },
+          "dtoVentaCruzada": {
+            "section": "section.discounts",
+            "label": "Descuento comercial % (venta cruzada)",
+            "type": "number",
+            "component": "number",
+            "step": 1,
+            "required": false,
+            "min": 0,
+            "max": 100,
+            "value": 0,
+            "allowSavedTuning": true
+          },
+          "comissionType": {
+            "section": "section.discounts",
+            "label": "Tipo de comisión sobre la prima",
+            "type": "string",
+            "component": "select",
+            "required": false,
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "A",
+                    "value": "A"
+                  },
+                  {
+                    "label": "B",
+                    "value": "B"
+                  },
+                  {
+                    "label": "C",
+                    "value": "C"
+                  },
+                  {
+                    "label": "D",
+                    "value": "D"
+                  }
+                ]
+              }
+            ],
+            "value": "A",
+            "allowSavedTuning": true
+          },
+          "mesesVencimiento": {
+            "section": "section.additionalData",
+            "label": "Fecha de vencimiento",
+            "type": "string",
+            "component": "select",
+            "required": false,
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "Día 1 del mes actual",
+                    "value": "12"
+                  },
+                  {
+                    "label": "Día 1 del mes siguiente",
+                    "value": "13"
+                  }
+                ]
+              }
+            ],
+            "value": "12",
+            "allowSavedTuning": true
+          },
+          "specialObjectsOver12000": {
+            "section": "section.additionalData",
+            "label": "¿Objetos especiales con valor unitario superior a 12.000€?",
+            "type": "boolean",
+            "component": "radio",
+            "required": false,
+            "visible": "/insurance.risk.specialValueObjectsLimit >= 12000/",
+            "value": null,
+            "allowSavedTuning": true
+          },
+          "jewelryInOver7500": {
+            "section": "section.additionalData",
+            "label": "¿Joyas con valor unitario superior a 7500€ dentro de caja fuerte?",
+            "type": "boolean",
+            "component": "radio",
+            "required": false,
+            "visible": "/insurance.risk.jewelsInSafeBoxLimit>=7500/",
+            "value": null,
+            "allowSavedTuning": true
+          },
+          "jewelryOutOver7500": {
+            "section": "section.additionalData",
+            "label": "¿Joyas con valor unitario superior a 7500€ fuera de caja fuerte?",
+            "type": "boolean",
+            "component": "radio",
+            "required": false,
+            "visible": "/insurance.risk.jewelsOutSafeBoxLimit>=7500/",
+            "value": null,
+            "allowSavedTuning": true
+          },
+          "AttachedFloorAreaSelect": {
+            "section": "section.additionalData",
+            "label": "¿La vivienda dispone de anexos?",
+            "type": "boolean",
+            "component": "radio",
+            "required": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+            "visible": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+            "value": false,
+            "allowSavedTuning": true
+          },
+          "AttachedFloorArea": {
+            "section": "section.additionalData",
+            "label": "Anexos (m2)",
+            "type": "number",
+            "component": "number",
+            "step": 1,
+            "required": "/tuning?.AttachedFloorAreaSelect/",
+            "visible": "/tuning?.AttachedFloorAreaSelect/",
+            "min": 0,
+            "max": 9999,
+            "value": 0,
+            "allowSavedTuning": true
+          },
+          "aestheticDamageToBuilding": {
+            "section": "section.allianz.covers",
+            "label": "Daños estéticos edificación",
+            "type": "string",
+            "component": "select",
+            "required": false,
+            "visible": true,
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "Según modalidad",
+                    "value": null
+                  },
+                  {
+                    "label": "Capital bajo",
+                    "value": "1"
+                  },
+                  {
+                    "label": "Capital medio",
+                    "value": "2"
+                  },
+                  {
+                    "label": "Capital alto",
+                    "value": "3"
+                  }
+                ]
+              }
+            ],
+            "value": null,
+            "allowSavedTuning": true
+          },
+          "aestheticDamageToContent": {
+            "section": "section.allianz.covers",
+            "label": "Daños estéticos contenido",
+            "type": "string",
+            "component": "select",
+            "required": false,
+            "visible": true,
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "Según modalidad",
+                    "value": null
+                  },
+                  {
+                    "label": "Capital bajo",
+                    "value": "1"
+                  },
+                  {
+                    "label": "Capital medio",
+                    "value": "2"
+                  }
+                ]
+              }
+            ],
+            "value": null,
+            "allowSavedTuning": true
+          },
+          "solarPanels": {
+            "section": "section.allianz.covers",
+            "label": "Placas solares",
+            "type": "string",
+            "component": "select",
+            "required": false,
+            "visible": true,
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "No",
+                    "value": "N"
+                  },
+                  {
+                    "label": "Capital bajo",
+                    "value": "1"
+                  },
+                  {
+                    "label": "Capital medio",
+                    "value": "2"
+                  }
+                ]
+              }
+            ],
+            "value": "N",
+            "allowSavedTuning": true
+          },
+          "damageCausedByTenant": {
+            "section": "section.allianz.covers",
+            "label": "Daños causados por el inquilino (vandalismo)",
+            "type": "boolean",
+            "component": "radio",
+            "required": true,
+            "visible": "/insurance.risk.use=='Rental'/",
+            "value": false,
+            "allowSavedTuning": true
+          },
+          "smartphonesScreenDamages": {
+            "section": "section.allianz.covers",
+            "label": "Rotura de pantalla de teléfonos móviles",
+            "type": "boolean",
+            "component": "radio",
+            "required": true,
+            "visible": "/${modalityId}==5107/",
+            "value": false,
+            "allowSavedTuning": true
+          },
+          "allRisk": {
+            "section": "section.allianz.covers",
+            "label": "Todo Riesgo",
+            "type": "boolean",
+            "component": "radio",
+            "required": true,
+            "visible": "/${modalityId}==5107/",
+            "value": false,
+            "allowSavedTuning": true
+          }
+        },
+        {
+          "mesesVencimiento": {
+            "section": "section.additionalData",
+            "label": "Fecha de vencimiento",
+            "type": "string",
+            "component": "select",
+            "required": true,
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "Día 1 del mes actual",
+                    "value": "12"
+                  },
+                  {
+                    "label": "Día 1 del mes siguiente",
+                    "value": "13"
+                  }
+                ]
+              }
+            ],
+            "value": "12"
+          },
+          "specialObjectsOver12000": {
+            "section": "section.additionalData",
+            "label": "¿Objetos especiales con valor unitario superior a 12.000€?",
+            "type": "boolean",
+            "component": "radio",
+            "required": "/insurance.risk.specialValueObjectsLimit >= 12000/",
+            "visible": "/insurance.risk.specialValueObjectsLimit >= 12000/",
+            "value": null
+          },
+          "jewelryInOver7500": {
+            "section": "section.additionalData",
+            "label": "¿Joyas con valor unitario superior a 7500€ dentro de caja fuerte?",
+            "type": "boolean",
+            "component": "radio",
+            "required": "/insurance.risk.jewelsInSafeBoxLimit>=7500/",
+            "visible": "/insurance.risk.jewelsInSafeBoxLimit>=7500/",
+            "value": null
+          },
+          "jewelryOutOver7500": {
+            "section": "section.additionalData",
+            "label": "¿Joyas con valor unitario superior a 7500€ fuera de caja fuerte?",
+            "type": "boolean",
+            "component": "radio",
+            "required": "/insurance.risk.jewelsOutSafeBoxLimit>=7500/",
+            "visible": "/insurance.risk.jewelsOutSafeBoxLimit>=7500/",
+            "value": null
+          },
+          "AttachedFloorAreaSelect": {
+            "section": "section.additionalData",
+            "label": "¿La vivienda dispone de anexos?",
+            "type": "boolean",
+            "component": "radio",
+            "required": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+            "visible": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+            "enabled": false,
+            "help": "/tuning.allianz.AttachedFloorAreaSelectHelp/",
+            "value": false
+          },
+          "AttachedFloorArea": {
+            "section": "section.additionalData",
+            "label": "Anexos (m2)",
+            "type": "number",
+            "component": "number",
+            "step": 1,
+            "required": "/tuning?.AttachedFloorAreaSelect/",
+            "visible": "/tuning?.AttachedFloorAreaSelect/",
+            "enabled": false,
+            "help": "/tuning.allianz.AttachedFloorAreaSelectHelp/",
+            "min": 0,
+            "max": 9999,
+            "value": 0
+          },
+          "aestheticDamageToBuilding": {
+            "section": "section.allianz.covers",
+            "label": "Daños estéticos edificación",
+            "type": "string",
+            "component": "select",
+            "required": "/${modalityId}!=5105/",
+            "visible": "/${modalityId}!=5105/",
+            "options": [
+              {
+                "condition": "/${modalityId}==5106/",
+                "items": [
+                  {
+                    "label": "1.500€",
+                    "value": "1"
+                  },
+                  {
+                    "label": "3.000€",
+                    "value": "2"
+                  }
+                ]
+              },
+              {
+                "condition": "/${modalityId}==5107/",
+                "items": [
+                  {
+                    "label": "3.000€",
+                    "value": "1"
+                  },
+                  {
+                    "label": "6.000€",
+                    "value": "2"
+                  },
+                  {
+                    "label": "9.000€",
+                    "value": "3"
+                  }
+                ]
+              }
+            ],
+            "value": "1"
+          },
+          "aestheticDamageToContent": {
+            "section": "section.allianz.covers",
+            "label": "Daños estéticos contenido",
+            "type": "string",
+            "component": "select",
+            "required": "/${modalityId}!=5105/",
+            "visible": "/${modalityId}!=5105/",
+            "options": [
+              {
+                "condition": "/${modalityId}==5106/",
+                "items": [
+                  {
+                    "label": "750€",
+                    "value": "1"
+                  },
+                  {
+                    "label": "1.500€",
+                    "value": "2"
+                  }
+                ]
+              },
+              {
+                "condition": "/${modalityId}==5107/",
+                "items": [
+                  {
+                    "label": "1.500€",
+                    "value": "1"
+                  },
+                  {
+                    "label": "3.000€",
+                    "value": "2"
+                  }
+                ]
+              }
+            ],
+            "value": "1"
+          },
+          "solarPanels": {
+            "section": "section.allianz.covers",
+            "label": "Placas solares",
+            "type": "string",
+            "component": "select",
+            "required": "/${modalityId}!=5105/",
+            "visible": "/${modalityId}!=5105/",
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "No",
+                    "value": "N"
+                  },
+                  {
+                    "label": "1.000€",
+                    "value": "1"
+                  },
+                  {
+                    "label": "3.000€",
+                    "value": "2"
+                  }
+                ]
+              }
+            ],
+            "value": "N"
+          }
+        }
+      ],
+      "expected_field_count": 15,
+      "expected_source_index_by_key": {
+        "aestheticDamageToBuilding": 1,
+        "aestheticDamageToContent": 1,
+        "solarPanels": 1,
+        "mesesVencimiento": 1,
+        "AttachedFloorArea": 1,
+        "dtoCap": 0,
+        "dtoVentaCruzada": 0,
+        "comissionType": 0,
+        "allRisk": 0,
+        "damageCausedByTenant": 0,
+        "smartphonesScreenDamages": 0
+      }
+    },
+    {
+      "id": "GD-MERGE-002",
+      "description": "Compania sin distincion de fase (1 solo fichero, ej. Generali): la fusion de un unico diccionario es identidad, sin cambiar comportamiento.",
+      "dictionaries": [
+        {
+          "commercialDiscountNumber": {
+            "allowSavedTuning": true,
+            "component": "number",
+            "label": "Descuento comercial %",
+            "max": 100,
+            "min": -100,
+            "required": false,
+            "section": "section.discounts",
+            "step": 1,
+            "suffix": "/tuning?.commercialDiscountNumber < 0 ? { 'text': 'Recargo', 'style': 'warning' } : {}/",
+            "type": "number",
+            "value": 0
+          },
+          "jewelryInQuote": {
+            "component": "radio",
+            "label": "Joyas en caja fuerte con valor unitario igual o superior a 6.000€",
+            "options": [
+              {
+                "items": [
+                  {
+                    "label": "si",
+                    "value": "S"
+                  },
+                  {
+                    "label": "no",
+                    "value": "N"
+                  }
+                ]
+              }
+            ],
+            "required": "/#this?.stage == 'preissuance' && insurance.risk.jewelsInSafeBoxLimit > 5999/",
+            "section": "section.additionalData",
+            "type": "string",
+            "value": null,
+            "visible": "/insurance.risk.jewelsInSafeBoxLimit > 5999/"
+          },
+          "jewelryInQuoteAmmount": {
+            "component": "number",
+            "label": "Suma de los importes de las Joyas en caja fuerte con valor unitario igual o superior a 6.000€",
+            "max": "/insurance.risk.jewelsInSafeBoxLimit/",
+            "min": "/tuning?.jewelryInQuote == 'S' ? 6000 : 0/",
+            "required": "/tuning?.jewelryInQuote == 'S'/",
+            "section": "section.additionalData",
+            "step": 1,
+            "type": "number",
+            "value": 0,
+            "visible": "/tuning?.jewelryInQuote == 'S'/"
+          }
+        }
+      ],
+      "expected_field_count": 3,
+      "expected_source_index_by_key": {
+        "commercialDiscountNumber": 0,
+        "jewelryInQuote": 0,
+        "jewelryInQuoteAmmount": 0
+      }
+    },
+    {
+      "id": "GD-MERGE-003",
+      "description": "Caso limite: ningun diccionario de entrada -> diccionario fusionado vacio (no deberia darse en produccion, pero no debe lanzar excepcion).",
+      "dictionaries": [],
+      "expected_field_count": 0,
+      "expected_source_index_by_key": {}
+    }
+  ]
+}
