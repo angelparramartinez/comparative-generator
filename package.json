@@ -1,0 +1,12 @@
+{
+  "name": "comparative-generator",
+  "private": true,
+  "description": "Arneses de evaluacion offline y utilidades del pipeline de comparativa de coberturas (ASM)",
+  "scripts": {
+    "test": "node evaluators/coverage_insert_generator/run_offline_eval.js"
+  },
+  "dependencies": {
+    "exceljs": "^4.4.0",
+    "jszip": "^3.10.1"
+  }
+}
