@@ -428,6 +428,14 @@ function checkExcelFixture(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got, null, 2)} | esperado: ${JSON.stringify(c.expected, null, 2)}`}`);
   }
 
+  for (const c of golden.marker_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.isCoverNotOfferedMarker(c.text);
+    const pass = got === c.expected;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected}`}`);
+  }
+
   console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;
 }

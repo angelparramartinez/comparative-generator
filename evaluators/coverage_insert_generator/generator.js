@@ -150,8 +150,20 @@ function splitBulletsFromCellText(cellText, coverName) {
 function buildBlockLines(block, headerDependencies, lineDependencies) {
   const lines = [];
   let isFirstLine = true;
+  // Bug real de Allianz (29/07): un bloque "flat" no tiene ningun titulo
+  // real (a diferencia de "value"/"label", que SI lo tienen via headerText)
+  // -- todas sus lineas estan al mismo nivel entre si. Antes, solo la
+  // primera linea del array recibia isHeader=true (por ser la primera),
+  // apareciendo sin viñeta/indentado mientras el resto si lo llevaba, en
+  // TODAS las coberturas del Excel de Allianz (sin negrita real, cada celda
+  // es un unico bloque "flat" de N lineas). Feedback real del usuario
+  // (29/07) tras ver un primer fix (viñeta en todas): mejor sin viñeta en
+  // NINGUNA -- asi queda homogeneo con las lineas de coberturas opcionales
+  // (buildTieredOptionalCoverLines), que tampoco llevan viñeta. Un bloque
+  // flat de 1 sola linea (Generali) no cambia: ya no llevaba viñeta.
   const pushLine = (text, dependencies) => {
-    lines.push(finalizeLine(text, combineFilterExpr(dependencies), isFirstLine));
+    const isHeader = block.kind === "flat" ? true : isFirstLine;
+    lines.push(finalizeLine(text, combineFilterExpr(dependencies), isHeader));
     isFirstLine = false;
   };
 

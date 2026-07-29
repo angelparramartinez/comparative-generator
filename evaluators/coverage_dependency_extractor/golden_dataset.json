@@ -8,7 +8,8 @@
     "expected_coverage_dependencies": "Lo que deberia producir tras aplicar las correcciones del plan.",
     "must_not_contain_risk_fields": "Cualquier coverage_dependencies final con uno de estos risk_field indica que la correccion no funciono (o que el guardrail de la Fase 1 no lo cazo, en el caso de 'guardrail_catches: false').",
     "expected_unverified_evidence": "Solo aplica a la categoria evidence_grounding_regression. Lista de los textos de 'evidence' (de entre los de actual_coverage_dependencies) que el guardrail debe marcar como no verificables -- es decir, evidence que no aparece como substring literal (tras normalizar espacios) en el source_text reconstruido a partir de chunks.text. Hallado el 2026-07-16 al revisar a mano coverage_matcher_contract_2026-07-16T12-41-12-969Z.json tras la generalizacion de cleanup/ast walker -- no relacionado con esos cambios, es un patron nuevo del propio LLM extractor.",
-    "expected_rejected_by_value_type": "Solo aplica a la categoria value_type_regression. Lista de risk_field de entre los de actual_coverage_dependencies cuyo 'value' tiene un tipo incompatible con el data_type real del campo (p.ej. un alias de texto usado como valor de un campo integer) -- el guardrail v4 debe rechazarlos con rejection_reason 'value_type_incompatible_with_data_type', independientemente de si el operador en si es valido. Hallado el 2026-07-17 en un caso real de Santalucia (coverage_matcher_contract_2026-07-17T08-26-45-100Z.json, su_00077): 'colecciones' -- un alias de specialValueObjects -- usado como value en vez de una cantidad numerica."
+    "expected_rejected_by_value_type": "Solo aplica a la categoria value_type_regression. Lista de risk_field de entre los de actual_coverage_dependencies cuyo 'value' tiene un tipo incompatible con el data_type real del campo (p.ej. un alias de texto usado como valor de un campo integer) -- el guardrail v4 debe rechazarlos con rejection_reason 'value_type_incompatible_with_data_type', independientemente de si el operador en si es valido. Hallado el 2026-07-17 en un caso real de Santalucia (coverage_matcher_contract_2026-07-17T08-26-45-100Z.json, su_00077): 'colecciones' -- un alias de specialValueObjects -- usado como value en vez de una cantidad numerica.",
+    "hierarchy_misattribution (categoria)": "Nueva categoria (29/07, hallazgo real de Allianz): 'article'/'coverage_path' de la semantic unit apuntan a una garantia/seccion INCORRECTA (hipotesis: colision por numero de lista reutilizado entre secciones no relacionadas, no diagnosticado a fondo). Distinto de 'chunking_boundary' (que es sobre como se subdivide el TEXTO de una unidad ya correctamente atribuida) y de 'hallucination_regression' (que asume coverage_path correcto y evalua si el risk_field/operator/value son validos). 'wrong_article': el valor que produjo la ejecucion real. 'correct_section': donde pertenece de verdad el texto, segun el condicionado real."
   },
   "cases": [
     {
@@ -656,6 +657,70 @@
         "specialValueObjects"
       ],
       "notes": "Caso real de Santalucia (2026-07-17). 'specialValueObjects' es data_type integer (capital/importe), pero el LLM uso 'colecciones' -- que es literalmente un alias de ese risk_field en la ontologia -- como si fuera un valor de categoria en vez de una cantidad numerica. El operador '=' es valido para integer, asi que el chequeo de compatibilidad operador/data_type (v1) no lo detecta; hace falta el chequeo de tipo del value (v4). 'capitalInsuranceType = \"primer riesgo\"' en el mismo caso es correcto (enum, valor de texto) y debe seguir aceptandose sin cambios."
+    },
+    {
+      "id": "GD-HALLUC-007",
+      "category": "hallucination_regression",
+      "subtype": "definitional_object_scope",
+      "semantic_unit_ref": "su_00005",
+      "article": null,
+      "coverage_path": [
+        "a) Mobiliario"
+      ],
+      "source_text": "Los muebles; muebles fijos como los de cocina, baño, las puertas, forros y estantes de armarios empotrados; los objetos de decoración o adorno, y la grifería.\n\nCristales y espejos planos de los muebles que estén en la vivienda.\n\nLos vidrios de cristal o sintéticos de mamparas de baño y los vidrios de placas vitrocerámicas o de inducción.\n\nLos mármoles u otras piedras naturales o artificiales, tanto de adorno como de uso cotidiano, integrados en muebles.\n\nLos electrodomésticos, fijos o móviles; los equipos de visión y sonido; ordenadores personales.\n\nLas instalaciones y aparatos fijos de servicios: agua, gas, electricidad, calefacción, refrigeración, saneamiento, teléfono, radio, televisión y otras comunicaciones, alarmas.\n\nEl ajuar doméstico, los víveres y provisiones, enseres personales, la ropa, los documentos personales, el material utilizado para realizar la actividad deportiva, así como las bicicletas.\n\nLas herramientas, útiles y otros enseres de bricolaje o jardinería de uso particular; combustibles domésticos.\n\nLos vehículos de movilidad personal y embarcaciones de recreo no a motor, así como otros elementos que facilitan la ayuda a la movilidad como las sillas de rueda, carros, cuyo valor unitario o del conjunto no supere los 1.500€.\n\nLos objetos especiales, definidos más adelante, cuyo valor unitario no supere los 1.500 euros. No se considera forma parte del mobiliario, el dinero, las joyas y los objetos especiales, definido más adelante.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "specialValueObjects",
+          "operator": "<=",
+          "value": 1500,
+          "evidence": "Los objetos especiales, definidos más adelante, cuyo valor unitario no supere los 1.500 euros."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": [
+        "specialValueObjects"
+      ],
+      "guardrail_catches": false,
+      "notes": "Caso real de Allianz (29/07, condicionado 'condicionado general allianz (deduplicado).pdf', pag. 4). El texto completo es la seccion 'Definicion de bienes asegurados > Mobiliario y objetos asegurados > a) Mobiliario' -- una enumeracion numerada de que cuenta como 'mobiliario' a efectos de definir el BIEN asegurado (antipatron 'objeto de la cobertura', CLAUDE.md §5.2/5.7), no una condicion de inclusion/exclusion de ninguna garantia. A diferencia de GD-HALLUC-005 (mismo antipatron), aqui 'specialValueObjects <= 1500' usa un risk_field valido CON operador y tipo de valor totalmente compatibles (integer, comparacion numerica) -- a diferencia de los casos anteriores de este antipatron, el guardrail de tipo/operador (v2/v4) NO lo detecta (guardrail_catches: false). Confirmado por el usuario tras revisar el condicionado real."
+    },
+    {
+      "id": "GD-HIER-001",
+      "category": "hierarchy_misattribution",
+      "semantic_unit_ref": "su_00045",
+      "wrong_article": "4. Urgencias de cerrajería:",
+      "correct_section": "Determinación de la indemnización (punto 4, 'Valor de reposición') -- condicionado Allianz pag. 20-21, seccion generica de todo el contrato, sin relacion con ninguna garantia concreta",
+      "source_text": "Partidas y sumas aseguradas: se tomarán en consideración los valores básicos de cada partida asegurada y las sumas aseguradas para cada riesgo, sin compensación entre ellas.\n\nImporte de los pagos correspondientes a daños y gastos: el importe cuyo pago está garantizado no será, en ningún caso, superior al valor tasado pericialmente de los daños y gastos habidos.\n\nImporte de las indemnizaciones a terceros: el importe cuyo pago está garantizado se corresponderá con el fijado en:\n\nTransacción amistosa de la Compañía con el perjudicado.\n\nValor de reposición: cuando la póliza establece para un bien su cobertura a valor de reposición, su completa liquidación se halla supeditada a la reconstrucción o compra de nuevos bienes, lo que el Asegurado acreditará en el plazo de dos años, mediante la presentación de facturas o certificaciones de obra. La Compañía irá haciendo efectiva la diferencia en más del valor de reposición correspondiente sobre el valor real de los bienes afectados a medida que le vayan siendo presentados dichos documentos. El valor real correspondiente a las mencionadas partidas habrá sido liquidado previamente al finalizar la peritación y demás trámites del siniestro.\n\nAbandono: los restos de los bienes serán de cuenta del Asegurado, que no podrá hacer abandono a la Compañía de los mismos y su valor será deducido de la indemnización que proceda. Por excepción, en los casos de robo, expoliación y hurto, transcurrido un mes desde la sustracción, el Asegurado podrá optar por su abandono, sin reintegrar a la Compañía el importe de la indemnización, o por readquirirlos, devolviendo el montante de la indemnización, si ya lo hubiese percibido, deducido el importe de los posibles daños que hayan sufrido los bienes.\n\nRestauración de la unidad estética: su completa liquidación se halla supeditada a la reconstrucción o reposición de toda la habitación o pieza afectada, lo cual se acreditará mediante la presentación de facturas o certificaciones de obra.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "capitalInsuranceType",
+          "operator": "=",
+          "value": "valor de reposición",
+          "evidence": "Valor de reposición: cuando la póliza establece para un bien su cobertura a valor de reposición, su completa liquidación se halla supeditada a la reconstrucción o compra de nuevos bienes"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "guardrail_catches": false,
+      "notes": "Caso real de Allianz (29/07). El texto real de '4. Urgencias de cerrajería' (condicionado pag. 14) es solo sobre apertura/cambio de cerradura -- nada que ver con este source_text, que pertenece a 'Determinacion de la indemnizacion' (pag. 20-21), reglas GENERALES de tasacion de siniestros aplicables a toda la poliza. Hipotesis de causa raiz: ambas secciones tienen un item numerado '4.' en su propia lista local (item 4 de 'Urgencias domesticas y asistencia' vs. item 4 'Valor de reposicion' de 'Determinacion de la indemnizacion') -- el Hierarchy Builder parece emparejar por coincidencia de numero de lista en vez de por seccion real, dejando coverage_path/article apuntando a la garantia equivocada. Esto NO es un fallo del LLM extractor en si (el guardrail no cazaria esto, 'capitalInsuranceType' es un risk_field valido con operador/tipo compatibles) -- es un bug de atribucion jerarquica aguas arriba, sin diagnosticar a fondo ni corregido todavia. Ver GD-HIER-002 (mismo origen, mismo articulo mal atribuido)."
+    },
+    {
+      "id": "GD-HIER-002",
+      "category": "hierarchy_misattribution",
+      "semantic_unit_ref": "su_00046",
+      "wrong_article": "4. Urgencias de cerrajería:",
+      "correct_section": "Renuncia a la aplicación de la Regla Proporcional -- condicionado Allianz pag. 20-21, mismo bloque generico que GD-HIER-001",
+      "source_text": "Inmueble: la Compañía renuncia a la aplicación de la regla proporcional siempre que la diferencia entre los valores básicos asignados por el Contratante del Seguro y los que debió asegurar, de acuerdo con la realidad, no sea superior al 10% de dichos valores básicos asegurados.\n\nMobiliario: la Compañía renuncia a la aplicación de la regla proporcional siempre que la diferencia entre los valores básicos asignados por el Contratante del Seguro y los que debió asegurar, de acuerdo con la realidad, no sea superior al 10% de dichos valores básicos asegurados.\n\nSi no fuera el caso, la Compañía renuncia también a la aplicación de la regla proporcional cuando el importe de la reparación o substitución sea inferior a 3.000€ y se realice directamente por los profesionales enviados por ella como consecuencia del uso por el Asegurado de la garantía de Asistencia, mediante la correspondiente llamada telefónica al número indicado.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "content",
+          "operator": "=",
+          "value": "mobiliario",
+          "evidence": "Mobiliario: la Compañía renuncia a la aplicación de la regla proporcional siempre que la diferencia entre los valores básicos asignados por el Contratante del Seguro y los que debió asegurar, de acuerdo con la realidad, no sea superior al 10% de dichos valores básicos asegurados.",
+          "rejection_reason": "value_type_incompatible_with_data_type"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "guardrail_catches": true,
+      "notes": "Mismo origen que GD-HIER-001 (misma mala atribucion de '4. Urgencias de cerrajería', ver esas notas) -- el texto real es sobre la renuncia a la regla proporcional para Inmueble/Mobiliario, seccion generica de calculo de indemnizacion, sin relacion con la garantia de cerrajeria. Aqui el LLM ademas invento 'content = \"mobiliario\"' (content es integer, un capital, no una categoria de texto) -- SI fue rechazado por el guardrail (value_type_incompatible_with_data_type), asi que no llega a coverage_dependencies final ni causaria error en la comparativa. Se incluye igualmente porque confirma el mismo bug de fondo (atribucion de seccion incorrecta): si el LLM hubiera usado un risk_field/tipo compatible en su lugar, habria pasado el guardrail sin ser detectado, igual que GD-HALLUC-007."
     }
   ]
 }

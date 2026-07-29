@@ -3073,5 +3073,43 @@
         }
       ]
     }
+  ],
+  "marker_cases": [
+    {
+      "id": "MARK-001",
+      "description": "Marcador real de Generali ('Sin cobertura', covers 79/81, bug 22/07).",
+      "text": "Sin cobertura",
+      "expected": true
+    },
+    {
+      "id": "MARK-002",
+      "description": "Mismo marcador de Generali con mayusculas/espacios distintos -- normalize() lo iguala.",
+      "text": "  SIN COBERTURA  ",
+      "expected": true
+    },
+    {
+      "id": "MARK-003",
+      "description": "Marcador de Allianz (decision del usuario 29/07: mas corto y generico que la frase original del Excel): 'No contratable'.",
+      "text": "No contratable",
+      "expected": true
+    },
+    {
+      "id": "MARK-004",
+      "description": "Mismo marcador de Allianz con mayusculas/espacios distintos -- normalize() lo iguala igualmente.",
+      "text": "  NO CONTRATABLE  ",
+      "expected": true
+    },
+    {
+      "id": "MARK-005",
+      "description": "Contenido real de cobertura (Generali, cover 15) -- NO debe confundirse con ningun marcador de 'no ofrecida'.",
+      "text": "Capital 150.000€",
+      "expected": false
+    },
+    {
+      "id": "MARK-006",
+      "description": "Celda vacia -- no es un marcador de 'no ofrecida' (una celda vacia ya se filtra aparte, por longitud 0, no por este marcador).",
+      "text": "",
+      "expected": false
+    }
   ]
 }
