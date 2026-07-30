@@ -92,14 +92,105 @@ function formatLineText(text, isHeader) {
   return isHeader ? clean : `  • ${clean}`;
 }
 
+// Marcador [[...]] embebido en el texto libre del Excel (convenio del
+// prompt excel_coverage_sheet_builder.md, caso real Allianz 29/07): senala
+// una condicion de riesgo que aplica SOLO a esa LINE concreta (nunca al
+// ENTRY completo) -- el Excel ya distingue por uso de vivienda/regimen de
+// tenencia/tipo de construccion en vez de depender de que el flujo 2 lo
+// haya extraido del condicionado. Se quita del texto visible (no debe
+// aparecer literal en la comparativa) y se traduce a un FILTER_EXPR real.
+const BRACKET_MARKER_PATTERN = /\[\[([^\]]+)\]\]/;
+
+function extractBracketMarker(text) {
+  const match = BRACKET_MARKER_PATTERN.exec(text || "");
+  if (!match) return { cleanText: (text || "").trim(), markerText: null };
+  // Caso real (cover 20 "Cristales", opcional "Placas solares", 28-29/07):
+  // el marcador puede quedar rodeado de puntos ya anadidos por
+  // ensureTrailingPeriod en la composicion de la frase ("Placas solares.
+  // [[sólo para propietarios]]. No") -- al quitar el corchete quedaria un
+  // ". ." duplicado. Se colapsa a un unico punto tras la limpieza de
+  // espacios.
+  const cleanText = `${text.slice(0, match.index)}${text.slice(match.index + match[0].length)}`
+    .replace(/\s+/g, " ")
+    .replace(/\.\s*\./g, ".")
+    .trim();
+  return { cleanText, markerText: match[1].trim() };
+}
+
+// Vocabulario real observado en el Excel de Allianz (29/07) -- 4 conceptos,
+// los 4 ya existentes en la ontologia (occupancy/use/buildingType), sin
+// necesidad de ningun risk_field nuevo. Matching por PALABRA CLAVE (no
+// frase exacta) para no depender de la redaccion exacta de cada compania
+// (cubre "sólo para vivienda habitual" y "Solo en vivienda habitual" con
+// la misma regla, incluido el caso real con una palabra de mas dentro del
+// corchete por error de transcripcion: "[[Dinero solo en vivienda
+// habitual]]"). "unifamiliar" cubre AMBOS valores reales de vivienda
+// unifamiliar (adosado y chalet independiente -- confirmado por el usuario
+// 29/07: "unifamiliar puede ser TerracedHouse o DetachedHouse", ninguno de
+// los 2 por separado). Negacion: el marcador empieza por "no" -> invierte
+// el operador. Ampliar solo cuando aparezca una quinta convencion real, no
+// adivinar variantes hipoteticas -- mismo criterio que
+// TUNING_NOT_CONTRACTED_LABELS.
+function resolveBracketDependency(markerText) {
+  if (!markerText) return null;
+  const normalized = markerText
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim();
+  const negated = /^no\b/.test(normalized);
+
+  if (normalized.includes("unifamiliar")) {
+    return { risk_field: "buildingType", operator: negated ? "NOT_IN" : "IN", value: ["TerracedHouse", "DetachedHouse"] };
+  }
+  if (normalized.includes("inquilino")) {
+    return { risk_field: "use", operator: negated ? "!=" : "=", value: "Tenant" };
+  }
+  if (normalized.includes("propietario")) {
+    return { risk_field: "use", operator: negated ? "!=" : "=", value: "Owner" };
+  }
+  if (normalized.includes("alquiler")) {
+    return { risk_field: "use", operator: negated ? "!=" : "=", value: "Rental" };
+  }
+  if (normalized.includes("habitual")) {
+    if (normalized.includes("secundari")) {
+      return { risk_field: "occupancy", operator: negated ? "NOT_IN" : "IN", value: ["MainResidence", "SecondHome"] };
+    }
+    return { risk_field: "occupancy", operator: negated ? "!=" : "=", value: "MainResidence" };
+  }
+  if (normalized.includes("secundari")) {
+    return { risk_field: "occupancy", operator: negated ? "!=" : "=", value: "SecondHome" };
+  }
+  return null;
+}
+
+// Decision del usuario (29/07): si la MISMA linea ya tiene un filter_expr
+// (de una dependencia real extraida por flujo 2) Y ademas trae un marcador
+// [[...]], se combinan con AND -- ninguna de las 2 se descarta. Revisar mas
+// adelante si aparece un caso real que necesite otra regla (el corchete
+// manda siempre, por ejemplo).
+function combineTwoFilterExprStrings(a, b) {
+  if (a && b) return `(${a}) && (${b})`;
+  return a || b || null;
+}
+
 // Construye una LINE final {filter_expr, text_expr} aplicando el formato de
 // arriba. isHeader: true para la LINE que actua de titulo de la ENTRY (ver
 // formatLineText) -- normalmente la primera que se construye, salvo en
 // coberturas opcionales con varios capitales posibles (buildTieredOptionalCoverLines),
 // donde varias LINES son candidatas a "titulo" (mutuamente excluyentes via
-// su propio FILTER_EXPR, solo una visible a la vez).
+// su propio FILTER_EXPR, solo una visible a la vez). El marcador [[...]] se
+// extrae y resuelve aqui (punto unico por el que pasan TODAS las lineas,
+// tanto de "Coberturas por modalidad" como de "Coberturas opcionales") para
+// que aplique en cualquier sitio sin tener que tocar cada función que
+// construye lineas por separado.
 function finalizeLine(text, filterExpr, isHeader) {
-  return { filter_expr: filterExpr, text_expr: spelStringLiteral(formatLineText(text, isHeader)) };
+  const { cleanText, markerText } = extractBracketMarker(text);
+  const bracketDependency = resolveBracketDependency(markerText);
+  const bracketExpr = bracketDependency ? translateToSpel(bracketDependency) : null;
+  const combinedExpr = combineTwoFilterExprStrings(filterExpr, bracketExpr);
+  return { filter_expr: combinedExpr, text_expr: spelStringLiteral(formatLineText(cleanText, isHeader)) };
 }
 
 // Trocea el texto libre de una celda del Excel en bullets (una linea por
@@ -150,8 +241,20 @@ function splitBulletsFromCellText(cellText, coverName) {
 function buildBlockLines(block, headerDependencies, lineDependencies) {
   const lines = [];
   let isFirstLine = true;
+  // Bug real de Allianz (29/07): un bloque "flat" no tiene ningun titulo
+  // real (a diferencia de "value"/"label", que SI lo tienen via headerText)
+  // -- todas sus lineas estan al mismo nivel entre si. Antes, solo la
+  // primera linea del array recibia isHeader=true (por ser la primera),
+  // apareciendo sin viñeta/indentado mientras el resto si lo llevaba, en
+  // TODAS las coberturas del Excel de Allianz (sin negrita real, cada celda
+  // es un unico bloque "flat" de N lineas). Feedback real del usuario
+  // (29/07) tras ver un primer fix (viñeta en todas): mejor sin viñeta en
+  // NINGUNA -- asi queda homogeneo con las lineas de coberturas opcionales
+  // (buildTieredOptionalCoverLines), que tampoco llevan viñeta. Un bloque
+  // flat de 1 sola linea (Generali) no cambia: ya no llevaba viñeta.
   const pushLine = (text, dependencies) => {
-    lines.push(finalizeLine(text, combineFilterExpr(dependencies), isFirstLine));
+    const isHeader = block.kind === "flat" ? true : isFirstLine;
+    lines.push(finalizeLine(text, combineFilterExpr(dependencies), isHeader));
     isFirstLine = false;
   };
 
@@ -222,16 +325,48 @@ function normalizeTuningLabel(text) {
     .trim();
 }
 
-const TUNING_NOT_CONTRACTED_LABEL = "no contratada";
+// Dos convenciones reales de texto para el item "no contratado" de un
+// desplegable de tuning: "No contratada" (Generali, zasihb/yvig24/...) y
+// "No" (Allianz, solarPanels) -- mismo concepto, distinta redaccion por
+// compania. Ampliar aqui solo cuando aparezca una tercera convencion real,
+// no adivinar variantes hipoteticas.
+const TUNING_NOT_CONTRACTED_LABELS = new Set(["no contratada", "no"]);
 
 // El valor que significa "no contratado" dentro de un grupo de opciones de
-// tuning (item cuyo label normaliza a "no contratada", ej. value "0" en
-// zasihb). null si el grupo no tiene ese item -- select "obligatorio" (ej.
-// "Franquicia general", 4 opciones sin estado apagado), que no representa un
-// on/off de cobertura opcional y por tanto queda fuera de este caso.
+// tuning (item cuyo label normaliza a una de TUNING_NOT_CONTRACTED_LABELS,
+// ej. value "0" en zasihb o value "N" en solarPanels). null si el grupo no
+// tiene ese item -- select "obligatorio" (ej. "Franquicia general", 4
+// opciones sin estado apagado) o select siempre incluido, solo con tramos de
+// capital a elegir (ej. aestheticDamageToBuilding de Allianz, sin ningun
+// item de "no contratado" -- confirmado por el usuario 28/07: esa cobertura
+// no se puede excluir, solo varia el capital). Ninguno de los dos casos
+// representa un on/off de cobertura opcional y por tanto quedan fuera de
+// este concepto.
 function findTuningNotContractedValue(items) {
-  const hit = (items || []).find(it => normalizeTuningLabel(it.label) === TUNING_NOT_CONTRACTED_LABEL);
+  const hit = (items || []).find(it => TUNING_NOT_CONTRACTED_LABELS.has(normalizeTuningLabel(it.label)));
   return hit ? hit.value : null;
+}
+
+// Patron real de Allianz para un grupo de options[] condicionado por
+// modalidad (a diferencia de yvig24, condicionado por OTRO campo de tuning):
+// condition = "/${modalityId}==NNNN/". A diferencia del caso yvig24, esta
+// condicion se puede resolver en tiempo de GENERACION del INSERT (la
+// modalidad ya se conoce al construir cada fila), no necesita FILTER_EXPR de
+// runtime.
+const MODALITY_CONDITION_PATTERN = /^\/\$\{modalityId\}==(\d+)\/$/;
+
+// Si TODOS los grupos de options[] siguen el patron de arriba, devuelve un
+// mapa modality_id -> items[] (uno por grupo); null si algun grupo no lo
+// sigue (caso mixto, o condicionado por otro campo de tuning -- ver
+// matchedLabel en resolveTuningSelectConfig).
+function extractModalityConditionedGroups(groups) {
+  const byModality = {};
+  for (const group of groups) {
+    const match = MODALITY_CONDITION_PATTERN.exec(group.condition || "");
+    if (!match) return null;
+    byModality[match[1]] = group.items;
+  }
+  return byModality;
 }
 
 // Quita el envoltorio SPEL "/.../ " que ya trae el diccionario de tuning en
@@ -281,36 +416,61 @@ function extractTuningLabelLiterals(rawLabel) {
 //     solo se muestre cuando ese grupo es el vigente -- evita mostrar
 //     capitales que no aplican al contexto real (ej. los importes de
 //     "turistica" en una vivienda que no lo es).
+//   - Varios grupos condicionados por MODALIDAD (caso real Allianz 28/07:
+//     aestheticDamageToBuilding/aestheticDamageToContent, condition
+//     "/${modalityId}==NNNN/") -- a diferencia de los dos casos anteriores,
+//     se resuelve en tiempo de GENERACION del INSERT (no hace falta
+//     matchedLabel ni FILTER_EXPR de runtime: la modalidad ya se conoce al
+//     construir cada fila). Devuelve la forma { byModality: { modalityId:
+//     {items, notContractedValue} } } en vez de { items, notContractedValue,
+//     groupFilterExpr } -- buildEntriesForCover genera 1 ENTRY por
+//     modalidad. notContractedValue puede ser null aqui (a diferencia de los
+//     otros 2 casos): estas coberturas no tienen ningun estado "no
+//     contratado", siempre estan incluidas donde la modalidad las ofrece,
+//     solo varia el tramo -- buildTieredHiringStatusExpr lo interpreta como
+//     HIRING_STATUS_EXPR fijo "INCLUDED".
 //
-// null si el campo no es un select/radio de opciones no-booleanas, si el
-// grupo relevante no tiene ningun item "no contratada", o (caso multi-grupo)
-// si falta matchedLabel o no se puede resolver a que grupo corresponde --
-// en cualquiera de esos casos el llamador debe seguir usando el formato
-// booleano de siempre (limitacion conocida, nunca se asume un grupo al azar).
+// null si el campo no es un select/radio de opciones no-booleanas, si (caso
+// de 1 grupo o multi-grupo por otro campo de tuning) el grupo relevante no
+// tiene ningun item "no contratado", o (caso multi-grupo por otro campo de
+// tuning) si falta matchedLabel o no se puede resolver a que grupo
+// corresponde -- en cualquiera de esos casos el llamador debe seguir usando
+// el formato booleano de siempre (limitacion conocida, nunca se asume un
+// grupo al azar).
 function resolveTuningSelectConfig(tuningFieldDef, matchedLabel) {
   if (!tuningFieldDef || tuningFieldDef.type === "boolean") return null;
   const groups = tuningFieldDef.options;
   if (!Array.isArray(groups) || groups.length === 0) return null;
 
-  let items;
-  let groupFilterExpr = null;
-
   if (groups.length === 1) {
-    items = groups[0].items;
-  } else {
-    if (!matchedLabel) return null;
-    const literals = extractTuningLabelLiterals(tuningFieldDef.label);
-    if (literals.length !== groups.length) return null;
-    const literalIndex = literals.findIndex(l => normalizeTuningLabel(l) === normalizeTuningLabel(matchedLabel));
-    if (literalIndex === -1) return null;
-    const group = groups[literalIndex];
-    items = group.items;
-    groupFilterExpr = unwrapTuningSpelExpression(group.condition);
+    const items = groups[0].items;
+    if (!Array.isArray(items) || items.length === 0) return null;
+    const notContractedValue = findTuningNotContractedValue(items);
+    if (notContractedValue == null) return null;
+    return { items, notContractedValue, groupFilterExpr: null };
   }
 
+  const modalityGroups = extractModalityConditionedGroups(groups);
+  if (modalityGroups) {
+    const byModality = {};
+    for (const [modalityId, items] of Object.entries(modalityGroups)) {
+      if (!Array.isArray(items) || items.length === 0) return null;
+      byModality[modalityId] = { items, notContractedValue: findTuningNotContractedValue(items) };
+    }
+    return { byModality };
+  }
+
+  if (!matchedLabel) return null;
+  const literals = extractTuningLabelLiterals(tuningFieldDef.label);
+  if (literals.length !== groups.length) return null;
+  const literalIndex = literals.findIndex(l => normalizeTuningLabel(l) === normalizeTuningLabel(matchedLabel));
+  if (literalIndex === -1) return null;
+  const group = groups[literalIndex];
+  const items = group.items;
   if (!Array.isArray(items) || items.length === 0) return null;
   const notContractedValue = findTuningNotContractedValue(items);
   if (notContractedValue == null) return null;
+  const groupFilterExpr = unwrapTuningSpelExpression(group.condition);
 
   return { items, notContractedValue, groupFilterExpr };
 }
@@ -365,7 +525,13 @@ function buildTieredOptionalCoverLines(opt, tuningConfig) {
 // contratado). Mismo patron de seguridad que buildOptionalHiringStatusExpr
 // (comprobar null antes de comparar, para no depender de que "tuning" exista
 // siempre).
+//
+// notContractedValue null (caso real Allianz, grupos condicionados por
+// modalidad -- ver resolveTuningSelectConfig): esta cobertura no tiene
+// ningun estado "no contratado", siempre esta incluida donde la modalidad la
+// ofrece, solo varian los tramos -- HIRING_STATUS_EXPR fijo, sin ternario.
 function buildTieredHiringStatusExpr(opt, tuningConfig) {
+  if (tuningConfig.notContractedValue == null) return '"INCLUDED"';
   return `tuning?.${opt.tuningKey} == null || tuning.${opt.tuningKey} == ${quoteSpelValue(tuningConfig.notContractedValue)} ? "OPTIONAL" : "INCLUDED"`;
 }
 
@@ -443,6 +609,29 @@ function buildEntriesForCover({
   // normal), se mantiene el comportamiento de siempre: una unica ENTRY sin
   // modalidad.
   for (const opt of opcionales) {
+    // opt.tieredConfig.byModality (ver resolveTuningSelectConfig): caso real
+    // Allianz 28/07 (aestheticDamageToBuilding/aestheticDamageToContent) --
+    // los tramos de capital YA vienen resueltos por modalidad en el propio
+    // diccionario de tuning, a diferencia de yvig24 (un unico grupo
+    // resuelto por matchedLabel, compartido por todas las modalidades). Se
+    // genera 1 ENTRY POR MODALIDAD, con modality_id explicito y SIN
+    // FILTER_EXPR de grupo -- la modalidad ya se conoce en tiempo de
+    // generacion del INSERT, no hace falta condicion de runtime para ella.
+    if (opt.tieredConfig && opt.tieredConfig.byModality) {
+      for (const [modalityId, config] of Object.entries(opt.tieredConfig.byModality)) {
+        entries.push({
+          cover_id: coverId,
+          filter_expr: opt.filterExpr ?? null,
+          hiring_status_expr: buildTieredHiringStatusExpr(opt, config),
+          value_expr: null,
+          modality_id: modalityId,
+          source: "optional_cover",
+          lines: buildTieredOptionalCoverLines(opt, config)
+        });
+      }
+      continue;
+    }
+
     // opt.tieredConfig (ver resolveTuningSelectConfig): presente solo cuando
     // el tuning_key resuelto es un select/radio de varios capitales (ej.
     // zasihb) en vez de un booleano simple -- cambia tanto las LINES (1 por
@@ -672,5 +861,8 @@ module.exports = {
   computeCoverOverride,
   wrapAsSpelExpression,
   sqlLiteral,
-  buildInsertStatements
+  buildInsertStatements,
+  extractBracketMarker,
+  resolveBracketDependency,
+  finalizeLine
 };

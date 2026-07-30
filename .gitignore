@@ -26,5 +26,8 @@ coverage_insert_outputs/
 # Ejemplos
 examples/
 
+# Node
+node_modules/
+
 # Other
 Posibles mejoras.txt

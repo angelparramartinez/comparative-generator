@@ -1836,6 +1836,158 @@
           }
         ]
       }
+    },
+    {
+      "id": "GEN-TIER-003",
+      "description": "Caso real Allianz (28/07), cover 21 'Daños Estéticos', opcional 'Daños estéticos a la edificación' ligada a aestheticDamageToBuilding con tieredConfig.byModality (ver TSC-007): 1 ENTRY POR MODALIDAD (5106 con 2 tramos, 5107 con 3), modality_id explicito, SIN FILTER_EXPR (se resuelve en tiempo de generacion, no en runtime), HIRING_STATUS_EXPR fijo \"INCLUDED\" (sin ternario OPTIONAL/INCLUDED: esta cobertura no tiene estado 'no contratado', confirmado por el usuario). cover_override_present debe ser false: ambos ENTRY tienen filter_expr null, y computeCoverOverride nunca aplica cuando algun filter_expr es null.",
+      "input": {
+        "coverId": 21,
+        "coverName": "Daños Estéticos",
+        "opcionales": [
+          {
+            "coverName": "Daños estéticos a la edificación",
+            "textContent": "",
+            "tuningKey": "aestheticDamageToBuilding",
+            "tieredConfig": {
+              "byModality": {
+                "5106": {
+                  "items": [
+                    {
+                      "label": "1.500€",
+                      "value": "1"
+                    },
+                    {
+                      "label": "3.000€",
+                      "value": "2"
+                    }
+                  ],
+                  "notContractedValue": null
+                },
+                "5107": {
+                  "items": [
+                    {
+                      "label": "3.000€",
+                      "value": "1"
+                    },
+                    {
+                      "label": "6.000€",
+                      "value": "2"
+                    },
+                    {
+                      "label": "9.000€",
+                      "value": "3"
+                    }
+                  ],
+                  "notContractedValue": null
+                }
+              }
+            }
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 2,
+        "full_entries": [
+          {
+            "cover_id": 21,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "5106",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": "tuning?.aestheticDamageToBuilding == '1'",
+                "text_expr": "'Daños estéticos a la edificación. 1.500€'"
+              },
+              {
+                "filter_expr": "tuning?.aestheticDamageToBuilding == '2'",
+                "text_expr": "'Daños estéticos a la edificación. 3.000€'"
+              }
+            ]
+          },
+          {
+            "cover_id": 21,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "5107",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": "tuning?.aestheticDamageToBuilding == '1'",
+                "text_expr": "'Daños estéticos a la edificación. 3.000€'"
+              },
+              {
+                "filter_expr": "tuning?.aestheticDamageToBuilding == '2'",
+                "text_expr": "'Daños estéticos a la edificación. 6.000€'"
+              },
+              {
+                "filter_expr": "tuning?.aestheticDamageToBuilding == '3'",
+                "text_expr": "'Daños estéticos a la edificación. 9.000€'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-BLOCK-003",
+      "description": "Cover 15 'Responsabilidad civil obligatoria', modalidad 5105 (Estandar): celda SIN negrita real (bloque 'flat') con 2 lineas al mismo nivel, la segunda con marcador [[sólo para inquilinos]] real del Excel de Allianz. Ninguna linea de un bloque flat lleva viñeta/indentado; la linea con marcador ademas resuelve su propio filter_expr y queda con el texto limpio (sin el corchete visible).",
+      "input": {
+        "coverId": 15,
+        "coverName": "Responsabilidad civil obligatoria",
+        "defaultBlocks": [],
+        "conditionedBlocks": [
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "Responsabilidad civil de daños a terceros 300.000€",
+                "Responsabilidad civil del inquilino frente al propietario [[sólo para inquilinos]]"
+              ],
+              "needsReview": false,
+              "reviewReason": null
+            },
+            "headerDependencies": null,
+            "lineDependencies": [
+              null,
+              null
+            ],
+            "modalityId": "5105",
+            "blockIndex": 0
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "first_entry_lines_count": 2,
+        "full_entries": [
+          {
+            "cover_id": 15,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "5105",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Responsabilidad civil de daños a terceros 300.000€'"
+              },
+              {
+                "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
+                "text_expr": "'Responsabilidad civil del inquilino frente al propietario'"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "optional_hiring_status_cases": [
@@ -2267,6 +2419,136 @@
       },
       "matchedLabel": null,
       "expected": null
+    },
+    {
+      "id": "TSC-007",
+      "description": "Caso real Allianz (28/07), aestheticDamageToBuilding: 2 grupos condicionados por MODALIDAD (\"/${modalityId}==5106/\" / \"/${modalityId}==5107/\"), no por otro campo de tuning -- se resuelve sin matchedLabel, devuelve { byModality } con los tramos de cada modalidad. Ningun item 'no contratado' en ninguno de los 2 grupos (confirmado por el usuario: esta cobertura siempre esta incluida, solo varia el tramo) -- notContractedValue null en ambas modalidades.",
+      "tuningFieldDef": {
+        "section": "section.allianz.covers",
+        "label": "Daños estéticos edificación",
+        "type": "string",
+        "component": "select",
+        "required": "/${modalityId}!=5105/",
+        "visible": "/${modalityId}!=5105/",
+        "options": [
+          {
+            "condition": "/${modalityId}==5106/",
+            "items": [
+              {
+                "label": "1.500€",
+                "value": "1"
+              },
+              {
+                "label": "3.000€",
+                "value": "2"
+              }
+            ]
+          },
+          {
+            "condition": "/${modalityId}==5107/",
+            "items": [
+              {
+                "label": "3.000€",
+                "value": "1"
+              },
+              {
+                "label": "6.000€",
+                "value": "2"
+              },
+              {
+                "label": "9.000€",
+                "value": "3"
+              }
+            ]
+          }
+        ],
+        "value": "1"
+      },
+      "matchedLabel": null,
+      "expected": {
+        "byModality": {
+          "5106": {
+            "items": [
+              {
+                "label": "1.500€",
+                "value": "1"
+              },
+              {
+                "label": "3.000€",
+                "value": "2"
+              }
+            ],
+            "notContractedValue": null
+          },
+          "5107": {
+            "items": [
+              {
+                "label": "3.000€",
+                "value": "1"
+              },
+              {
+                "label": "6.000€",
+                "value": "2"
+              },
+              {
+                "label": "9.000€",
+                "value": "3"
+              }
+            ],
+            "notContractedValue": null
+          }
+        }
+      }
+    },
+    {
+      "id": "TSC-008",
+      "description": "Caso real Allianz (28/07), solarPanels: 1 solo grupo (sin condicion de modalidad, a diferencia de aestheticDamageToBuilding), con item 'No' como no-contratado -- Allianz usa 'No' en vez de la convencion de Generali 'No contratada'. Confirma que TUNING_NOT_CONTRACTED_LABELS reconoce ambas.",
+      "tuningFieldDef": {
+        "section": "section.allianz.covers",
+        "label": "Placas solares",
+        "type": "string",
+        "component": "select",
+        "required": "/${modalityId}!=5105/",
+        "visible": "/${modalityId}!=5105/",
+        "options": [
+          {
+            "items": [
+              {
+                "label": "No",
+                "value": "N"
+              },
+              {
+                "label": "1.000€",
+                "value": "1"
+              },
+              {
+                "label": "3.000€",
+                "value": "2"
+              }
+            ]
+          }
+        ],
+        "value": "N"
+      },
+      "matchedLabel": null,
+      "expected": {
+        "items": [
+          {
+            "label": "No",
+            "value": "N"
+          },
+          {
+            "label": "1.000€",
+            "value": "1"
+          },
+          {
+            "label": "3.000€",
+            "value": "2"
+          }
+        ],
+        "notContractedValue": "N",
+        "groupFilterExpr": null
+      }
     }
   ],
   "line_formatting_cases": [
@@ -2378,6 +2660,189 @@
       "description": "Texto que termina en exclamacion -- tambien se respeta, no se anade punto extra.",
       "text": "Cuidado!",
       "expected": "Cuidado!"
+    }
+  ],
+  "bracket_marker_cases": [
+    {
+      "id": "BRK-MARK-001",
+      "description": "Caso real Allianz (cover 15, modalidad 5105): marcador al final de la linea, tras un espacio.",
+      "text": "Responsabilidad civil del inquilino frente al propietario [[sólo para inquilinos]]",
+      "expected": {
+        "cleanText": "Responsabilidad civil del inquilino frente al propietario",
+        "markerText": "sólo para inquilinos"
+      }
+    },
+    {
+      "id": "BRK-MARK-002",
+      "description": "Texto real sin ningun marcador -- markerText null, cleanText sin cambios.",
+      "text": "Responsabilidad civil de daños a terceros 300.000€",
+      "expected": {
+        "cleanText": "Responsabilidad civil de daños a terceros 300.000€",
+        "markerText": null
+      }
+    },
+    {
+      "id": "BRK-MARK-003",
+      "description": "Caso real Allianz (cover 20, opcional 'Placas solares'): el marcador queda entre 2 puntos ya anadidos por ensureTrailingPeriod al componer la frase -- se colapsa el '. .' resultante a un unico punto.",
+      "text": "Placas solares. [[sólo para propietarios]]. No",
+      "expected": {
+        "cleanText": "Placas solares. No",
+        "markerText": "sólo para propietarios"
+      }
+    },
+    {
+      "id": "BRK-MARK-004",
+      "description": "Caso real Allianz: el marcador ocupa TODO el texto de la celda -- cleanText vacio, sin fallar.",
+      "text": "[[Dinero solo en vivienda habitual]]",
+      "expected": {
+        "cleanText": "",
+        "markerText": "Dinero solo en vivienda habitual"
+      }
+    }
+  ],
+  "bracket_dependency_cases": [
+    {
+      "id": "BRK-DEP-001",
+      "description": "Caso real Allianz: 'sólo para inquilinos' -> use = Tenant.",
+      "markerText": "sólo para inquilinos",
+      "expected": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "Tenant"
+      }
+    },
+    {
+      "id": "BRK-DEP-002",
+      "description": "Caso real Allianz: 'sólo para propietarios' -> use = Owner.",
+      "markerText": "sólo para propietarios",
+      "expected": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "Owner"
+      }
+    },
+    {
+      "id": "BRK-DEP-003",
+      "description": "Caso real Allianz: 'no en uso alquiler' (negado) -> use != Rental.",
+      "markerText": "no en uso alquiler",
+      "expected": {
+        "risk_field": "use",
+        "operator": "!=",
+        "value": "Rental"
+      }
+    },
+    {
+      "id": "BRK-DEP-004",
+      "description": "Caso real Allianz: 'sólo para uso alquiler' -> use = Rental.",
+      "markerText": "sólo para uso alquiler",
+      "expected": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "Rental"
+      }
+    },
+    {
+      "id": "BRK-DEP-005",
+      "description": "Caso real Allianz: 'sólo para vivienda habitual y secundaria' -> occupancy IN [MainResidence, SecondHome] (no solo MainResidence).",
+      "markerText": "sólo para vivienda habitual y secundaria",
+      "expected": {
+        "risk_field": "occupancy",
+        "operator": "IN",
+        "value": [
+          "MainResidence",
+          "SecondHome"
+        ]
+      }
+    },
+    {
+      "id": "BRK-DEP-006",
+      "description": "Caso real Allianz: 'solo en vivienda habitual' (sin 'secundaria') -> occupancy = MainResidence.",
+      "markerText": "solo en vivienda habitual",
+      "expected": {
+        "risk_field": "occupancy",
+        "operator": "=",
+        "value": "MainResidence"
+      }
+    },
+    {
+      "id": "BRK-DEP-007",
+      "description": "Caso real Allianz con una palabra de mas dentro del corchete por error de transcripcion ('Dinero solo en vivienda habitual') -- el matching por keyword ('habitual') resuelve igual, sin necesitar corregir el Excel.",
+      "markerText": "Dinero solo en vivienda habitual",
+      "expected": {
+        "risk_field": "occupancy",
+        "operator": "=",
+        "value": "MainResidence"
+      }
+    },
+    {
+      "id": "BRK-DEP-008",
+      "description": "Caso real Allianz: 'sólo para unifamiliares' -> buildingType IN [TerracedHouse, DetachedHouse] (confirmado por el usuario 29/07: unifamiliar puede ser cualquiera de los 2, no uno solo).",
+      "markerText": "sólo para unifamiliares",
+      "expected": {
+        "risk_field": "buildingType",
+        "operator": "IN",
+        "value": [
+          "TerracedHouse",
+          "DetachedHouse"
+        ]
+      }
+    },
+    {
+      "id": "BRK-DEP-009",
+      "description": "Caso real Allianz: 'No en destinada alquiler' (negado, con mayuscula inicial) -> use != Rental.",
+      "markerText": "No en destinada alquiler",
+      "expected": {
+        "risk_field": "use",
+        "operator": "!=",
+        "value": "Rental"
+      }
+    },
+    {
+      "id": "BRK-DEP-010",
+      "description": "markerText null (celda sin ningun marcador) -- no debe fallar, devuelve null.",
+      "markerText": null,
+      "expected": null
+    },
+    {
+      "id": "BRK-DEP-011",
+      "description": "Texto entre corchetes no reconocido (ningun keyword conocido) -- no se inventa ningun risk_field, devuelve null.",
+      "markerText": "texto no reconocido de ejemplo",
+      "expected": null
+    }
+  ],
+  "bracket_finalize_line_cases": [
+    {
+      "id": "BRK-FIN-001",
+      "description": "Linea de cuerpo con marcador [[...]] y SIN ninguna dependencia previa de flujo 2 -- el filter_expr final es solo el del corchete, el texto visible queda limpio.",
+      "text": "Responsabilidad civil del inquilino frente al propietario [[sólo para inquilinos]]",
+      "filterExpr": null,
+      "isHeader": false,
+      "expected": {
+        "filter_expr": "insurance[\"risk\"].use == 'Tenant'",
+        "text_expr": "'  • Responsabilidad civil del inquilino frente al propietario'"
+      }
+    },
+    {
+      "id": "BRK-FIN-002",
+      "description": "Decision del usuario (29/07): linea con marcador [[...]] Y una dependencia real de flujo 2 YA presente -- se combinan con AND, ninguna se descarta.",
+      "text": "texto [[sólo para inquilinos]]",
+      "filterExpr": "insurance[\"risk\"].occupancy == \"MainResidence\"",
+      "isHeader": false,
+      "expected": {
+        "filter_expr": "(insurance[\"risk\"].occupancy == \"MainResidence\") && (insurance[\"risk\"].use == 'Tenant')",
+        "text_expr": "'  • texto'"
+      }
+    },
+    {
+      "id": "BRK-FIN-003",
+      "description": "Caso real Allianz (cover 20, opcional 'Placas solares', isHeader=true -- linea de cabecera de buildTieredOptionalCoverLines): el marcador vive dentro de una frase ya compuesta con puntos, se limpia el texto y se resuelve el filter_expr igual que en cualquier otra linea (mismo punto unico de entrada, finalizeLine).",
+      "text": "Placas solares. [[sólo para propietarios]]. No",
+      "filterExpr": null,
+      "isHeader": true,
+      "expected": {
+        "filter_expr": "insurance[\"risk\"].use == 'Owner'",
+        "text_expr": "'Placas solares. No'"
+      }
     }
   ]
 }

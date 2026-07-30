@@ -32,6 +32,23 @@
 //                      de entries editadas/anadidas a mano, recalculo de la
 //                      condicion compartida por cobertura tras el filtrado
 //                      (workflow n8n nuevo, 23/07)
+//   --tuning-merge    valida la fusion de 1+ diccionarios de tuning en uno
+//                      solo (tuning_dictionary_merger.js) -- necesario para
+//                      companias que entregan el tuning partido por fase
+//                      (tarificacion/preemision, caso real Allianz, 28/07)
+//   --excel-grid-reader valida excel_grid_reader.js (lectura directa del
+//                      .xlsx subido en el form trigger, en vez de pegar la
+//                      URL de un Google Sheet ya publicado -- 29/07):
+//                      reconstruye la MISMA forma de datos que hoy da la API
+//                      de Google Sheets (negrita por segmento incluida) para
+//                      que "Clean covers and modalities"/"Clean Optional
+//                      Covers" no cambien. A diferencia de los demas checks,
+//                      los casos se generan en memoria con exceljs (un .xlsx
+//                      no es representable como JSON de golden set) en vez de
+//                      cargarse de un fichero -- incluye el bug real
+//                      diagnosticado en el .xlsx de Allianz (rutas de
+//                      comentario no estandar que revientan exceljs si no se
+//                      normalizan antes de leer).
 //   (sin flags)       ejecuta todos los checks
 //
 // Nota sobre "grounding" del matcher lexico (matcher.js): se intento un check
@@ -57,6 +74,7 @@ const EXCEL_FIXTURE_DATASET_PATH = path.join(__dirname, "excel_fixture_builder_g
 const REVIEW_ASSEMBLY_DATASET_PATH = path.join(__dirname, "review_assembly_golden_dataset.json");
 const RICH_TEXT_BLOCK_PARSER_DATASET_PATH = path.join(__dirname, "rich_text_block_parser_golden_dataset.json");
 const INSERT_GENERATION_DATASET_PATH = path.join(__dirname, "insert_generation_golden_dataset.json");
+const TUNING_MERGER_DATASET_PATH = path.join(__dirname, "tuning_dictionary_merger_golden_dataset.json");
 const matcher = require("./matcher");
 const generator = require("./generator");
 const tuningMatcher = require("./tuning_matcher");
@@ -65,6 +83,9 @@ const excelFixtureBuilder = require("./excel_fixture_builder");
 const reviewAssembly = require("./review_assembly");
 const richTextBlockParser = require("./rich_text_block_parser");
 const insertGeneration = require("./insert_generation");
+const tuningDictionaryMerger = require("./tuning_dictionary_merger");
+const excelGridReader = require("./excel_grid_reader");
+const ExcelJS = require("exceljs");
 
 function loadGoldenDataset() {
   return JSON.parse(fs.readFileSync(DATASET_PATH, "utf8"));
@@ -96,6 +117,10 @@ function loadRichTextBlockParserGoldenDataset() {
 
 function loadInsertGenerationGoldenDataset() {
   return JSON.parse(fs.readFileSync(INSERT_GENERATION_DATASET_PATH, "utf8"));
+}
+
+function loadTuningMergerGoldenDataset() {
+  return JSON.parse(fs.readFileSync(TUNING_MERGER_DATASET_PATH, "utf8"));
 }
 
 // Compara el nivel de confianza esperado (etiqueta manual, ver schema_notes)
@@ -277,6 +302,30 @@ function checkGenerator(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
   }
 
+  for (const c of golden.bracket_marker_cases || []) {
+    total++;
+    const got = generator.extractBracketMarker(c.text);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.bracket_dependency_cases || []) {
+    total++;
+    const got = generator.resolveBracketDependency(c.markerText);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.bracket_finalize_line_cases || []) {
+    total++;
+    const got = generator.finalizeLine(c.text, c.filterExpr, c.isHeader);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
   for (const c of golden.insert_sql_cases || []) {
     total++;
     const spelLiteral = generator.spelStringLiteral(c.text);
@@ -401,6 +450,14 @@ function checkExcelFixture(golden) {
     const pass = JSON.stringify(got) === JSON.stringify(c.expected);
     if (!pass) failures++;
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got, null, 2)} | esperado: ${JSON.stringify(c.expected, null, 2)}`}`);
+  }
+
+  for (const c of golden.marker_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.isCoverNotOfferedMarker(c.text);
+    const pass = got === c.expected;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected}`}`);
   }
 
   console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
@@ -568,7 +625,161 @@ function checkInsertGeneration(golden) {
   return failures === 0 ? 0 : 1;
 }
 
-function main() {
+function checkTuningMerge(golden) {
+  console.log("\n=== --tuning-merge ===");
+  let failures = 0;
+  let total = 0;
+
+  for (const c of golden.cases || []) {
+    total++;
+    const merged = tuningDictionaryMerger.mergeTuningDictionaries(c.dictionaries);
+    const mismatches = [];
+
+    if (Object.keys(merged).length !== c.expected_field_count) {
+      mismatches.push(`field_count: got=${Object.keys(merged).length}, esperado=${c.expected_field_count}`);
+    }
+    for (const [key, sourceIndex] of Object.entries(c.expected_source_index_by_key || {})) {
+      const expectedDef = c.dictionaries[sourceIndex] ? c.dictionaries[sourceIndex][key] : undefined;
+      if (JSON.stringify(merged[key]) !== JSON.stringify(expectedDef)) {
+        mismatches.push(`"${key}": no coincide con dictionaries[${sourceIndex}]`);
+      }
+    }
+
+    const pass = mismatches.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.join("; ")}`}`);
+  }
+
+  console.log(`--tuning-merge: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
+// Copia LITERAL de la logica real del nodo n8n "Clean covers and modalities"
+// (extraida del workflow "coverage insert generation" el 29/07) -- se usa
+// aqui solo para confirmar que el grid que reconstruye excelGridReader es
+// consumible sin cambios, no para validar esa logica en si (eso no es
+// responsabilidad de este check).
+function cleanCoversAndModalitiesNodeLogic(response) {
+  const rowData = (((response.sheets || [])[0] || {}).data || [{}])[0].rowData || [];
+  const headerRow = rowData[0];
+  const modalityIdByColumnIndex = {};
+  ((headerRow && headerRow.values) || []).forEach((cell, colIndex) => {
+    if (colIndex < 2) return;
+    const modalityId = cell && cell.formattedValue;
+    if (modalityId) modalityIdByColumnIndex[colIndex] = modalityId;
+  });
+  const results = [];
+  for (let rowIndex = 2; rowIndex < rowData.length; rowIndex++) {
+    const values = (rowData[rowIndex] && rowData[rowIndex].values) || [];
+    const coverIdText = values[0] && values[0].formattedValue;
+    if (!coverIdText) continue;
+    const cover = { cover_id: parseInt(coverIdText, 10), cover_name: values[1] ? values[1].formattedValue || "" : "", modalities: {} };
+    Object.entries(modalityIdByColumnIndex).forEach(([colIndex, modalityId]) => {
+      const cell = values[Number(colIndex)];
+      const text = cell ? cell.formattedValue || "" : "";
+      if (text.trim() === "") return;
+      cover.modalities[modalityId] = cell;
+    });
+    results.push(cover);
+  }
+  return results;
+}
+
+async function buildSyntheticCoverageWorkbook() {
+  const wb = new ExcelJS.Workbook();
+  const modality = wb.addWorksheet("Coberturas por modalidad");
+  modality.getCell("C1").value = 5105;
+  modality.getCell("D1").value = 5106;
+  modality.getCell("C2").value = "Estandar";
+  modality.getCell("D2").value = "Completo";
+  modality.getCell("A3").value = 15;
+  modality.getCell("B3").value = "Responsabilidad civil";
+  modality.getCell("A3").note = "Nota de ejemplo para forzar rutas de comentario en el zip";
+  modality.getCell("C3").value = {
+    richText: [
+      { text: "Capital 150.000€", font: { bold: true } },
+      { text: "\n-RC de la vivienda\n   Como propietario", font: { bold: false } }
+    ]
+  };
+  modality.getCell("D3").value = {
+    richText: [
+      { text: "Capital 300.000€", font: { bold: true } },
+      { text: "\n-RC de la vivienda\n   Como propietario\n   Como inquilino", font: { bold: false } }
+    ]
+  };
+
+  const optional = wb.addWorksheet("Coberturas opcionales");
+  optional.getCell("A1").value = "COBERTURA OPCIONAL";
+  optional.getCell("B1").value = "TEXTO QUE SE DEBE INCLUIR";
+  optional.getCell("C1").value = "EPÍGRAFE EN EL QUE SE DEBE INCLUIR";
+  optional.getCell("A2").value = "Placas solares";
+  optional.getCell("B2").value = "Texto de placas solares";
+  optional.getCell("C2").value = "Responsabilidad civil";
+
+  return wb.xlsx.writeBuffer();
+}
+
+// Simula el bug real diagnosticado en el .xlsx de Allianz (29/07): un
+// .xlsx generado por una herramienta que no es Microsoft Excel guarda los
+// comentarios de celda en "xl/comments/commentN.xml" (subcarpeta) en vez de
+// "xl/commentsN.xml" (plano, lo unico que exceljs reconoce al leer), con
+// "Target" ademas en formato absoluto -- normalizeNonStandardOoxmlZip debe
+// corregir esto sin alterar el resto del contenido.
+async function corruptCommentPathsLikeRealAllianzFile(buffer) {
+  const JSZip = require("jszip");
+  const zip = await JSZip.loadAsync(buffer);
+  const commentEntry = Object.keys(zip.files).find(n => /^xl\/comments\d+\.xml$/.test(n));
+  if (!commentEntry) return buffer;
+  const num = commentEntry.match(/(\d+)/)[1];
+  zip.file(`xl/comments/comment${num}.xml`, await zip.files[commentEntry].async("string"));
+  zip.remove(commentEntry);
+  const relsNames = Object.keys(zip.files).filter(n => /worksheets\/_rels\/.*\.rels$/.test(n));
+  for (const rn of relsNames) {
+    const xml = await zip.files[rn].async("string");
+    zip.file(rn, xml.replace(new RegExp(`Target="\\.\\./comments${num}\\.xml"`), `Target="/xl/comments/comment${num}.xml"`));
+  }
+  return zip.generateAsync({ type: "nodebuffer" });
+}
+
+async function checkExcelGridReader() {
+  console.log("\n=== --excel-grid-reader ===");
+  let failures = 0;
+  let total = 0;
+
+  function check(id, description, condition) {
+    total++;
+    if (!condition) failures++;
+    console.log(`  [${condition ? "PASS" : "FAIL"}] ${id} (${description})`);
+  }
+
+  const originalBuffer = await buildSyntheticCoverageWorkbook();
+
+  const normal = await excelGridReader.parseCoverageExcel(originalBuffer, {});
+  const coversNormal = cleanCoversAndModalitiesNodeLogic(normal.rawModalityGrid);
+  check("EGR-001", "1 cobertura reconstruida con cover_id/cover_name correctos",
+    coversNormal.length === 1 && coversNormal[0].cover_id === 15 && coversNormal[0].cover_name === "Responsabilidad civil");
+
+  const cellC = coversNormal[0] && coversNormal[0].modalities["5105"];
+  const parsedBlocks = cellC ? richTextBlockParser.parseModalityCellBlocks(cellC).blocks : [];
+  check("EGR-002", "negrita por segmento reconstruida (bloque 'value' con el capital exacto)",
+    parsedBlocks[0] && parsedBlocks[0].kind === "value" && parsedBlocks[0].headerText === "Capital 150.000€");
+
+  check("EGR-003", "coberturas opcionales reconstruidas como filas planas por cabecera",
+    normal.rawOptionalRows.length === 1
+    && normal.rawOptionalRows[0]["COBERTURA OPCIONAL"] === "Placas solares"
+    && normal.rawOptionalRows[0]["EPÍGRAFE EN EL QUE SE DEBE INCLUIR"] === "Responsabilidad civil");
+
+  const corruptedBuffer = await corruptCommentPathsLikeRealAllianzFile(originalBuffer);
+  const corrupted = await excelGridReader.parseCoverageExcel(corruptedBuffer, {});
+  const coversCorrupted = cleanCoversAndModalitiesNodeLogic(corrupted.rawModalityGrid);
+  check("EGR-004", "rutas de comentario no estandar (bug real Allianz) no revientan y dan el mismo resultado",
+    JSON.stringify(coversCorrupted) === JSON.stringify(coversNormal));
+
+  console.log(`--excel-grid-reader: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
+async function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
   const golden = loadGoldenDataset();
@@ -579,6 +790,7 @@ function main() {
   const reviewAssemblyGolden = loadReviewAssemblyGoldenDataset();
   const richTextBlockParserGolden = loadRichTextBlockParserGoldenDataset();
   const insertGenerationGolden = loadInsertGenerationGoldenDataset();
+  const tuningMergerGolden = loadTuningMergerGoldenDataset();
 
   let exitCode = 0;
   if (runAll || args.includes("--matching")) {
@@ -605,7 +817,16 @@ function main() {
   if (runAll || args.includes("--insert-generation")) {
     exitCode = Math.max(exitCode, checkInsertGeneration(insertGenerationGolden));
   }
+  if (runAll || args.includes("--tuning-merge")) {
+    exitCode = Math.max(exitCode, checkTuningMerge(tuningMergerGolden));
+  }
+  if (runAll || args.includes("--excel-grid-reader")) {
+    exitCode = Math.max(exitCode, await checkExcelGridReader());
+  }
   process.exit(exitCode);
 }
 
-main();
+main().catch(err => {
+  console.error(err);
+  process.exit(1);
+});

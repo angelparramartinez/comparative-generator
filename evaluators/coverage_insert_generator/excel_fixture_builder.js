@@ -25,6 +25,30 @@ function isGarantiaOpcionalMarker(bulletText) {
   return normalize(bulletText) === GARANTIA_OPCIONAL_MARKER_NORMALIZED;
 }
 
+// Frases reales, una por compania, para senalar que una cobertura NO se
+// ofrece en absoluto en una modalidad concreta (celda de "Coberturas por
+// modalidad") -- equivalen a "modalidad ausente" para esa cobertura (nodo
+// `Clean covers and modalities`, que debe EXCLUIRLA de `cover.modalities`
+// para que `generator.buildEntriesForCover` la trate via `missingModalityIds`
+// y genere un NOT_INCLUDED explicito, en vez de tratar el texto como
+// contenido real de la cobertura). Bug real 22/07 con "Sin cobertura" en
+// Generali (covers 79/81); mismo concepto con distinta redaccion en Allianz
+// (cover 21/79/80, bug real 29/07: la frase completa del Excel de origen,
+// "No incluido, no contratable ( X )", no se reconocia -- decision del
+// usuario 29/07: en vez de igualar esa frase completa y especifica, el
+// marcador de Allianz queda en solo "No contratable" (mas corto y generico),
+// adaptando el Excel de origen a ese texto exacto en vez de al reves.
+// Ampliar solo cuando aparezca una tercera convencion real, no adivinar
+// variantes hipoteticas -- mismo criterio que TUNING_NOT_CONTRACTED_LABELS
+// en generator.js.
+const COVER_NOT_OFFERED_MARKERS_NORMALIZED = new Set(
+  ["Sin cobertura", "No contratable"].map(normalize)
+);
+
+function isCoverNotOfferedMarker(cellText) {
+  return COVER_NOT_OFFERED_MARKERS_NORMALIZED.has(normalize(cellText));
+}
+
 // A6: cleanedModalityCovers = salida de `Clean covers and modalities`
 // ({cover_id, cover_name, modalities: {modality_id: cell}}[], cell = celda
 // rica de Google Sheets -- {formattedValue, textFormatRuns, effectiveFormat},
@@ -344,5 +368,6 @@ module.exports = {
   matchDependenciesForBlock,
   matchDependenciesToDefaultBlocks,
   matchDependenciesToBlockGroups,
-  isGarantiaOpcionalMarker
+  isGarantiaOpcionalMarker,
+  isCoverNotOfferedMarker
 };

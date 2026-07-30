@@ -1,7 +1,7 @@
 services:
 
   n8n:
-    image: n8nio/n8n:latest
+    build: ./services/n8n_custom
     restart: unless-stopped
 
     ports:
@@ -12,6 +12,7 @@ services:
       - N8N_ENCRYPTION_KEY=jz1ysYPflUCv6lb7qaECy0NzjL351F5k
       - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
       - N8N_RESTRICT_FILE_ACCESS_TO=/home/node/ggcc_outputs;/home/node/coverage_insert_outputs
+      - NODE_FUNCTION_ALLOW_EXTERNAL=exceljs,jszip
 
     volumes:
       - ./data/n8n:/home/node/.n8n
