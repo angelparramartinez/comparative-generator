@@ -274,6 +274,18 @@ aliases:
 - ático
 - planta baja
 - piso
+values:
+- GroundFloor: planta baja
+- MiddleFloor: piso
+- TopFloor: ático
+- TerracedHouse: adosado, vivienda unifamiliar
+- DetachedHouse: chalet, vivienda unifamiliar
+interpretation:
+"vivienda unifamiliar" no es un único valor: cubre tanto `TerracedHouse`
+(adosado) como `DetachedHouse` (chalet independiente) — confirmado por el
+usuario 29/07 al resolver el marcador `[[...]]` de Allianz. Un matcher de
+valor no puede resolverlo a un único enum sin contexto adicional; se
+resuelve como `IN [TerracedHouse, DetachedHouse]`.
 
 ---
 
