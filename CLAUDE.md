@@ -376,6 +376,23 @@ offline (`--transversal-chapter` en `run_offline_eval.js`): casos
 de Axa, dependencia real bajo una garantía concreta — no debe marcarse, caso
 de no regresión).
 
+**Seguimiento (30/07): el flag no tenía ningún efecto hasta ahora.**
+`transversal_chapter` solo vivía en el JSON de salida de flujo 2 — el flujo
+3 (`coverage insert generation`, nodo `Coverage Match Decision Agent`) no lo
+leía, así que la llamada LLM de flujo 3 se seguía pagando igual y el
+"ahorro de ruido para el revisor humano" no se materializaba (nadie va a
+revisar ese JSON manualmente en el diseño final de subflujo). Corregido
+como señal blanda (no como corte duro, para no perder casos donde el
+patrón de título de flujo 2 sea impreciso pero el contenido real sí encaje
+con una cobertura): el prompt del `Coverage Match Decision Agent` ahora
+menciona explícitamente que, si `dependencies[].transversal_chapter` es
+`true`, es un indicio adicional a favor de `general_policy_rule` — con el
+mismo aviso que ya tenía el prompt sobre no fiarse solo del título del
+artículo, el agente sigue verificando el contenido real de los candidatos
+antes de decidir. No se implementó el corte duro (saltarse la llamada LLM
+cuando el flag es `true`) — sigue como opción futura si se quiere ahorrar
+el coste real, a cambio de asumir el riesgo de perder algún caso raro.
+
 ## 6. Backlog priorizado
 
 1. **[Resuelto]** Granularidad bloque/línea (`PRODUCT_COMPANY_COVER_ENTRY` vs.
