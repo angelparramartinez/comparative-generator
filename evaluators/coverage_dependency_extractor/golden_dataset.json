@@ -9,7 +9,8 @@
     "must_not_contain_risk_fields": "Cualquier coverage_dependencies final con uno de estos risk_field indica que la correccion no funciono (o que el guardrail de la Fase 1 no lo cazo, en el caso de 'guardrail_catches: false').",
     "expected_unverified_evidence": "Solo aplica a la categoria evidence_grounding_regression. Lista de los textos de 'evidence' (de entre los de actual_coverage_dependencies) que el guardrail debe marcar como no verificables -- es decir, evidence que no aparece como substring literal (tras normalizar espacios) en el source_text reconstruido a partir de chunks.text. Hallado el 2026-07-16 al revisar a mano coverage_matcher_contract_2026-07-16T12-41-12-969Z.json tras la generalizacion de cleanup/ast walker -- no relacionado con esos cambios, es un patron nuevo del propio LLM extractor.",
     "expected_rejected_by_value_type": "Solo aplica a la categoria value_type_regression. Lista de risk_field de entre los de actual_coverage_dependencies cuyo 'value' tiene un tipo incompatible con el data_type real del campo (p.ej. un alias de texto usado como valor de un campo integer) -- el guardrail v4 debe rechazarlos con rejection_reason 'value_type_incompatible_with_data_type', independientemente de si el operador en si es valido. Hallado el 2026-07-17 en un caso real de Santalucia (coverage_matcher_contract_2026-07-17T08-26-45-100Z.json, su_00077): 'colecciones' -- un alias de specialValueObjects -- usado como value en vez de una cantidad numerica.",
-    "hierarchy_misattribution (categoria)": "Nueva categoria (29/07, hallazgo real de Allianz): 'article'/'coverage_path' de la semantic unit apuntan a una garantia/seccion INCORRECTA (hipotesis: colision por numero de lista reutilizado entre secciones no relacionadas, no diagnosticado a fondo). Distinto de 'chunking_boundary' (que es sobre como se subdivide el TEXTO de una unidad ya correctamente atribuida) y de 'hallucination_regression' (que asume coverage_path correcto y evalua si el risk_field/operator/value son validos). 'wrong_article': el valor que produjo la ejecucion real. 'correct_section': donde pertenece de verdad el texto, segun el condicionado real."
+    "hierarchy_misattribution (categoria)": "Nueva categoria (29/07, hallazgo real de Allianz): 'article'/'coverage_path' de la semantic unit apuntan a una garantia/seccion INCORRECTA (hipotesis: colision por numero de lista reutilizado entre secciones no relacionadas, no diagnosticado a fondo). Distinto de 'chunking_boundary' (que es sobre como se subdivide el TEXTO de una unidad ya correctamente atribuida) y de 'hallucination_regression' (que asume coverage_path correcto y evalua si el risk_field/operator/value son validos). 'wrong_article': el valor que produjo la ejecucion real. 'correct_section': donde pertenece de verdad el texto, segun el condicionado real.",
+    "expected_transversal_chapter_flagged": "Nuevo (30/07, Guardrail v5): indica si, dado el 'article' del caso, el Guardrail debe marcar la dependencia en transversal_chapter_dependencies (visibilidad, no se quita de coverage_dependencies). true para capitulos transversales/definitorios (definiciones, disposiciones generales, glosario), false para capitulos que son el nombre de una garantia concreta -- sirve como caso de no-regresion."
   },
   "cases": [
     {
@@ -663,7 +664,7 @@
       "category": "hallucination_regression",
       "subtype": "definitional_object_scope",
       "semantic_unit_ref": "su_00005",
-      "article": null,
+      "article": "Definición de bienes asegurados",
       "coverage_path": [
         "a) Mobiliario"
       ],
@@ -681,7 +682,8 @@
         "specialValueObjects"
       ],
       "guardrail_catches": false,
-      "notes": "Caso real de Allianz (29/07, condicionado 'condicionado general allianz (deduplicado).pdf', pag. 4). El texto completo es la seccion 'Definicion de bienes asegurados > Mobiliario y objetos asegurados > a) Mobiliario' -- una enumeracion numerada de que cuenta como 'mobiliario' a efectos de definir el BIEN asegurado (antipatron 'objeto de la cobertura', CLAUDE.md §5.2/5.7), no una condicion de inclusion/exclusion de ninguna garantia. A diferencia de GD-HALLUC-005 (mismo antipatron), aqui 'specialValueObjects <= 1500' usa un risk_field valido CON operador y tipo de valor totalmente compatibles (integer, comparacion numerica) -- a diferencia de los casos anteriores de este antipatron, el guardrail de tipo/operador (v2/v4) NO lo detecta (guardrail_catches: false). Confirmado por el usuario tras revisar el condicionado real."
+      "notes": "Caso real de Allianz (29/07, condicionado 'condicionado general allianz (deduplicado).pdf', pag. 4). El texto completo es la seccion 'Definicion de bienes asegurados > Mobiliario y objetos asegurados > a) Mobiliario' -- una enumeracion numerada de que cuenta como 'mobiliario' a efectos de definir el BIEN asegurado (antipatron 'objeto de la cobertura', CLAUDE.md §5.2/5.7), no una condicion de inclusion/exclusion de ninguna garantia. A diferencia de GD-HALLUC-005 (mismo antipatron), aqui 'specialValueObjects <= 1500' usa un risk_field valido CON operador y tipo de valor totalmente compatibles (integer, comparacion numerica) -- a diferencia de los casos anteriores de este antipatron, el guardrail de tipo/operador (v2/v4) NO lo detecta (guardrail_catches: false). Confirmado por el usuario tras revisar el condicionado real. Actualizado 30/07 tras el fix de hierarchy_misattribution (commit c6ab6e3): 'article' pasa de null a 'Definición de bienes asegurados' (el Hierarchy Builder real ya lo resuelve via el indice del documento). Se añade expected_transversal_chapter_flagged para validar el Guardrail v5 (visibilidad de capitulos transversales, ver notas del nodo).",
+      "expected_transversal_chapter_flagged": true
     },
     {
       "id": "GD-HIER-001",
@@ -700,7 +702,9 @@
       ],
       "expected_coverage_dependencies": [],
       "guardrail_catches": false,
-      "notes": "Caso real de Allianz (29/07). El texto real de '4. Urgencias de cerrajería' (condicionado pag. 14) es solo sobre apertura/cambio de cerradura -- nada que ver con este source_text, que pertenece a 'Determinacion de la indemnizacion' (pag. 20-21), reglas GENERALES de tasacion de siniestros aplicables a toda la poliza. Hipotesis de causa raiz: ambas secciones tienen un item numerado '4.' en su propia lista local (item 4 de 'Urgencias domesticas y asistencia' vs. item 4 'Valor de reposicion' de 'Determinacion de la indemnizacion') -- el Hierarchy Builder parece emparejar por coincidencia de numero de lista en vez de por seccion real, dejando coverage_path/article apuntando a la garantia equivocada. Esto NO es un fallo del LLM extractor en si (el guardrail no cazaria esto, 'capitalInsuranceType' es un risk_field valido con operador/tipo compatibles) -- es un bug de atribucion jerarquica aguas arriba, sin diagnosticar a fondo ni corregido todavia. Ver GD-HIER-002 (mismo origen, mismo articulo mal atribuido)."
+      "notes": "Caso real de Allianz (29/07). El texto real de '4. Urgencias de cerrajería' (condicionado pag. 14) es solo sobre apertura/cambio de cerradura -- nada que ver con este source_text, que pertenece a 'Determinacion de la indemnizacion' (pag. 20-21), reglas GENERALES de tasacion de siniestros aplicables a toda la poliza. Hipotesis de causa raiz: ambas secciones tienen un item numerado '4.' en su propia lista local (item 4 de 'Urgencias domesticas y asistencia' vs. item 4 'Valor de reposicion' de 'Determinacion de la indemnizacion') -- el Hierarchy Builder parece emparejar por coincidencia de numero de lista en vez de por seccion real, dejando coverage_path/article apuntando a la garantia equivocada. Esto NO es un fallo del LLM extractor en si (el guardrail no cazaria esto, 'capitalInsuranceType' es un risk_field valido con operador/tipo compatibles) -- es un bug de atribucion jerarquica aguas arriba, sin diagnosticar a fondo ni corregido todavia. Ver GD-HIER-002 (mismo origen, mismo articulo mal atribuido). Actualizado 30/07: el fix de hierarchy_misattribution (commit c6ab6e3, indice del documento) ya resuelve la atribucion -- 'article' pasa a 'Valoración de los Bienes y Evaluación de los Daños' (confirmado en produccion, ejecucion 290). La dependencia sigue extrayendose (el prompt no basta para omitirla), pero ahora se marca en transversal_chapter_dependencies tras ampliar TRANSVERSAL_CHAPTER_TITLE_PATTERNS con un patron para este tipo de capitulo de tasacion/valoracion de siniestros (antes solo cubria capitulos de 'definiciones').",
+      "article": "Valoración de los Bienes y Evaluación de los Daños",
+      "expected_transversal_chapter_flagged": true
     },
     {
       "id": "GD-HIER-002",
@@ -721,6 +725,95 @@
       "expected_coverage_dependencies": [],
       "guardrail_catches": true,
       "notes": "Mismo origen que GD-HIER-001 (misma mala atribucion de '4. Urgencias de cerrajería', ver esas notas) -- el texto real es sobre la renuncia a la regla proporcional para Inmueble/Mobiliario, seccion generica de calculo de indemnizacion, sin relacion con la garantia de cerrajeria. Aqui el LLM ademas invento 'content = \"mobiliario\"' (content es integer, un capital, no una categoria de texto) -- SI fue rechazado por el guardrail (value_type_incompatible_with_data_type), asi que no llega a coverage_dependencies final ni causaria error en la comparativa. Se incluye igualmente porque confirma el mismo bug de fondo (atribucion de seccion incorrecta): si el LLM hubiera usado un risk_field/tipo compatible en su lugar, habria pasado el guardrail sin ser detectado, igual que GD-HALLUC-007."
+    },
+    {
+      "id": "GD-HALLUC-008",
+      "category": "hallucination_regression",
+      "subtype": "definitional_object_scope",
+      "semantic_unit_ref": "su_00006",
+      "article": "Definición de bienes asegurados",
+      "coverage_path": [
+        "Definición de bienes asegurados",
+        "a) Mobiliario",
+        "b) Objetos especiales"
+      ],
+      "source_text": "A estos efectos, se considerarán también objetos especiales el conjunto de los siguientes bienes:\n\nLos cuadros y otras obras de arte.\n\nLos vehículos de movilidad personal y embarcaciones de recreo no a motor, así como otros elementos que facilitan la ayuda a la movilidad como las sillas de rueda, carros que supere los 1.500 euros. Será de aplicación en los casos en los que se encuentre contratado expresamente en la póliza y siempre que no se halle en trastero, parking o caravana o vivienda en venta o deshabitada. No se garantizarán objetos especiales que se hallen en trastero o parking o anexos. Los objetos especiales no estarán cubiertos si no están declarados expresamente. El límite de indemnización será como máximo de 12.000€ para cada objeto o colección, a menos que se declaren y se detallen expresamente en el apartado cláusulas. En este caso, el límite de indemnización para cada objeto será la cantidad que se indique para cada una de ellas. En cualquier caso, el límite por siniestro de objetos especiales será la suma asegurada que figure en póliza.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "specialValueObjects",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Será de aplicación en los casos en los que se encuentre contratado expresamente en la póliza"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_transversal_chapter_flagged": true,
+      "must_not_contain_risk_fields": [
+        "specialValueObjects"
+      ],
+      "guardrail_catches": false,
+      "notes": "Caso real de Allianz (30/07, misma ejecucion que GD-HALLUC-007, mismo capitulo 'Definicion de bienes asegurados > a) Mobiliario > b) Objetos especiales'). El texto sigue delimitando que cuenta como 'objetos especiales' (frontera de categorizacion, antipatron 'objeto de la cobertura'), no una condicion de que una garantia aplique -- confirmado por el flujo 3 real (ejecucion 288, Coverage Match Decision Agent): decision='general_policy_rule', cover_id=null. El guardrail v1-v4 no lo detecta (risk_field y tipo validos); el v5 (30/07) lo marca en transversal_chapter_dependencies por visibilidad, sin quitarlo de coverage_dependencies."
+    },
+    {
+      "id": "GD-HALLUC-009",
+      "category": "hallucination_regression",
+      "subtype": "limit_field_as_existence_condition",
+      "semantic_unit_ref": "su_00007",
+      "article": "Definición de bienes asegurados",
+      "coverage_path": [
+        "Definición de bienes asegurados"
+      ],
+      "source_text": "Las joyas, alhajas, piedras preciosas.\n\nLos objetos de oro y platino. Se considera valor unitario, además del de los objetos individuales, el de aquellos conjuntos que constituyen naturalmente un juego, como una cubertería de plata o una colección de monedas. No se garantizarán joyas que se hallen en trastero o parking, ni tampoco en viviendas destinadas a venta, deshabitadas o en alquiler. Las joyas no estarán cubiertas si no están declaradas expresamente. El límite de indemnización será como máximo de 7.500€ para cada joya o colección, a menos que se declaren y se detallen expresamente en el apartado cláusulas. En este caso, el límite de indemnización para cada joya será la cantidad que se indique para cada una de ellas. En cualquier caso, el límite por siniestro por el concepto de joyas será la suma asegurada que figure en póliza para cada una de las partidas de joyas fuera de caja fuerte o joyas en caja fuerte.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "jewelsOutSafeBoxLimit",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Las joyas no estarán cubiertas si no están declaradas expresamente."
+        },
+        {
+          "risk_field": "jewelsInSafeBoxLimit",
+          "operator": ">",
+          "value": 0,
+          "evidence": "el límite por siniestro por el concepto de joyas será la suma asegurada que figure en póliza para cada una de las partidas de joyas fuera de caja fuerte o joyas en caja fuerte."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_transversal_chapter_flagged": true,
+      "must_not_contain_risk_fields": [
+        "jewelsOutSafeBoxLimit",
+        "jewelsInSafeBoxLimit"
+      ],
+      "guardrail_catches": false,
+      "notes": "Caso real de Allianz (30/07, misma ejecucion que GD-HALLUC-007/008). jewelsInSafeBoxLimit/jewelsOutSafeBoxLimit son campos de LIMITE/CAPITAL de indemnizacion (integer), no campos de existencia/declaracion -- el LLM los usa como condicion binaria ('> 0') a partir de 'no estara cubierto si no esta declarado expresamente', confundiendo el importe del limite con la condicion de declaracion. Confirmado por flujo 3 real (ejecucion 288): decision='out_of_scope_product' (el Excel de Allianz no comercializa una garantia de joyas independiente). El guardrail v1-v4 no lo detecta (risk_field y tipo/operador validos para un campo integer); el v5 lo marca por visibilidad via el mismo criterio de capitulo transversal que GD-HALLUC-007/008."
+    },
+    {
+      "id": "GD-REF-008",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00102",
+      "article": "Responsabilidad civil como inquilino",
+      "coverage_path": [
+        "Responsabilidad civil como inquilino"
+      ],
+      "source_text": "Si Usted es inquilino del riesgo asegurado y por esta causa Usted, o los miembros de su familia, son civilmente responsables, la Entidad Aseguradora cubre la obligación de indemnizar los daños y perjuicios causados a terceros. Esta cobertura también incluye la responsabilidad exigida al inquilino, por el propietario, siempre que los daños sean consecuencia directa de incendio, explosión y daños producidos por el agua.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "use",
+          "operator": "=",
+          "value": "inquilino",
+          "evidence": "Si Usted es inquilino del riesgo asegurado y por esta causa Usted, o los miembros de su familia, son civilmente responsables, la Entidad Aseguradora cubre la obligación de indemnizar"
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "use",
+          "operator": "=",
+          "value": "inquilino"
+        }
+      ],
+      "expected_transversal_chapter_flagged": false,
+      "guardrail_catches": null,
+      "notes": "Caso real de Axa (condicionado antiguo, ejecucion 225, confirmado por el usuario 30/07 al pedir localizar el fragmento en el PDF -- pag. 25). Dependencia real y correcta: el nombre del propio capitulo ('Responsabilidad civil como inquilino') coincide con la garantia concreta, no con un capitulo transversal/definitorio. Sirve como caso de NO regresion del Guardrail v5 (transversal_chapter_dependencies): debe seguir aceptandose sin marcar. Nota: la ejecucion original (previa al rename de risk_field del 24/07) uso 'housingRegime' -- se ha actualizado aqui al nombre real vigente ('use') para que el caso sea valido contra el catalogo actual, ver evaluators/coverage_dependency_extractor/valid_risk_fields.json."
     }
   ]
 }

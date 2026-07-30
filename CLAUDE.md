@@ -305,6 +305,94 @@ condiciones compuestas en ese formato exacto — y el caso que las necesitaría
   Ambas formas son funcionalmente equivalentes para un motor de reglas, pero no
   son deterministas de una ejecución a otra. No bloqueante.
 
+### 5.10 `Hierarchy Builder`: uso del índice del documento (`hierarchy_misattribution`)
+
+Hallazgo real (Allianz, 30/07): la heurística de nivel por numeración/longitud
+de título no tenía forma de distinguir un capítulo real sin numerar (p. ej.
+"Determinación de la indemnización") de una subsección sin numerar dentro de
+un capítulo ya abierto — si el capítulo real aparecía profundo en la pila, la
+heurística relativa nunca reseteaba a nivel 1, y todo el resto del documento
+quedaba mal anidado bajo el último capítulo numerado real. Confirmado en
+producción: 65 de 66 unidades semánticas de un tramo de 10 páginas de Allianz
+quedaron atribuidas a la garantía equivocada ("4. Urgencias de cerrajería").
+
+Corregido usando la tabla de índice/tabla de contenidos del documento (cuando
+existe — Docling la captura como chunk de tipo `table`, antes sin usar para
+nada) como fuente de verdad para el reset a nivel 1, con fallback al
+comportamiento heurístico original si el índice se agota antes de que termine
+el documento (visto en Axa: el índice no cubre el capítulo final del
+Consorcio de Compensación de Seguros). Validado offline contra los chunks
+reales de 3 ejecuciones (Allianz, Generali, Axa antiguo): Allianz corregido
+sin regresiones (65/66 cambios, todos correcciones reales), Generali sin
+regresiones (8/285 cambios, todos mejoras).
+
+**Límite descubierto y aceptado conscientemente**: el índice de Axa (viejo)
+es "grueso" — agrupa todo un bloque real de garantías bajo una única entrada
+temática ("¿Qué le cubre y qué no le cubre este seguro?"), en vez de listar
+cada capítulo. Anclar el nivel 1 solo en el índice, en ese caso, aplana mal
+~190 unidades. En vez de resolverlo con más heurística frágil (difícil de
+detectar cuando falle para otra compañía usada por otra persona), se
+construyó un diagnóstico de visibilidad: `indice_diagnostics.indice_coverage_low`
+(en `Build Coverage Matcher Contract`, vía `$getWorkflowStaticData("global")`
+para no recablear los nodos de loop/merge intermedios) — `true` cuando hay
+índice, no hay convención de "Artículo Nº" como red de seguridad, y el hueco
+máximo de páginas sin anclaje de índice supera 10 páginas (umbral fijado con
+datos reales: Allianz 2 páginas/seguro, Axa 45 páginas sin convención/riesgo,
+Generali 46 páginas pero SÍ con convención de Artículo/seguro).
+
+### 5.11 Guardrail v5: capítulos transversales/definitorios (`transversal_chapter_dependencies`)
+
+Hallazgo real (Allianz, 30/07, tras 5.10): 3 dependencias extraídas por el
+LLM son "válidas pero incorrectas" — `risk_field` existe en el catálogo y el
+operador es compatible con su `data_type` (el Guardrail v1-v4 no las detecta
+por diseño), pero el texto de origen no es una condición de aplicabilidad de
+ninguna garantía: `su_00005`/`su_00006` (Allianz) definen la frontera entre
+"Mobiliario" y "Objetos especiales" por valor unitario, no condicionan que
+una garantía aplique; `su_00007` usa campos de LÍMITE/CAPITAL
+(`jewelsInSafeBoxLimit`/`jewelsOutSafeBoxLimit`, pensados para `VALUE_EXPR`)
+como si fueran condiciones binarias de inclusión. Las tres viven bajo
+`article`/`coverage_path` = "Definición de bienes asegurados", un capítulo
+transversal (glosario), no una garantía concreta — confirmado además que el
+flujo 3 (`Coverage Match Decision Agent`) ya las descarta correctamente como
+`general_policy_rule`/`out_of_scope_product`, sin contaminar ninguna
+cobertura real.
+
+No es un bug de corrección del sistema en su conjunto — es coste (llamada
+LLM de flujo 3 desperdiciada) y ruido de revisión. Dos palancas, en este
+orden: (1) nueva subsección en el prompt del `Coverage Dependency Extractor`
+que usa explícitamente `coverage_context.article`/`coverage_path` (ya viajaba
+al LLM, pero el prompt no se lo pedía) para subir el umbral de exigencia en
+capítulos transversales, con un ejemplo ilustrativo etiquetado por ramo
+(mismo patrón que el ejemplo ya existente de "continente") y una regla
+estructural (sin nombrar campos concretos de ninguna ontología) sobre campos
+de límite/capital usados como condición de existencia; (2) `Coverage
+Dependency Risk Field Guardrail` v5: nuevo chequeo de **visibilidad, no de
+bloqueo** — `TRANSVERSAL_CHAPTER_TITLE_PATTERNS` (vocabulario legal genérico:
+definiciones, disposiciones generales, glosario — no específico de Hogar)
+marca en `transversal_chapter_dependencies` las dependencias aceptadas cuyo
+`article` coincide, sin quitarlas de `coverage_dependencies`. Validado
+offline (`--transversal-chapter` en `run_offline_eval.js`): casos
+`GD-HALLUC-007/008/009` (deben quedar marcados) y `GD-REF-008` (`su_00102`
+de Axa, dependencia real bajo una garantía concreta — no debe marcarse, caso
+de no regresión).
+
+**Seguimiento (30/07): el flag no tenía ningún efecto hasta ahora.**
+`transversal_chapter` solo vivía en el JSON de salida de flujo 2 — el flujo
+3 (`coverage insert generation`, nodo `Coverage Match Decision Agent`) no lo
+leía, así que la llamada LLM de flujo 3 se seguía pagando igual y el
+"ahorro de ruido para el revisor humano" no se materializaba (nadie va a
+revisar ese JSON manualmente en el diseño final de subflujo). Corregido
+como señal blanda (no como corte duro, para no perder casos donde el
+patrón de título de flujo 2 sea impreciso pero el contenido real sí encaje
+con una cobertura): el prompt del `Coverage Match Decision Agent` ahora
+menciona explícitamente que, si `dependencies[].transversal_chapter` es
+`true`, es un indicio adicional a favor de `general_policy_rule` — con el
+mismo aviso que ya tenía el prompt sobre no fiarse solo del título del
+artículo, el agente sigue verificando el contenido real de los candidatos
+antes de decidir. No se implementó el corte duro (saltarse la llamada LLM
+cuando el flag es `true`) — sigue como opción futura si se quiere ahorrar
+el coste real, a cambio de asumir el riesgo de perder algún caso raro.
+
 ## 6. Backlog priorizado
 
 1. **[Resuelto]** Granularidad bloque/línea (`PRODUCT_COMPANY_COVER_ENTRY` vs.
@@ -342,6 +430,24 @@ condiciones compuestas en ese formato exacto — y el caso que las necesitaría
    `Semantic Assembler` para que `Rule Chunker` pueda subdividir mejor prosa con
    listas largas (ver 5.9) — solo si aparecen más casos como `su_00196` que lo
    necesiten de verdad.
+6. **[Pendiente]** Variante "campo equivocado" del mismo antipatrón resuelto
+   en 5.11: `GD-HALLUC-003`/`004` (Generali) son casos donde SÍ existe una
+   condición real (p. ej. "vivienda principal o secundaria"), pero el LLM
+   elige un `risk_field` semánticamente incorrecto (`content`, un capital, en
+   vez de `occupancy`) — a diferencia de 5.11, aquí no hay que omitir la
+   dependencia, hay que corregir el campo. Sin diseñar todavía; el
+   `article`/`coverage_path` ya fiable (5.10) probablemente ayude igual que
+   en 5.11, pero la solución no es la misma (no es un capítulo transversal,
+   es una garantía concreta con el campo mal elegido).
+7. **[Pendiente, menor]** `su_00013` (Allianz): una frase de la sección
+   general de "Asegurado"/"Definiciones" aparece intercalada dentro del
+   párrafo de la garantía "Acción del agua" (confirmado leyendo el
+   `source_text` completo — no es un problema de interpretación del LLM,
+   el texto que recibe ya está mal compuesto). Distinto de
+   `hierarchy_misattribution` (eso es sobre a qué capítulo pertenece la
+   unidad; esto es sobre qué texto contiene la unidad). Hipótesis sin
+   confirmar: orden de lectura de Docling o consolidación de
+   `Semantic Assembler`. No investigado a fondo.
 
 ## 7. Forma de trabajo acordada
 

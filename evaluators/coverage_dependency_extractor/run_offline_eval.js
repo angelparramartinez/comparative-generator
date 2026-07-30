@@ -13,6 +13,7 @@
 //   node run_offline_eval.js --evidence-grounding -> solo el check de evidence literal (Guardrail v3)
 //   node run_offline_eval.js --hierarchy -> solo el check de deteccion de "article" (nivel 1)
 //   node run_offline_eval.js --watermark -> solo el check de eliminacion de marca de agua fusionada (ast walker)
+//   node run_offline_eval.js --transversal-chapter -> solo el check de visibilidad de capitulos transversales (Guardrail v5)
 //
 // Checks disponibles hoy (antes de aplicar ninguna fase del plan):
 //   - chunking: valida Rule Chunker contra los casos chunking_boundary (documenta el bug conocido de la Fase 3)
@@ -86,6 +87,18 @@ function findNode(workflow, name) {
   return workflow.nodes.find(n => n.name === name) || null;
 }
 
+// Mock de $getWorkflowStaticData("global") de n8n -- un unico objeto
+// compartido durante toda la ejecucion del arnes (replica que en n8n real
+// persiste por workflow, no por ejecucion individual). Ningun check actual
+// depende de que dos nodos distintos compartan datos aqui (Hierarchy
+// Builder y Build Coverage Matcher Contract se prueban por separado); esto
+// solo evita que un nodo que lo usa (p.ej. indice_diagnostics, 30/07) rompa
+// al ejecutarse aislado en este arnes.
+const mockWorkflowStaticData = {};
+function $getWorkflowStaticData() {
+  return mockWorkflowStaticData;
+}
+
 // Envuelve el jsCode de un Code node de n8n respetando su modo de ejecucion
 // declarado (runOnceForAllItems por defecto, o runOnceForEachItem).
 function wrapCodeNode(node) {
@@ -93,20 +106,20 @@ function wrapCodeNode(node) {
   const mode = node.parameters.mode || "runOnceForAllItems";
 
   if (mode === "runOnceForEachItem") {
-    const fn = new Function("$json", code);
-    return { mode, runOnItems: jsonInputs => jsonInputs.map(j => fn(j).json) };
+    const fn = new Function("$json", "$getWorkflowStaticData", code);
+    return { mode, runOnItems: jsonInputs => jsonInputs.map(j => fn(j, $getWorkflowStaticData).json) };
   }
 
   // n8n expone $json (bound al primer item) incluso en modo "runOnceForAllItems"
   // -- Ontology Splitter depende de eso, asi que se replica aqui. Tambien expone
   // $input.first()/$input.all() -- Hierarchy Builder y ast walker dependen de eso.
-  const fn = new Function("items", "$json", "$input", code);
+  const fn = new Function("items", "$json", "$input", "$getWorkflowStaticData", code);
   return {
     mode,
     runOnItems: jsonInputs => {
       const items = jsonInputs.map(j => ({ json: j }));
       const $input = { first: () => items[0], all: () => items };
-      const result = fn(items, items[0]?.json, $input);
+      const result = fn(items, items[0]?.json, $input, $getWorkflowStaticData);
       return result.map(r => r.json);
     }
   };
@@ -289,6 +302,59 @@ function checkEvidenceGrounding(workflow, golden) {
     if (!ok) {
       console.log("  flagged :", JSON.stringify(flagged));
       console.log("  expected:", JSON.stringify(expected));
+    }
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+function checkTransversalChapterVisibility(workflow, golden) {
+  console.log("\n=== Check: transversal_chapter_dependencies (nodo Coverage Dependency Risk Field Guardrail v5) ===");
+
+  const cases = golden.cases.filter(c => c.expected_transversal_chapter_flagged !== undefined);
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      {
+        semantic_unit_id: c.semantic_unit_ref,
+        coverage_context: { article: c.article },
+        chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
+        output: { coverage_dependencies: c.actual_coverage_dependencies },
+        unit_ontology_matches: (c.actual_coverage_dependencies || []).map(d => ({ risk_field: d.risk_field }))
+      }
+    ]);
+
+    const flaggedFields = (result.transversal_chapter_dependencies || []).map(d => d.risk_field);
+    const isFlagged = flaggedFields.length > 0;
+
+    const flagOk = isFlagged === c.expected_transversal_chapter_flagged;
+
+    // Anti-regresion critica: sea cual sea el resultado del chequeo de
+    // visibilidad, NINGUNA dependencia debe desaparecer de
+    // coverage_dependencies por culpa de este chequeo -- es un chequeo de
+    // visibilidad, no de bloqueo (ver notas del Guardrail v5).
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const expectedAcceptedFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+
+    const ok = flagOk && nothingLost;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_transversal_chapter_flagged}) | sigue_aceptada=${nothingLost}`
+    );
+    if (!ok) {
+      console.log("  article:", c.article);
+      console.log("  flagged_fields:", JSON.stringify(flaggedFields));
+      console.log("  accepted_fields:", JSON.stringify(acceptedFields));
     }
   }
 
@@ -608,6 +674,10 @@ function main() {
 
   if (runAll || args.includes("--evidence-grounding")) {
     exitCode += checkEvidenceGrounding(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--transversal-chapter")) {
+    exitCode += checkTransversalChapterVisibility(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
