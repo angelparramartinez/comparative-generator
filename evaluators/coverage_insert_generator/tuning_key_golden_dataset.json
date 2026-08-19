@@ -1,9 +1,9 @@
 {
   "version": "1.0",
   "dataset_name": "coverage_insert_generator_tuning_key_golden_set",
-  "description": "Golden set del matcher texto-Excel (hoja Coberturas opcionales, Generali Hogar) -> tuning_key, usando el diccionario real examples/tuning_generali_traducido.json aportado por el usuario.",
-  "source_tuning_file": "examples/tuning_generali_traducido.json",
-  "source_excel": "examples/Plantilla Comparativa Hogar.xlsx (hoja Coberturas opcionales)",
+  "description": "Golden set del matcher texto-Excel (hoja Coberturas opcionales, Generali Hogar) -> tuning_key, usando el diccionario real examples/hogar/tuning_generali_traducido.json aportado por el usuario.",
+  "source_tuning_file": "examples/hogar/tuning_generali_traducido.json",
+  "source_excel": "examples/hogar/Plantilla Comparativa Hogar.xlsx (hoja Coberturas opcionales)",
   "schema_notes": {
     "expected_tuning_key": "key real del diccionario de tuning, o \"NOT_FOUND\" si no existe ningun campo relacionado.",
     "expected_confidence": "alta | media -- alta = deberia acertar siempre; media = casos con variacion lexica real (preposicion, sufijo, envoltorio) donde el heuristico puede necesitar mas contexto/LLM."

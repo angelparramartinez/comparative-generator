@@ -1,7 +1,7 @@
 {
   "version": "1.0",
   "dataset_name": "coverage_insert_generator_excel_fixture_builder_golden_set",
-  "description": "Casos reales extraidos directamente de examples/Plantilla Comparativa Hogar.xlsx (hoja 'Coberturas por modalidad', COVER_ID 18 'Danos por agua' y COVER_ID 16 'Robo') para validar buildExcelFixtureForMatcher (A6) y buildBulletGroupsForCover (A16) del diseno de Fase 4.",
+  "description": "Casos reales extraidos directamente de examples/hogar/Plantilla Comparativa Hogar.xlsx (hoja 'Coberturas por modalidad', COVER_ID 18 'Danos por agua' y COVER_ID 16 'Robo') para validar buildExcelFixtureForMatcher (A6) y buildBulletGroupsForCover (A16) del diseno de Fase 4.",
   "schema_notes": {
     "fixture_cases": "Un caso por buildExcelFixtureForMatcher(cleanedModalityCovers, cleanedOptionalCovers) -- valida la construccion del indice de candidatos para matcher.js a partir de la salida real de 'Clean covers and modalities'.",
     "block_group_cases": "Un caso por buildBlockGroupsForCover(coverId, coverName, modalitiesMap) -- version en bloques (negrita/'-') de bullet_group_cases, con datos reales de covers 15/16/17 (rich_text_block_parser.js, diseno 22/07). Ver tambien rich_text_block_parser_golden_dataset.json para el parseo celda->bloques en si.",
