@@ -1,0 +1,69 @@
+{
+    "AutosRiskFields": {
+        "registrationDate": {
+            "constraints": "Debe ser hoy o pasada (@TodayOrPast)",
+            "possibleValues": "Fecha valida (formato ISO 8601)",
+            "type": "Date"
+        },
+        "purchaseDate": {
+            "constraints": "Requerido, debe ser hoy o pasada (@TodayOrPast)",
+            "possibleValues": "Fecha valida (formato ISO 8601)",
+            "type": "Date"
+        },
+        "registrationPlate": {
+            "constraints": "Formato de matricula española valida (@VehicleRegistrationPlate)",
+            "possibleValues": "Matricula española valida",
+            "type": "String"
+        },
+        "kilometersPerYear": {
+            "constraints": "Requerido, minimo 0, maximo 9999999",
+            "possibleValues": "0-9999999",
+            "type": "Integer"
+        },
+        "lightTrailer": {
+            "constraints": "Requerido",
+            "possibleValues": "true, false",
+            "type": "Boolean"
+        },
+        "garageType": {
+            "constraints": "Requerido, tipo enum GarageType",
+            "possibleValues": "PrivateGarage-Garaje individual, CommunalParking-Garaje colectivo, NoGarage-Via publica",
+            "type": "String"
+        },
+        "circulationAddress": {
+            "constraints": "Requerido (codigo postal + poblacion)",
+            "possibleValues": "Objeto PostalAddress valido",
+            "type": "PostalAddress"
+        },
+        "previouslyInsured": {
+            "constraints": "Requerido",
+            "possibleValues": "true, false",
+            "type": "Boolean"
+        },
+        "primaryDriver.birthDate": {
+            "constraints": "Edad minima 18 (conductor habitual turismo), maxima 100 (@Age) -- ver Person.java",
+            "possibleValues": "Fecha valida (formato ISO 8601)",
+            "type": "Date"
+        },
+        "secondaryDriver.birthDate": {
+            "constraints": "Edad minima 18, maxima 100 (@Age) -- ver Person.java",
+            "possibleValues": "Fecha valida (formato ISO 8601)",
+            "type": "Date"
+        },
+        "owner.birthDate": {
+            "constraints": "Sin restriccion de edad especifica de conductor (rol propietario)",
+            "possibleValues": "Fecha valida (formato ISO 8601)",
+            "type": "Date"
+        },
+        "primaryDriver.drivingLicenses": {
+            "constraints": "No es un campo escalar -- lista de objetos {type, date, issuingZone}. Ver interpretation en ontology-auto.md antes de usarlo en una dependencia",
+            "possibleValues": "Lista de DrivingLicense (type: enum DriverLicenseType, date: fecha, issuingZone: enum ExpeditionZone)",
+            "type": "List<DrivingLicense>"
+        },
+        "secondaryDriver.drivingLicenses": {
+            "constraints": "Mismo caso que primaryDriver.drivingLicenses",
+            "possibleValues": "Lista de DrivingLicense",
+            "type": "List<DrivingLicense>"
+        }
+    }
+}
