@@ -326,3 +326,127 @@ vacía tras el filtro), y cómo debe representarse la condición en el
 esquema `risk_field/operator/value` de flujo 2 — decidir con el usuario
 cuando aparezca la primera dependencia real de este tipo, no diseñar en el
 vacío.
+
+---
+
+## secondaryDriverLicense
+risk_field: secondaryDriver.drivingLicenses
+data_type: list
+meaning: Driving licenses held by the secondary/occasional driver — a list,
+not a single scalar value.
+aliases:
+- carné de conducir
+- antigüedad del carné
+interpretation:
+**Añadido 22/08 — descuido en la v1**: se documentó `primaryDriverLicense`
+pero se olvidó su equivalente para el conductor ocasional, pese a que
+`secondaryDriver.drivingLicenses` ya estaba en `datos_riesgo_autos.json` y
+en el catálogo del Guardrail desde el principio. Mismo caso exacto que
+`primaryDriverLicense` (ver ese bloque para el detalle de accesibilidad y
+la limitación de "no es un campo escalar"), solo cambia el contenedor:
+`secondaryDriver` es la clave real de `getOccasionalDriver()` en
+`AutosRisk.java`.
+
+---
+
+## factoryAccessories
+risk_field: base7Options
+data_type: list
+meaning: Factory-installed accessories/option packs (part of the vehicle's
+Base7 catalog configuration) — a list, not a single scalar value.
+aliases:
+- accesorios de fábrica
+- equipamiento de serie
+- opciones instaladas de fábrica
+interpretation:
+**Añadido 22/08**, a petición del usuario tras detectar que faltaba en la
+v1 (excluido inicialmente con la justificación floja de "es complejo, no un
+escalar simple" — revisado y corregido). `AutosRisk.getBase7Options()`
+(privado, `@JsonView({ASM, COMPARATIVE_REQUEST})`, sin renombrado) —
+accesible sin ninguna ambigüedad, a diferencia de `garageType`/
+`nonBase7Options` (ver siguiente concepto). Devuelve una lista de
+`Base7OptionPack`. Mismo tipo de limitación que `primaryDriverLicense`: no
+es un campo escalar, cualquier condición real ("cuando el vehículo lleve
+instalado X de fábrica") necesitaría filtrar la lista — sin ejemplo SPEL
+todavía porque no hay ninguna dependencia real que lo confirme.
+
+---
+
+## installedAccessories
+risk_field: nonBase7Options
+data_type: list
+meaning: Non-factory accessories added to the vehicle after purchase — a
+list, not a single scalar value.
+aliases:
+- accesorios instalados
+- accesorios no de fábrica
+- equipamiento adicional
+interpretation:
+**Añadido 22/08**, a petición del usuario. El nombre de negocio
+`installedAccessories` tiene la misma ambigüedad que `garageType`:
+`MotorRisk.getInstalledAccessories()` es solo `@JsonView(API.V1)` (no
+accesible), y `AutosRisk` lo sobreescribe públicamente sin repetir
+`@JsonView` — no se puede saber sin probarlo si Jackson hereda la
+restricción o la anula. **A diferencia de `garageType`, aquí no hace falta
+resolver la ambigüedad**: existe `getNonBase7Options()` (privado en
+`MotorRisk`, `@JsonView({ASM, COMPARATIVE_REQUEST})`, **no sobreescrito**
+en `AutosRisk`) — ruta accesible sin ambigüedad. Por eso el `risk_field`
+elegido es `nonBase7Options`, no `installedAccessories` (que sigue siendo
+el nombre de negocio/concepto, título de este bloque). Devuelve una lista
+de `VehicleAccessory`. Misma limitación de "no es un campo escalar" que el
+resto de conceptos de tipo lista.
+
+---
+
+## vehicleType
+risk_field: base7Version.type.baseType.name
+data_type: enum
+meaning: Vehicle category (turismo, comercial derivado, monovolumen,
+todo terreno...) — determines which coverages apply or are excluded in
+some condicionados.
+aliases:
+- turismo
+- derivado de comercial
+- derivado de turismo
+- categoría del vehículo
+- tipo de vehículo
+contractual_examples:
+- cuando el vehículo sea un turismo
+- para vehículos derivados de turismo
+- esta cobertura no aplica a vehículos comerciales
+values:
+- TURISMO: turismo
+- COMERCIAL DERIVADO DE TURISMO: derivado de turismo, comercial derivado de turismo
+- COMERCIAL DERIVADO DE TT: derivado de todo terreno, comercial derivado de todo terreno
+- MONOVOLUMEN: monovolumen
+- TODO TERRENO: todo terreno
+- FURGONES Y CAMIONES LIGEROS: furgón, furgoneta, camión ligero
+- FURGONES HABILIT. A PASAJEROS: furgón habilitado para pasajeros
+interpretation:
+**Añadido 22/08**, a petición del usuario (motivación real: los
+condicionados pueden incluir/excluir coberturas según sea turismo o
+derivado comercial — patrón real de este ramo, no especulativo). Ruta de
+acceso completa, confirmada leyendo el backend real:
+`getBase7Version()` (`MotorRisk`, protegido, `@JsonView({ASM,
+COMPARATIVE_REQUEST})`, clave `base7Version`) → `getType()`
+(`Base7Version`, privado, `@JsonView({V1, COMPARATIVE_REQUEST})`, clave
+`type`) → devuelve un objeto `VehicleType{code, name, baseType}` construido
+como `new VehicleType(base7Class.description, base7Class.name,
+new VehicleBaseType(base7Type.description, base7Type.name))` — es decir,
+`type.name` es en realidad el `name` de `Base7Class` (catálogo de
+carrocería, 93 valores reales, ej. "BERLINA 3 Volúmenes", "PICK UP" —
+demasiado granular para esto) y `type.baseType.name` es el `name` de
+`Base7Type` (catálogo de categoría, 19 valores reales, el que de verdad
+distingue turismo/comercial). `code`/`name` de `VehicleBaseType` ambos
+`@JsonView({V1, COMPARATIVE_REQUEST})` — accesible.
+**Catálogo real confirmado por el usuario (22/08)**: export de las tablas
+`BASE7_TYPE`/`BASE7_CLASS` de la BBDD real. Los `values:` de arriba son las
+7 filas de `BASE7_TYPE` con `BASE7_CATEGORY_ID = 1` (categoría "Autos" —
+confirmado por el nombre real `Autos 1ª categoría (Turismos)` en
+`api_mappings_es.properties`); las otras 12 filas de `BASE7_TYPE`
+(motocicletas, vehículos industriales, agrícolas...) no aplican a
+`AutosRisk`, pertenecen a otros ramos/tipos de vehículo del mismo Base7.
+El campo `name` de `Base7Type` es el texto real usado como `values:` arriba
+(literal, en mayúsculas en la BBDD: "TURISMO", "COMERCIAL DERIVADO DE
+TURISMO", etc.) — normalizar mayúsculas al comparar, mismo criterio que el
+resto de enums del proyecto (`value_matcher.js`).

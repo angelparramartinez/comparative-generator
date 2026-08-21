@@ -64,6 +64,21 @@
             "constraints": "Mismo caso que primaryDriver.drivingLicenses",
             "possibleValues": "Lista de DrivingLicense",
             "type": "List<DrivingLicense>"
+        },
+        "base7Options": {
+            "constraints": "No es un campo escalar -- lista de Base7OptionPack (accesorios de fabrica). Ver interpretation en ontology-auto.md antes de usarlo en una dependencia",
+            "possibleValues": "Lista de Base7OptionPack",
+            "type": "List<Base7OptionPack>"
+        },
+        "nonBase7Options": {
+            "constraints": "No es un campo escalar -- lista de VehicleAccessory (accesorios no de fabrica). Nombre de negocio 'installedAccessories' tiene ambiguedad de herencia @JsonView en AutosRisk, usar este campo en su lugar",
+            "possibleValues": "Lista de VehicleAccessory",
+            "type": "List<VehicleAccessory>"
+        },
+        "base7Version.type.baseType.name": {
+            "constraints": "Catalogo real BASE7_TYPE (BBDD), filtrado a BASE7_CATEGORY_ID=1 (categoria Autos/Turismos) -- 7 valores reales",
+            "possibleValues": "TURISMO, MONOVOLUMEN, TODO TERRENO, COMERCIAL DERIVADO DE TT, COMERCIAL DERIVADO DE TURISMO, FURGONES Y CAMIONES LIGEROS, FURGONES HABILIT. A PASAJEROS",
+            "type": "String"
         }
     }
 }
