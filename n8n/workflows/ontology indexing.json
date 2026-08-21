@@ -17,7 +17,7 @@
       "type": "n8n-nodes-base.formTrigger",
       "typeVersion": 2.5,
       "position": [
-        0,
+        -32,
         16
       ],
       "id": "54f80ea1-3c05-4bb0-a9ab-db4ff95d67de",
@@ -36,8 +36,8 @@
       "type": "n8n-nodes-base.extractFromFile",
       "typeVersion": 1.1,
       "position": [
-        1040,
-        32
+        240,
+        16
       ],
       "id": "a1d509a0-2c9f-4647-8fbb-d3f6bdd84250",
       "name": "Extract ontology"
@@ -49,64 +49,31 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1232,
-        32
+        512,
+        16
       ],
       "id": "07e347bf-27db-4168-979e-0511bb342790",
       "name": "Ontology Splitter"
     },
     {
       "parameters": {
-        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $json.points[0].payload.ontology_type }}",
+        "method": "DELETE",
+        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $json.ontology_type }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        192,
-        256
+        176,
+        368
       ],
       "id": "edba3abd-1ee7-45bd-abfc-d6b120fdc935",
-      "name": "Check collection",
-      "onError": "continueRegularOutput"
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "options": {
-            "caseSensitive": true,
-            "leftValue": "",
-            "typeValidation": "strict",
-            "version": 3
-          },
-          "conditions": [
-            {
-              "id": "c9c1ed7a-697e-45a8-ad2a-7e0770885cf9",
-              "leftValue": "={{ $json.error?.status }}",
-              "rightValue": 404,
-              "operator": {
-                "type": "number",
-                "operation": "equals"
-              }
-            }
-          ],
-          "combinator": "and"
-        },
-        "options": {}
-      },
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 2.3,
-      "position": [
-        400,
-        256
-      ],
-      "id": "641e7ace-2820-4cee-bb0b-539997149173",
-      "name": "Must create collection"
+      "name": "Delete collection"
     },
     {
       "parameters": {
         "method": "PUT",
-        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $json.points[0].payload.ontology_type }}",
+        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $('Detect Ontology Type').item.json.ontology_type }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"vectors\": {\n    \"size\": 768,\n    \"distance\": \"Cosine\"\n  }\n}",
@@ -115,11 +82,12 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        624,
-        176
+        736,
+        256
       ],
       "id": "7cbfcc70-279d-48c7-abe9-c0878e372ebd",
-      "name": "Create collection"
+      "name": "Create collection",
+      "onError": "continueRegularOutput"
     },
     {
       "parameters": {
@@ -128,24 +96,11 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        864,
-        32
+        1376,
+        320
       ],
       "id": "f3c6d054-b99a-4249-bdab-a6cf3350baf8",
       "name": "Merge"
-    },
-    {
-      "parameters": {
-        "options": {}
-      },
-      "type": "n8n-nodes-base.set",
-      "typeVersion": 3.4,
-      "position": [
-        624,
-        368
-      ],
-      "id": "19232542-1c8e-4482-9bef-066af7723fec",
-      "name": "Edit Fields"
     },
     {
       "parameters": {
@@ -176,8 +131,8 @@
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.4,
       "position": [
-        1440,
-        32
+        816,
+        16
       ],
       "id": "a56588df-9557-43f4-9edb-8f222b853a85",
       "name": "Generate Embedding"
@@ -190,8 +145,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1632,
-        32
+        1088,
+        16
       ],
       "id": "8f0e5307-60ef-4792-9384-00b80ab71a4e",
       "name": "Build Qdrant Point"
@@ -213,6 +168,19 @@
       ],
       "id": "89d805ff-aec9-4c0d-94f4-9540d73c979d",
       "name": "Upsert en Qdrant"
+    },
+    {
+      "parameters": {
+        "jsCode": "const ontologyText = $json.ontology_text || '';\n\nconst match = ontologyText.match(/OntologyType:\\s*([A-Za-z0-9_-]+)/i);\nconst ontologyType = match ? match[1].trim().toLowerCase() : 'unknown';\n\nreturn {\n  json: {\n    ...$json,\n    ontology_type: ontologyType\n  }\n};"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        176,
+        248
+      ],
+      "id": "b1e6f6f0-1111-4c1a-9b2e-detecttype0001",
+      "name": "Detect Ontology Type"
     }
   ],
   "pinData": {},
@@ -232,36 +200,34 @@
       "main": [
         [
           {
-            "node": "Ontology Splitter",
+            "node": "Detect Ontology Type",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Check collection": {
+    "Detect Ontology Type": {
       "main": [
         [
           {
-            "node": "Must create collection",
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Delete collection",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Must create collection": {
+    "Delete collection": {
       "main": [
         [
           {
             "node": "Create collection",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "Edit Fields",
             "type": "main",
             "index": 0
           }
@@ -279,6 +245,17 @@
         ]
       ]
     },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Ontology Splitter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
     "Ontology Splitter": {
       "main": [
         [
@@ -286,28 +263,6 @@
             "node": "Generate Embedding",
             "type": "main",
             "index": 0
-          }
-        ]
-      ]
-    },
-    "Merge": {
-      "main": [
-        [
-          {
-            "node": "Upsert en Qdrant",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Edit Fields": {
-      "main": [
-        [
-          {
-            "node": "Merge",
-            "type": "main",
-            "index": 1
           }
         ]
       ]
@@ -327,12 +282,7 @@
       "main": [
         [
           {
-            "node": "Check collection",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Merge",
+            "node": "Upsert en Qdrant",
             "type": "main",
             "index": 0
           }
