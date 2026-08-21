@@ -13,16 +13,15 @@
                 "values": [
                   {
                     "option": "Hogar"
+                  },
+                  {
+                    "option": "Autos"
                   }
                 ]
               }
             },
             {
               "fieldLabel": "Condicionado general",
-              "fieldType": "file"
-            },
-            {
-              "fieldLabel": "Previuos step output",
               "fieldType": "file"
             }
           ]
@@ -122,34 +121,6 @@
     },
     {
       "parameters": {
-        "operation": "fromJson",
-        "binaryPropertyName": "Previuos_step_output",
-        "options": {}
-      },
-      "type": "n8n-nodes-base.extractFromFile",
-      "typeVersion": 1.1,
-      "position": [
-        -368,
-        16
-      ],
-      "id": "8600ac98-71bc-4c1b-8802-901332afdd18",
-      "name": "Extract from File"
-    },
-    {
-      "parameters": {
-        "jsCode": "const data = items[0].json.data;\n\nif (Array.isArray(data)) {\n  return data.map(item => ({ json: item }));\n}\n\nreturn [{ json: data }];"
-      },
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        -80,
-        16
-      ],
-      "id": "62fb367e-e363-456b-a070-0c51f76739db",
-      "name": "clean data"
-    },
-    {
-      "parameters": {
         "mode": "combine",
         "combineBy": "combineByPosition",
         "options": {}
@@ -166,7 +137,7 @@
     {
       "parameters": {
         "method": "POST",
-        "url": "http://qdrant:6333/collections/insurance_ontology/points/search",
+        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ (() => { const ramo = $('On form submission').first().json['Ramo']; const ramoToOntologyType = { 'Hogar': 'home', 'Autos': 'auto' }; return ramoToOntologyType[ramo] || 'unknown'; })() }}/points/search",
         "sendHeaders": true,
         "headerParameters": {
           "parameters": [
@@ -691,17 +662,6 @@
         ]
       ]
     },
-    "Extract from File": {
-      "main": [
-        [
-          {
-            "node": "clean data",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
     "Merge chuncks with embeddings": {
       "main": [
         [
@@ -815,11 +775,6 @@
             "index": 0
           }
         ]
-      ]
-    },
-    "clean data": {
-      "main": [
-        []
       ]
     },
     "Debug Filter": {

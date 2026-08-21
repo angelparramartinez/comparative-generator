@@ -57,7 +57,7 @@
     },
     {
       "parameters": {
-        "url": "http://qdrant:6333/collections/insurance_ontology",
+        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $json.points[0].payload.ontology_type }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
@@ -106,7 +106,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "http://qdrant:6333/collections/insurance_ontology",
+        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $json.points[0].payload.ontology_type }}",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "{\n  \"vectors\": {\n    \"size\": 768,\n    \"distance\": \"Cosine\"\n  }\n}",
@@ -199,7 +199,7 @@
     {
       "parameters": {
         "method": "PUT",
-        "url": "http://qdrant:6333/collections/insurance_ontology/points",
+        "url": "=http://qdrant:6333/collections/insurance_ontology_{{ $json.points[0].payload.ontology_type }}/points",
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json }}",
@@ -221,12 +221,7 @@
       "main": [
         [
           {
-            "node": "Check collection",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Merge",
+            "node": "Extract ontology",
             "type": "main",
             "index": 0
           }
@@ -299,7 +294,7 @@
       "main": [
         [
           {
-            "node": "Extract ontology",
+            "node": "Upsert en Qdrant",
             "type": "main",
             "index": 0
           }
@@ -332,7 +327,12 @@
       "main": [
         [
           {
-            "node": "Upsert en Qdrant",
+            "node": "Check collection",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Merge",
             "type": "main",
             "index": 0
           }
