@@ -28,9 +28,9 @@
             },
             {
               "fieldLabel": "Excel de coberturas (sube el fichero)",
-              "requiredField": true,
               "fieldType": "file",
-              "acceptFileTypes": ".xlsx"
+              "acceptFileTypes": ".xlsx",
+              "requiredField": true
             },
             {
               "fieldLabel": "Artefacto de flujo 2 (JSON)",
@@ -72,8 +72,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        160
+        -176,
+        432
       ]
     },
     {
@@ -85,8 +85,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -144,
-        448
+        240,
+        528
       ]
     },
     {
@@ -283,7 +283,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        2064,
+        2032,
         704
       ]
     },
@@ -475,8 +475,8 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        -256,
-        304
+        -352,
+        640
       ]
     },
     {
@@ -502,11 +502,7 @@
       ]
     },
     {
-      "parameters": {
-        "mode": "combine",
-        "combineBy": "combineByPosition",
-        "options": {}
-      },
+      "parameters": {},
       "id": "cig-node-34",
       "name": "Merge Cover Assembly Sources",
       "type": "n8n-nodes-base.merge",
@@ -539,7 +535,7 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.2,
       "position": [
-        280,
+        288,
         1088
       ]
     },
@@ -565,8 +561,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -368,
-        304
+        -224,
+        160
       ]
     },
     {
@@ -599,7 +595,7 @@
       "typeVersion": 2.2,
       "position": [
         2512,
-        830
+        832
       ]
     },
     {
@@ -612,7 +608,7 @@
       "typeVersion": 2,
       "position": [
         2720,
-        830
+        832
       ]
     },
     {
@@ -644,8 +640,8 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        280,
-        850
+        288,
+        864
       ]
     },
     {
@@ -657,8 +653,8 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        480,
-        850
+        528,
+        912
       ]
     }
   ],
@@ -1154,7 +1150,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "1c3a4603-f9d2-4e00-ae60-8c9e3ce03084",
+  "versionId": "d4424e9a-8bd2-439a-aa85-b54e71b506a6",
   "meta": null,
   "id": "OcnyHJupuDDL3WlV",
   "tags": []
