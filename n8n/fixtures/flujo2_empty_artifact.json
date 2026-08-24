@@ -1,14 +1,17 @@
-{
-  "stub": true,
-  "note": "Artefacto vacio intencional para el campo 'Artefacto de flujo 2 (JSON)' de Trigger A (workflow 'coverage insert generation'). Usar cuando se decide, para un producto concreto, no ejecutar flujo 2 (ver CLAUDE.md y la memoria del proyecto sobre la decision de Mapfre Autos 237: el Excel ya especifica todo, sin condiciones ligadas a riesgo). No es la salida real de 'coverage rules extraction GGCC' -- tiene la misma forma que produciria ese flujo si el condicionado no tuviera ninguna dependencia real, para que el resto del pipeline lo procese exactamente igual.",
-  "schema_version": "1.0",
-  "generated_at": null,
-  "total_semantic_units": 0,
-  "artifact_count": 0,
-  "total_rejected_dependencies": 0,
-  "total_ungrounded_dependencies": 0,
-  "total_unverified_evidence_dependencies": 0,
-  "total_transversal_chapter_dependencies": 0,
-  "indice_diagnostics": null,
-  "artifacts": []
-}
+[
+  {
+    "stub": true,
+    "note": "Artefacto vacio intencional para el campo 'Artefacto de flujo 2 (JSON)' de Trigger A (workflow 'coverage insert generation'). Usar cuando se decide, para un producto concreto, no ejecutar flujo 2 (ver CLAUDE.md y la memoria del proyecto sobre la decision de Mapfre Autos 237: el Excel ya especifica todo, sin condiciones ligadas a riesgo). No es la salida real de 'coverage rules extraction GGCC' -- tiene la misma forma que produciria ese flujo si el condicionado no tuviera ninguna dependencia real, para que el resto del pipeline lo procese exactamente igual.",
+    "schema_version": "1.0",
+    "generated_at": null,
+    "total_semantic_units": 0,
+    "artifact_count": 0,
+    "total_rejected_dependencies": 0,
+    "total_ungrounded_dependencies": 0,
+    "total_unverified_evidence_dependencies": 0,
+    "total_transversal_chapter_dependencies": 0,
+    "indice_diagnostics": null,
+    "artifacts": [],
+    "filename": "flujo2_empty_artifact.json"
+  }
+]
