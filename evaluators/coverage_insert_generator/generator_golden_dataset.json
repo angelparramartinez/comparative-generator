@@ -1988,6 +1988,86 @@
           }
         ]
       }
+    },
+    {
+      "id": "GEN-MISSING-003",
+      "description": "Bug real 24/08 (Mapfre Autos 237, cover 11 'Retirada de carné'): sin ninguna cobertura opcional en TODO el producto (hoja 'Coberturas opcionales' vacia), con missingModalityIds no vacio -- antes del fix esas modalidades ausentes se quedaban sin ningun NOT_INCLUDED explicito, porque esa logica solo vivia dentro del bucle de opcionales (ver GEN-MISSING-001/002). El ENTRY por defecto (mismo texto en todas las modalidades presentes) terminaba aplicando tambien a las modalidades 'No contratable' del Excel. Debe generar 1 ENTRY INCLUDED sin modalidad (el default) + 1 NOT_INCLUDED explicito (source base_not_offered) por cada modalidad ausente.",
+      "input": {
+        "coverId": 11,
+        "coverName": "Retirada de carné",
+        "defaultBullets": [
+          "Pago de una indemnización al asegurado cuando haya sido privado de su permiso de conducir."
+        ],
+        "presentModalityIds": ["101", "102", "103"],
+        "missingModalityIds": ["201", "202"],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 3,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 3,
+        "full_entries": [
+          {
+            "cover_id": 11,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Pago de una indemnización al asegurado cuando haya sido privado de su permiso de conducir.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 11,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "201",
+            "source": "base_not_offered",
+            "lines": []
+          },
+          {
+            "cover_id": 11,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "202",
+            "source": "base_not_offered",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-004",
+      "description": "Caso simetrico a GEN-MISSING-003 (mismo bug 24/08, sin opcionales): la cobertura no tiene contenido en NINGUNA modalidad (presentModalityIds vacio) -- misma regla de optimizacion obligatoria del modelo que GEN-MISSING-002 (mismos valores en todas las modalidades -> PRODUCT_COMPANY_MODALITY_ID = NULL), aplicada aqui al camino base (sin opcionales) en vez de al de opcionales.",
+      "input": {
+        "coverId": 999,
+        "coverName": "Cobertura de prueba sin contenido en ninguna modalidad",
+        "presentModalityIds": [],
+        "missingModalityIds": ["201", "202", "203"],
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "full_entries": [
+          {
+            "cover_id": 999,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "base_not_offered",
+            "lines": []
+          }
+        ]
+      }
     }
   ],
   "optional_hiring_status_cases": [

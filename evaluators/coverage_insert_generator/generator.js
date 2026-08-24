@@ -597,6 +597,52 @@ function buildEntriesForCover({
     });
   }
 
+  // Bug real corregido 24/08 (Mapfre Autos 237, sin ninguna cobertura
+  // opcional en todo el producto): el NOT_INCLUDED explicito para
+  // modalidades que no ofrecen esta cobertura en absoluto ("No
+  // contratable"/"Sin cobertura" en "Coberturas por modalidad") solo se
+  // generaba mas abajo, dentro del bucle de coberturas opcionales -- si la
+  // cobertura no tiene ninguna fila en "Coberturas opcionales", ese bucle
+  // nunca corre y esas modalidades se quedaban sin ningun ENTRY (si el
+  // resto de modalidades presentes tenia texto variable) o, peor,
+  // HEREDABAN el ENTRY por defecto sin modalidad si el resto compartia
+  // exactamente el mismo texto (caso real confirmado: "Defensa en
+  // multas"/"Retirada de carne" de Mapfre, marcadas INCLUDED en el 100% de
+  // las modalidades del producto pese a que el Excel decia "No contratable"
+  // en 14/17 y 17/17 de ellas respectivamente). Guardado con
+  // `opcionales.length === 0` para no duplicar el NOT_INCLUDED que el
+  // bucle de opcionales ya genera correctamente cuando SI hay opcionales
+  // (ver GEN-MISSING-001/002 en generator_golden_dataset.json). Validado
+  // offline (GEN-MISSING-003/004) antes de desplegar.
+  if (opcionales.length === 0 && missingModalityIds.length > 0) {
+    if (presentModalityIds.length === 0) {
+      // Mismo criterio de optimizacion que el bucle de opcionales de abajo:
+      // si la cobertura no esta disponible en NINGUNA modalidad, una unica
+      // ENTRY sin modalidad en vez de una identica por cada una.
+      entries.push({
+        cover_id: coverId,
+        filter_expr: null,
+        hiring_status_expr: '"NOT_INCLUDED"',
+        value_expr: null,
+        modality_id: null,
+        source: "base_not_offered",
+        lines: []
+      });
+    } else {
+      for (const modalityId of missingModalityIds) {
+        entries.push({
+          cover_id: coverId,
+          filter_expr: null,
+          hiring_status_expr: '"NOT_INCLUDED"',
+          value_expr: null,
+          modality_id: modalityId,
+          source: "base_not_offered",
+          lines: []
+        });
+      }
+    }
+  }
+
   // Bug real corregido 22/07 (covers 79/81, "Sin cobertura" en varias
   // modalidades de "Coberturas por modalidad"): una cobertura opcional
   // (hoja "Coberturas opcionales") no tiene por que ofrecerse en TODAS las
