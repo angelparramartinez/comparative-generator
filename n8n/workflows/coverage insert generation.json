@@ -568,6 +568,52 @@
         -368,
         304
       ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "cond-has-coverage-to-map",
+              "leftValue": "={{ $json.context.data.modalities.length + $json.context.data.optionals.length }}",
+              "rightValue": 0,
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "cig-node-39",
+      "name": "Has Coverage To Map?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2512,
+        830
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Evita gastar una llamada LLM cuando no hay ninguna cobertura que\n// mapear a tuning (caso real: Mapfre Autos 237, sin celdas \"Garantia\n// Opcional\" ni hoja \"Coberturas opcionales\" con filas -- ver\n// project_mapfre_skip_flujo2_decision). Antes de este nodo, con ambas\n// listas vacias el Tuning Key Mapping Agent respondia en prosa pidiendo\n// mas datos en vez de JSON valido, y \"Structured Output Parser (Tuning)\"\n// rompia el workflow (NodeOperationError, ejecucion n8n 301). Misma\n// forma de salida que produce el Agent real ({output: {mappings: []}}),\n// para que \"Tuning Key Guardrail\" (que hace $input.first().json.output.mappings)\n// lo procese exactamente igual.\nreturn [{ json: { output: { mappings: [] } } }];"
+      },
+      "id": "cig-node-40",
+      "name": "Skip Tuning Mapping (No Coverage)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2720,
+        830
+      ]
     }
   ],
   "pinData": {},
@@ -800,7 +846,7 @@
       "main": [
         [
           {
-            "node": "Tuning Key Mapping Agent",
+            "node": "Has Coverage To Map?",
             "type": "main",
             "index": 0
           }
@@ -998,6 +1044,35 @@
           }
         ]
       ]
+    },
+    "Has Coverage To Map?": {
+      "main": [
+        [
+          {
+            "node": "Tuning Key Mapping Agent",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skip Tuning Mapping (No Coverage)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skip Tuning Mapping (No Coverage)": {
+      "main": [
+        [
+          {
+            "node": "Tuning Key Guardrail",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "active": false,
@@ -1005,7 +1080,7 @@
     "executionOrder": "v1",
     "binaryMode": "separate"
   },
-  "versionId": "23311d74-1ef1-4109-971b-cf0f9746023a",
+  "versionId": "5b812e71-5ab6-4a7e-8cd4-9c99937a592c",
   "meta": null,
   "id": "OcnyHJupuDDL3WlV",
   "tags": []
