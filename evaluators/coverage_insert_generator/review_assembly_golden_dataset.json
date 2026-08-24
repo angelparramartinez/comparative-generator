@@ -4,7 +4,7 @@
   "description": "Casos para los guardrails y el ensamblado del JSON intermedio revisable (A13 Grounding Guardrail, A19 Tuning Key Guardrail, A21 Assemble Human-Review JSON, B3 Validate Review Completeness) del diseno de Fase 4.",
   "schema_notes": {
     "grounding_cases": "Un caso por applyGroundingGuardrail(llmDecision, candidates). Cubre: decision != match (passthrough), match valido (cover_id + cita real), cover_id alucinado, excel_quote alucinado.",
-    "tuning_key_cases": "Un caso por applyTuningKeyGuardrail(tuningKey, tuningDictionary), usando claves reales de examples/tuning_generali_traducido.json (ya usado en tuning_key_golden_dataset.json).",
+    "tuning_key_cases": "Un caso por applyTuningKeyGuardrail(tuningKey, tuningDictionary), usando claves reales de examples/hogar/tuning_generali_traducido.json (ya usado en tuning_key_golden_dataset.json).",
     "review_status_cases": "Un caso por computeEntryReviewStatus(entry) -- confirma las 3 razones de needs_review y el caso auto_approved.",
     "completeness_cases": "Un caso por validateReviewCompleteness(reviewJson) -- confirma que detecta needs_review sin human_decision, y que covers/entries auto_approved u ya decididos no bloquean."
   },
@@ -41,7 +41,7 @@
   "tuning_key_cases": [
     {
       "id": "RA-TUNE-001",
-      "description": "tuning_key real, existe en el diccionario real de Generali (examples/tuning_generali_traducido.json).",
+      "description": "tuning_key real, existe en el diccionario real de Generali (examples/hogar/tuning_generali_traducido.json).",
       "tuning_key": "jewelryInQuote",
       "tuning_dictionary_keys": ["jewelryInQuote", "jewelryQuote", "commercialDiscountNumber"],
       "expected": { "tuning_key": "jewelryInQuote", "valid": true }

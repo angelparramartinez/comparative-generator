@@ -1,9 +1,9 @@
 {
   "version": "1.0",
   "dataset_name": "coverage_insert_generator_matcher_golden_set",
-  "description": "Golden set del matcher dependencia(flujo 2) -> COVER_ID/bullet del Excel de coberturas, para el flujo 3 (generacion de INSERTs). Basado en un unico condicionado real (Generali Hogar) cruzado a mano contra examples/Plantilla Comparativa Hogar.xlsx, clasificado y corregido por el usuario en sesion de diseño (20/07).",
+  "description": "Golden set del matcher dependencia(flujo 2) -> COVER_ID/bullet del Excel de coberturas, para el flujo 3 (generacion de INSERTs). Basado en un unico condicionado real (Generali Hogar) cruzado a mano contra examples/hogar/Plantilla Comparativa Hogar.xlsx, clasificado y corregido por el usuario en sesion de diseño (20/07).",
   "source_run": "ggcc_outputs/coverage_matcher_contract_2026-07-15T14-05-42-683Z.json",
-  "source_excel": "examples/Plantilla Comparativa Hogar.xlsx",
+  "source_excel": "examples/hogar/Plantilla Comparativa Hogar.xlsx",
   "schema_notes": {
     "expected_cover_id": "COVER_ID del Excel al que deberia emparejarse esta dependencia, o null si no aplica a ninguna cobertura concreta.",
     "expected_bullet_match": "Texto del bullet especifico del Excel (dentro del COVER_ID) al que aplica la condicion -- null cuando el match es a nivel de cobertura completa (via hoja Coberturas opcionales, o cuando no hay bullets desglosados) en vez de a un bullet interno.",

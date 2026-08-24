@@ -8,7 +8,7 @@ generation.json` (nodo `Mapping coberturas opcionales y tuning`), generalizado
 para aplicarse tambien a "Coberturas por modalidad" (el legacy solo lo hacia
 para "Coberturas opcionales").
 
-**Validado offline** (20/07) con `examples/tuning_generali_traducido.json`
+**Validado offline** (20/07) con `examples/hogar/tuning_generali_traducido.json`
 (diccionario real aportado por el usuario) cruzado contra las 16 coberturas
 opcionales reales de `Plantilla Comparativa Hogar.xlsx` --
 `evaluators/coverage_insert_generator/tuning_key_golden_dataset.json` +
