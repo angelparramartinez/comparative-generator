@@ -1,6 +1,25 @@
 # Auto Insurance Ontology v1.0
 
 OntologyType: auto
+Imports: person
+
+**AVISO (25/08, rediseño 2)**: `Imports: person` declara que este ramo usa
+`knowledge/ontologies/shared/person.md` — un fichero puramente genérico
+del tipo `Person` (sin saber nada de ramos ni figuras). Cada figura real
+de Autos que use un objeto `Person` (`holder`, `owner`, `primaryDriver`,
+`secondaryDriver`) se declara como su propio bloque `## <figura>` con
+`imports: person` (ver esos bloques más abajo) — el workflow `ontology
+indexing` expande automáticamente **todos** los campos de `person.md`
+para cada figura declarada (producto cruzado figura × campo, sin filtrar
+por si ya se ha visto una cita real de cada combinación concreta —
+decisión deliberada: la estructura debe ser lo más completa posible según
+el backend, ver `shared/person.md` para el razonamiento completo). Los
+alias propios de cada figura (p. ej. "tomador", "propietario", "conductor
+habitual") se fusionan con los alias genéricos de cada campo. Subir este
+fichero tal cual al formulario del workflow — el workflow lee
+`knowledge/ontologies/shared/<nombre>.md` directamente del volumen
+montado de solo lectura en el contenedor de n8n (`docker-compose.yml`),
+sin ningún paso manual externo.
 
 **AVISO (21/08, actualizado tras cruzar condicionados reales)**:
 `risk_field`, `data_type` y los valores de `garageType` están confirmados
@@ -233,119 +252,72 @@ cobertura en el texto legal. Alias sin confirmar.
 
 ---
 
-## primaryDriverBirthDate
-risk_field: primaryDriver.birthDate
-data_type: date
-meaning: Birth date of the habitual/primary driver.
+## holder
+imports: person
 aliases:
-- conductor habitual
-- conductor principal
-- edad del conductor
-- edad
-contractual_examples:
-- conductores menores de 25 años
-- siempre que el conductor habitual sea mayor de
+- tomador
+- tomador del seguro
 interpretation:
-**Validado con condicionados reales (21/08)**: Mapfre (ME000P) define
-literalmente "Conductor habitual: Conductor declarado... por conducir con
-asiduidad el vehículo asegurado". "Edad" + "antigüedad del carné" como
-condición conjunta confirmada en Axa ("su edad y antigüedad del carné...
-estén expresamente definidas en este contrato") y "menores de 25 años"
-como condición de recargo/exclusión confirmada en Reale y Qualitas.
-**Ruta anidada, decisión de diseño del usuario (21/08)**: a diferencia de
-Hogar (todo campo plano sobre `HomeRisk`), en Autos el conductor/propietario
-son objetos `Person` anidados (`primaryDriver`, `secondaryDriver`, `owner`).
-El `risk_field` incluye la ruta punteada completa
-(`primaryDriver.birthDate`), tal cual debe usarse en la expresión SPEL —no
-se separa concepto/contenedor en dos campos distintos.
-`getBirthDate()` en `Person.java`, `@JsonView({V1, V1_B2C, CRM,
-COMPARATIVE_REQUEST})` — accesible. `primaryDriver` es la clave real de
-`getHabitualDriver()` en `MotorRisk.java` (`@JsonProperty("primaryDriver")`,
-`@JsonView({V1, V1_B2C, COMPARATIVE_REQUEST})`).
-Distinguir en el condicionado si la condición habla del conductor
-**habitual/principal** (este concepto) o de un **segundo conductor/conductor
-ocasional** (ver `secondaryDriverBirthDate`) — mismo tipo de matiz que
-vivienda principal/secundaria en Hogar.
+**Rediseño 25/08**: figura transversal a todos los ramos (vive a nivel de
+`Quotation`, no del DTO de riesgo -- confirmado en `SpelContext.java`).
+Expande automáticamente todos los campos de
+`knowledge/ontologies/shared/person.md` con `risk_field` sin prefijo y
+`context: holder` (`insurance['holder'].<campo>`, no anidado bajo
+`insurance["risk"]`).
 
 ---
 
-## secondaryDriverBirthDate
-risk_field: secondaryDriver.birthDate
-data_type: date
-meaning: Birth date of the occasional/secondary driver.
+## owner
+imports: person
+aliases:
+- propietario
+- propietario del vehículo
+contractual_examples:
+- cuando el PROPIETARIO del vehículo o TOMADOR del seguro sea una persona jurídica
+interpretation:
+**Añadido 25/08**, fundamentado con la misma cita de Divina Seguros que
+`holder` (distingue explícitamente PROPIETARIO de TOMADOR). Confirmado en
+`MotorRisk.java`: `private Person owner`, `getOwner()` con
+`@JsonView({V1, V1_B2C, COMPARATIVE_REQUEST})` -- visible en ASM.
+`AutosRisk` lo sobreescribe sin repetir `@JsonView` (misma ambigüedad que
+`primaryDriver`/`garageType`) -- confirmado accesible vía avant-front real
+(`autoDtoUtils.ts:54`, `risk.owner`). Nota: `MotorRisk.initializePersons()`
+inicializa `owner = insuranceHolder` si no se informa explícitamente --
+propietario y tomador pueden coincidir por defecto.
+
+---
+
+## primaryDriver
+imports: person
+aliases:
+- conductor habitual
+- conductor principal
+interpretation:
+**Rediseño 25/08** (antes escrito a mano campo a campo, ver historial de
+git). `primaryDriver` es la clave real de `getHabitualDriver()` en
+`MotorRisk.java` (`@JsonProperty("primaryDriver")`, `@JsonView({V1,
+V1_B2C, COMPARATIVE_REQUEST})`) -- accesible. Distinguir en el
+condicionado si la condición habla del conductor **habitual/principal**
+(este bloque) o de un **segundo conductor/conductor ocasional** (ver
+`secondaryDriver`) -- mismo tipo de matiz que vivienda principal/
+secundaria en Hogar. Validado con condicionados reales (21/08): Mapfre
+(ME000P) define literalmente "Conductor habitual"; "edad"+"antigüedad del
+carné" confirmado en Axa; "menores de 25 años" en Reale y Qualitas.
+
+---
+
+## secondaryDriver
+imports: person
 aliases:
 - conductor ocasional
 - segundo conductor
 - conductor adicional
 interpretation:
-**Validado con condicionado real (21/08)**: Mapfre (ME000P) define
-literalmente "Conductor ocasional: Conductor o conductores declarados...
-que puede conducir el vehículo asegurado con menor asiduidad que el
-conductor habitual" — cita textual, no aproximada.
-Mismo campo `birthDate` de `Person`, distinto contenedor: `secondaryDriver`
-es la clave real de `getOccasionalDriver()` en `AutosRisk.java`
-(`@JsonProperty("secondaryDriver")`, `@JsonView({V1, V1_B2C,
-COMPARATIVE_REQUEST})`).
-
----
-
-## primaryDriverLicense
-risk_field: primaryDriver.drivingLicenses
-data_type: list
-meaning: Driving licenses held by the primary driver (type, issue date,
-issuing zone) — a list, not a single scalar value.
-aliases:
-- carné de conducir
-- antigüedad del carné
-- permiso de conducir
-contractual_examples:
-- siempre que el carné tenga una antigüedad mínima de
-- conductores con menos de X años de carné
-interpretation:
-**Alias "antigüedad del carné" validado con 3 condicionados reales (21/08)**:
-Reale ("Antigüedad del carné superior a 1 año"), Axa ("su edad y antigüedad
-del carné... estén expresamente definidas") y Divina Seguros (mismo término
-literal). No aparece en el condicionado legal de Mapfre (puede vivir solo en
-su manual de tarificación interno, no en el texto legal) — vigilar si
-aparece en el condicionado real de Mapfre Autos cuando se procese en flujo 2.
-**No es un campo escalar** — no debe extraerse como
-`risk_field/operator/value` plano en flujo 2 (el Guardrail no valida
-operadores para este `data_type` a propósito, ver
-`Coverage Dependency Risk Field Guardrail`). `getDrivingLicenses()` en
-`Person.java` (`@JsonView({V1, COMPARATIVE_REQUEST})`, accesible) devuelve
-una lista de objetos `{type, date, issuingZone}`. Los getters de
-conveniencia con nombre de negocio (`getPermissionType()`/
-`getPermissionDate()`, alias JSON `drivingLicenseId`/`drivingLicenseDate`)
-**solo llevan `@JsonView(V1_B2C)` — no accesibles desde SPEL real**.
-Ejemplo de expresión SPEL para resolver "antigüedad del carné de coche" (a
-falta de un caso real que la confirme):
-`insurance.primaryDriver.drivingLicenses.?[type == 'B'][0].date` — filtra la
-lista por tipo de carné (`B` = turismo) y toma la fecha. Sin resolver
-todavía: qué hacer si no hay ningún carné de tipo `B` en la lista (lista
-vacía tras el filtro), y cómo debe representarse la condición en el
-esquema `risk_field/operator/value` de flujo 2 — decidir con el usuario
-cuando aparezca la primera dependencia real de este tipo, no diseñar en el
-vacío.
-
----
-
-## secondaryDriverLicense
-risk_field: secondaryDriver.drivingLicenses
-data_type: list
-meaning: Driving licenses held by the secondary/occasional driver — a list,
-not a single scalar value.
-aliases:
-- carné de conducir
-- antigüedad del carné
-interpretation:
-**Añadido 22/08 — descuido en la v1**: se documentó `primaryDriverLicense`
-pero se olvidó su equivalente para el conductor ocasional, pese a que
-`secondaryDriver.drivingLicenses` ya estaba en `datos_riesgo_autos.json` y
-en el catálogo del Guardrail desde el principio. Mismo caso exacto que
-`primaryDriverLicense` (ver ese bloque para el detalle de accesibilidad y
-la limitación de "no es un campo escalar"), solo cambia el contenedor:
-`secondaryDriver` es la clave real de `getOccasionalDriver()` en
-`AutosRisk.java`.
+**Rediseño 25/08**. `secondaryDriver` es la clave real de
+`getOccasionalDriver()` en `AutosRisk.java` (`@JsonProperty(
+"secondaryDriver")`, `@JsonView({V1, V1_B2C, COMPARATIVE_REQUEST})`) --
+accesible. Validado con condicionado real (21/08): Mapfre (ME000P) define
+literalmente "Conductor ocasional".
 
 ---
 
