@@ -1,7 +1,7 @@
 # Auto Insurance Ontology v1.0
 
 OntologyType: auto
-Imports: person
+Imports: person, base7version
 
 **AVISO (25/08, rediseño 2)**: `Imports: person` declara que este ramo usa
 `knowledge/ontologies/shared/person.md` — un fichero puramente genérico
@@ -20,6 +20,20 @@ fichero tal cual al formulario del workflow — el workflow lee
 `knowledge/ontologies/shared/<nombre>.md` directamente del volumen
 montado de solo lectura en el contenedor de n8n (`docker-compose.yml`),
 sin ningún paso manual externo.
+
+**AVISO (26/08)**: `Imports: ..., base7version` añade
+`knowledge/ontologies/shared/base7version.md` — mismo mecanismo que
+`person`, pero con una única figura por ramo (`## base7Version`, ver más
+abajo) porque el objeto real `Base7Version` aparece una sola vez por
+riesgo (no como `Person`, que puede tener varias figuras distintas).
+Sustituye el acceso a `base7Version.engine.type`/`Base7AvantEngine`
+(catálogo de solo 3 valores de salida que colapsa eléctrico/híbrido/
+hidrógeno a `Others`, confirmado con export real de `CRM_ENUM_MAPPING`)
+por `base7Version.base7Engine.description` (catálogo real de 13 valores
+que sí distingue eléctrico) — ver `shared/base7version.md` para el
+razonamiento completo. `vehicleType` (más abajo) se queda tal cual,
+ramo-específico a propósito (su catálogo de valores está filtrado por
+`BASE7_CATEGORY_ID = 1`, no es genérico entre categorías de vehículo).
 
 **AVISO (21/08, actualizado tras cruzar condicionados reales)**:
 `risk_field`, `data_type` y los valores de `garageType` están confirmados
@@ -367,6 +381,21 @@ elegido es `nonBase7Options`, no `installedAccessories` (que sigue siendo
 el nombre de negocio/concepto, título de este bloque). Devuelve una lista
 de `VehicleAccessory`. Misma limitación de "no es un campo escalar" que el
 resto de conceptos de tipo lista.
+
+---
+
+## base7Version
+imports: base7version
+interpretation:
+**Añadido 26/08**. Figura única (no hay varias instancias de
+`Base7Version` por riesgo, a diferencia de las figuras de `Person`).
+Confirmado idéntico en `MotorbikeRisk` (motos) -- misma clave real
+`base7Version`, mismo `@JsonView`, heredado de `MotorRisk` sin
+sobreescribir -- `Base7Version` es infraestructura transversal a ramos
+con vehículo, no específica de Autos. Expande `engine`/`category` de
+`knowledge/ontologies/shared/base7version.md` con `risk_field:
+base7Version.<campo>` y `context: risk` (regla general, sin caso
+especial como `holder`).
 
 ---
 
