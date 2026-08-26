@@ -95,6 +95,44 @@ a string.
 
 ---
 
+## maritalStatus
+field: maritalStatus
+data_type: enum
+meaning: Marital status of a person.
+aliases:
+- estado civil
+- casado
+- soltero
+- divorciado
+- viudo
+- pareja de hecho
+values:
+- Married: casado (`MaritalStatus.MARRIED`, `DTO_ID=1`)
+- Divorced: divorciado (`MaritalStatus.DIVORCED`, `DTO_ID=2`)
+- Single: soltero (`MaritalStatus.SINGLE`, `DTO_ID=3`)
+- UnmarriedPartner: pareja de hecho (`MaritalStatus.PARTNER`, `DTO_ID=4`)
+- Widowed: viudo (`MaritalStatus.WIDOWER`, `DTO_ID=5`)
+interpretation:
+`getMaritalStatus()`: `@JsonView({V1, CRM, COMPARATIVE_REQUEST})` --
+visible en ASM (V1 explícito), clave real `maritalStatus`.
+`CrmEnumJsonSerializer` colapsa el valor a su `ENUM_VALUE` real de
+`CRM_ENUM_MAPPING` (`DTO_CLASS='MaritalStatus'`, `CRM_ONLY=0`) -- **no**
+al nombre de la constante Java (`MaritalStatus.PARTNER`/`WIDOWER` no son
+los strings reales, son solo los nombres internos de las constantes de
+`ID`; el string SPEL real es `UnmarriedPartner`/`Widowed`). Confirmado
+con export real de `CRM_ENUM_MAPPING` (26/08) -- los IDs 1-5 también
+están grounded en uso real de producción (`getId()` comparado contra
+`MaritalStatus.{MARRIED,DIVORCED,SINGLE,PARTNER,WIDOWER}` en
+`AxaHealthUnmarshaller`, `ErpDataService`, `TestQuotationBuilder`). Existe
+una 6ª fila `Separated` en `CRM_ENUM_MAPPING` con `CRM_ONLY=1`,
+`DTO_ID=-1`, `COMPATIBLE_DTO_ID=2` -- valor de **entrada** solo-CRM, se
+resuelve como `Divorced`, nunca aparece como valor de salida real. Existe
+también un getter privado `getMaritalStatusB2c()`
+(`@JsonProperty("maritalStatusId")`, `@JsonView(V1_B2C)`) -- NO accesible,
+no usar `maritalStatusId`.
+
+---
+
 ## nationality
 field: nationality
 data_type: enum
