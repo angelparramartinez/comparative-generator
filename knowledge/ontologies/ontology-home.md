@@ -1,6 +1,43 @@
-# Home Insurance Ontology v1.5
+# Home Insurance Ontology v1.6
 
 OntologyType: home
+Imports: person
+
+**AVISO (26/08)**: `Imports: person` declara que este ramo usa
+`knowledge/ontologies/shared/person.md` (fichero genérico del tipo
+`Person`, ver ese fichero y `ontology-auto.md` para el razonamiento
+completo del mecanismo de figuras compartidas). Hogar solo declara la
+figura `holder` (ver bloque `## holder` más abajo) -- a diferencia de
+Autos, no hay `owner`/`primaryDriver`/`secondaryDriver` en este ramo.
+
+## holder
+imports: person
+aliases:
+- tomador
+- tomador del seguro
+interpretation:
+Figura transversal a todos los ramos (vive a nivel de `Quotation`, no del
+DTO de riesgo): `SpelContext(final R risk, final Person holder, final
+Date effectiveDate)` es genérico sobre cualquier `Risk` (incluido
+`HomeRisk`) y siempre añade `insurance['holder']` al mapa evaluado por
+SPEL (`insuranceProperties.put("holder", ...)`, `SpelContext.java`) --
+mismo mecanismo ya confirmado y usado en Autos, no específico de ese
+ramo. Expande automáticamente todos los campos de
+`knowledge/ontologies/shared/person.md` con `risk_field` sin prefijo y
+`context: holder` (`insurance['holder'].<campo>`, no anidado bajo
+`insurance["risk"]`). Alias "tomador" confirmado con cita real del propio
+condicionado de Generali Hogar (`ggcc_outputs/coverage_matcher_contract_
+2026-08-21T08-40-01-110Z.json`, 3 apariciones, p.ej. "El tomador y/o
+asegurado... imputable total o parcialmente al tomador o al asegurado").
+Sin ninguna dependencia real todavía que condicione una cobertura de
+Hogar por un campo de `holder` (a diferencia de Autos, donde Divina
+Seguros sí distingue tomador/propietario persona jurídica) -- bloque
+añadido por completitud estructural, mismo criterio ya aplicado en
+`shared/person.md` (decisión explícita: la estructura debe ser lo más
+completa posible según el backend, no solo lo ya visto en un
+condicionado).
+
+---
 
 ## address
 risk_field: address
