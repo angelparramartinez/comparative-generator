@@ -253,19 +253,49 @@ visible en ASM (V1 explícito), clave real `height`.
 ## job
 field: job
 data_type: Job
-meaning: Job/employer information of a person -- complex object, not a
-scalar.
+meaning: Coarse socio-professional category of a person (11 fixed
+values: primary sector, administrative/technician, commercial/
+industrial, self-employed, civil servant, householder, student,
+pensioner, unemployed, other) -- complex object `{id, name}`, not a
+scalar. **NOT** employer/job-title information despite the field name.
 aliases:
-- profesión
-- puesto de trabajo
+- situación laboral
+- categoría profesional
+- categoría socioprofesional
+values:
+- PrimarySector (`Job.PRIMARY_SECTOR = 1`)
+- AdministrativeOrTechnician (`Job.ADMINISTRATIVE_OR_TECHNICIAN = 2`)
+- NotAdministrativeNorTechnician (`Job.NOT_ADMINISTRATIVE_NOR_TECHNICIAN = 3`)
+- ComercialOrIndustrial (`Job.COMERCIAL_OR_INDUSTRIAL = 4`)
+- SelfEmployed (`Job.SELF_EMPLOYED = 5`)
+- CivilServant (`Job.CIVIL_SERVANT = 6`)
+- Householder (`Job.HOUSEHOLDER = 7`)
+- Student (`Job.STUDENT = 8`)
+- Pensioner (`Job.PENSIONER = 9`)
+- Unemployed (`Job.UNEMPLOYED = 10`)
+- Other (`Job.OTHER = 11`)
 interpretation:
+**Ambigüedad con `economicOccupation` RESUELTA (26/08), sin necesidad de
+condicionado real -- hallazgo de código**: `job` (`Job extends
+MasterData`, tabla `JOB`) NO es información de empleador ni puesto de
+trabajo concreto pese al nombre -- es una categoría socioprofesional
+gruesa (11 valores fijos), y además es un campo **derivado**, no un dato
+de entrada independiente: `PersonJobPostDeserializerHook` lo calcula
+automáticamente a partir de `employmentStatus` + el código CNO-11 de
+`economicOccupation` (si la persona está activa laboralmente), o de
+`economicInactivityStatus` (si está inactiva -- jubilado, estudiante, ama
+de casa...). `economicOccupation` (bloque siguiente) es la profesión
+concreta y granular (catálogo CNO-11 real); `job` es un resumen/bucket
+calculado a partir de ella, no una alternativa equivalente. Los 11 IDs
+están grounded en uso real (`PersonJobPostDeserializerHook.java`,
+comentario que enlaza el mapeo real en Notion); los `values:` de arriba
+son los nombres de las constantes Java, **sin confirmar** contra la BBDD
+real (tabla `JOB`, mismo patrón de cautela que otros catálogos
+`MasterData`/`CrmEnumMappingDto` de este fichero -- pedir export si
+aparece una dependencia real).
 `getJob()`: `@JsonView({ASM, COMPARATIVE_REQUEST})` -- visible en ASM,
-clave real `job`. **Ambigüedad sin resolver**: se solapa conceptualmente
-con `economicOccupation` (ambos parecen representar "a qué se dedica la
-persona") -- no está claro todavía cuál usar para una condición real de
-profesión/actividad, o si representan cosas distintas (empleador
-concreto vs. categoría CNO-11). Decidir con el usuario cuando aparezca la
-primera cita real.
+clave real `job`. Sub-campos accesibles: `id`/`name` de `Job`, ambos
+`@JsonView({V1, COMPARATIVE_REQUEST})`.
 
 ---
 
@@ -273,14 +303,23 @@ primera cita real.
 field: economicOccupation
 data_type: Cno11EconomicOccupation
 meaning: Occupation of a person per the CNO-11 (Spanish official
-occupation classification) -- complex object, not a scalar.
+occupation classification, INE) -- complex object with `code`/`name`/
+`mainGroup` (section), not a scalar. Fine-grained, hundreds of real
+occupation codes (e.g. "Oficiales de las fuerzas armadas").
 aliases:
 - ocupación
 - actividad profesional
+- profesión
 interpretation:
 `getEconomicOccupation()`: `@JsonView({V1, COMPARATIVE_REQUEST})` --
-visible en ASM (V1 explícito), clave real `economicOccupation`. Ver
-ambigüedad con `job` anotada en ese bloque -- sin resolver.
+visible en ASM (V1 explícito), clave real `economicOccupation`.
+**Ambigüedad con `job` RESUELTA (26/08)**, ver el bloque anterior: este
+campo es la profesión real y granular (catálogo oficial CNO-11 del INE,
+`Cno11EconomicOccupation extends CnoEconomicOccupation`), distinto de
+`job` (categoría socioprofesional gruesa derivada). Para una condición
+real de "profesión de riesgo" concreta, usar este campo; para una
+condición por categoría laboral gruesa (autónomo/funcionario/
+jubilado/estudiante...), usar `job`.
 
 ---
 
