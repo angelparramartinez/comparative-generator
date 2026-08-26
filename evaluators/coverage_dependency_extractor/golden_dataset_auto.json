@@ -1,0 +1,180 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_dependency_extractor_golden_auto_v1",
+  "description": "Golden set de Autos (ramo `auto`), primer producto con dependencias reales tras Mapfre (que no las necesitó, ver project_mapfre_skip_flujo2_decision). Fuente: única ejecución real de `coverage rules extraction GGCC` sobre el condicionado de Divina Seguros (ggcc_outputs/coverage_matcher_contract_2026-08-26T12-16-28-186Z.json, 46 páginas, 15 semantic units con cues, 9 con dependencias). A diferencia del golden set de Hogar (golden_dataset.json), este es el PRIMER análisis de una ejecución real de Autos -- no hay iteraciones previas que corregir, así que 'actual_coverage_dependencies' es literalmente lo que produjo esta única ejecución.",
+  "schema_notes": {
+    "shared_with_hogar": "Mismo esquema que golden_dataset.json (risk_field/operator/value/evidence, categorías hallucination_regression/correct_reference/false_positive_regression/hierarchy_misattribution) -- ver ese fichero para las definiciones base, no se repiten aquí.",
+    "ontology_gap (categoría nueva, 26/08)": "Caso donde el condicionado real tiene una condición de riesgo genuina, pero NO existe ningún risk_field en la ontología real (confirmado leyendo el backend, no solo 'no se nos ha ocurrido') que la represente -- distinto de 'hallucination_regression' (que asume que SÍ existe un campo correcto al que redirigir). No tiene 'must_not_contain_risk_fields' con una alternativa válida porque no la hay todavía; documenta el hueco para que quien amplíe la ontología de Autos no tenga que releer el condicionado desde cero.",
+    "regression_from_guardrail_sync_fix (26/08, IMPORTANTE)": "Varios casos de este dataset (GD-AUTO-HALLUC-002/003/004/005) fueron rechazados en la ejecución real como 'risk_field_not_in_ontology_catalog' -- pero esa razón de rechazo era ACCIDENTAL: el guardrail real desplegado en n8n solo tenía 5 de los 88 campos de Person sincronizados en ese momento (commit b5a7af8 lo corrigió el mismo día, ver project_base7version_ontology). Con el catálogo ya sincronizado, estos 4 casos SÍ pasarían el guardrail (son risk_field válidos con operador/tipo compatibles) pese a ser alucinaciones reales -- el guardrail nunca ha validado semántica, solo catálogo+tipo (limitación ya documentada en el propio código del nodo). 'guardrail_catches' en estos casos refleja el comportamiento CORRECTO tras el fix (false), no el accidental de la ejecución original."
+  },
+  "cases": [
+    {
+      "id": "GD-AUTO-REF-001",
+      "category": "correct_reference",
+      "semantic_unit_ref": "su_00027",
+      "article": "07 GARANTÍAS ASEGURABLES",
+      "coverage_path": ["2. Con carácter particular:"],
+      "source_text": "Cuando el PROPIETARIO del vehículo o TOMADOR del seguro sea una persona jurídica, el asegurador NO cubre los desembolsos debidos a obligaciones frente a socios y representantes legítimos de la misma, así como frente a los familiares de éstos.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "owner.identificationType",
+          "operator": "=",
+          "value": "persona jurídica",
+          "evidence": "Cuando el PROPIETARIO del vehículo o TOMADOR del seguro sea una persona jurídica, el asegurador NO cubre los desembolsos debidos a obligaciones frente a socios y representantes legítimos de la misma"
+        }
+      ],
+      "expected_coverage_dependencies": "same_as_actual",
+      "notes": "El LLM extrajo el risk_field CORRECTO a la primera (owner.identificationType) -- misma cita real que motivó todo el rediseño de holder/owner (ver project_ontology_shared_person_figuras). En la ejecución real (26/08) fue rechazado por el guardrail como risk_field_not_in_ontology_catalog -- no por ser inválido, sino porque el catálogo hardcodeado del guardrail solo tenía 5 de los 88 campos de Person en ese momento (corregido el mismo día, commit b5a7af8). Tras el fix, este caso pasa. Limitaciones conocidas sin resolver: (1) condición compuesta OR real (PROPIETARIO *o* TOMADOR) -- el LLM solo capturó 'owner', no también 'holder.identificationType' -- mismo tipo de limitación ya aceptada para 'continente' en Hogar (v1 no soporta condiciones compuestas); (2) el valor extraído es texto en español ('persona jurídica'), el valor real comparable en SPEL es 'Cif' (ver identificationType en shared/person.md) -- la traducción es tarea de value_matcher.js (flujo 3), que todavía no cubre ningún campo de Autos.",
+      "guardrail_catches": false
+    },
+    {
+      "id": "GD-AUTO-HIER-001",
+      "category": "hierarchy_misattribution",
+      "semantic_unit_ref": "su_00185",
+      "wrong_article": "19 QUEJAS Y RECLAMACIONES",
+      "correct_section": "ANEXO I: Vehículos segunda categoría (página 39 del condicionado) -- confirmado en indice_diagnostics.unmatched_indice_entries de esta misma ejecución",
+      "source_text": "Se consideran vehículos de segunda categoría los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg:",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "weight",
+          "operator": ">",
+          "value": 3500,
+          "evidence": "vehículos de cuatro o más ruedas, con peso superior a 3.500 kg"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "guardrail_catches": false,
+      "notes": "Mismo patrón que GD-HIER-001/002 de Hogar (Allianz): el texto real pertenece a un anexo de definiciones (ANEXO I 'Vehículos segunda categoría', página 39) que el índice del documento no ancla correctamente (indice_diagnostics.indice_coverage_low=true, unmatched_indice_entries incluye tanto el ANEXO I como el ANEXO II en esta misma ejecución) -- el Hierarchy Builder cae al fallback heurístico y atribuye el texto al último capítulo numerado real ('19 QUEJAS Y RECLAMACIONES'), completamente ajeno. Es la primera confirmación real de este patrón en Autos, mismo mecanismo ya diagnosticado y aceptado conscientemente en Hogar/Axa (CLAUDE.md §5.10) -- no es un caso nuevo a resolver, es evidencia de que el límite conocido también aplica aquí. Ver también GD-AUTO-GAP-001 (mismo contenido semántico, sin duplicar la evidencia de por qué el risk_field 'weight' tampoco existe)."
+    },
+    {
+      "id": "GD-AUTO-GAP-001",
+      "category": "ontology_gap",
+      "semantic_unit_ref": "su_00008",
+      "related_semantic_units": ["su_00027"],
+      "article": "04 PRÓLOGO",
+      "coverage_path": ["04 PRÓLOGO", "4.3. DEFINICIONES ESPECÍFICAS DEL SEGURO DE AUTOMÓVILES"],
+      "source_text": "VEHÍCULOS DE PRIMERA CATEGORÍA: dentro de esta categoría se incluyen los vehículos de cuatro o más ruedas, siempre que su peso total, incluida la carga útil, sea igual o inferior a 3.500 kg, con la excepción de los quads. VEHÍCULOS DE SEGUNDA CATEGORÍA: dentro de esta categoría se incluyen los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg [...] De caravanas y remolques que no necesiten matriculación propia, con la condición de que el peso de la caravana y remolque no exceda de 750 kg.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "owner.weight", "operator": "<=", "value": 3500, "evidence": "siempre que su peso total, incluida la carga útil, sea igual o inferior a 3.500 kg"},
+        {"risk_field": "owner.weight", "operator": ">", "value": 3500, "evidence": "vehículos de cuatro o más ruedas, con peso superior a 3.500 kg"},
+        {"risk_field": "vehicle.weight", "operator": "<=", "value": 750, "evidence": "con la condición de que el peso de la caravana y remolque no exceda de 750 kg"}
+      ],
+      "expected_coverage_dependencies": [],
+      "missing_concept": "Masa/peso máximo autorizado del vehículo (MMA) -- confirmado por lectura del backend real (26/08) que NO existe ningún campo de peso/masa en Base7Version, VehicleProperty, AutosRisk ni MotorRisk (grep sin resultados). No es un problema de alias ni de risk_field mal nombrado -- el dato simplemente no está modelado en el backend de riesgo accesible desde SPEL.",
+      "notes": "IMPORTANTE: 'primera/segunda categoría' aquí es la clasificación PROPIA de Divina por umbral de peso (≤/>3.500 kg) -- NO es lo mismo que `base7Version.base7Type.base7Category` (AUTOS/CAMIONES/MOTOS/VMP, la categoría real de Avant/Base7). Cuidado con esa confusión al retomar: `category` (shared/base7version.md) NO resuelve este caso, aunque el nombre se parezca. El LLM alucinó 'owner.weight' (peso de una PERSONA, no de un vehículo) porque es el único campo 'weight' que existía en el contexto ontológico que recibió -- síntoma de la falta de campo real, no un fallo de prompt en sí. Antes de la corrección del guardrail (commit b5a7af8) esto se rechazaba accidentalmente como 'not in catalog'; con el catálogo ya sincronizado, 'owner.weight <= 3500'/'> 3500' PASARÍAN el guardrail sin ser detectados (integer, operador válido) -- ver GD-AUTO-HALLUC-002 para el caso de regresión formal.",
+      "guardrail_catches": false
+    },
+    {
+      "id": "GD-AUTO-GAP-002",
+      "category": "ontology_gap",
+      "semantic_unit_ref": "su_00027",
+      "article": "07 GARANTÍAS ASEGURABLES",
+      "coverage_path": ["2. Con carácter particular:"],
+      "source_text": "Los daños producidos a terceras personas por la carga, descarga y transporte de bienes si el VEHÍCULO ASEGURADO es utilizado principalmente para el transporte de mercancías. La responsabilidad derivada de los daños o lesiones causados a los ocupantes cuando se trate de un vehículo no autorizado para el transporte de personas.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "vehicle.mainUse", "operator": "=", "value": "transporte de mercancías", "evidence": "si el VEHÍCULO ASEGURADO es utilizado principalmente para el transporte de mercancías"},
+        {"risk_field": "vehicle.authorizedForPassengerTransport", "operator": "=", "value": false, "evidence": "cuando se trate de un vehículo no autorizado para el transporte de personas"}
+      ],
+      "expected_coverage_dependencies": [],
+      "missing_concept": "Uso principal del vehículo (carga/mercancías vs. pasajeros) y autorización para transporte de personas -- sin investigar todavía si existen en el backend real (a diferencia de GD-AUTO-GAP-001, no se ha confirmado la ausencia leyendo el código, solo se confirma que ontology-auto.md no los tiene hoy).",
+      "notes": "'vehicle.mainUse'/'vehicle.authorizedForPassengerTransport' son nombres inventados por el LLM (no existen en ningún catálogo real) -- correctamente rechazados como risk_field_not_in_ontology_catalog, y esta vez el rechazo es el correcto motivo (a diferencia de GD-AUTO-GAP-001, aquí no hay sospecha de que el guardrail los hubiera aceptado por error). Pendiente: investigar backend (MotorRisk/AutosRisk/VehicleProperty) antes de decidir si estos son conceptos reales accesibles o si Avant no distingue uso comercial/particular en absoluto para Autos particulares.",
+      "guardrail_catches": true
+    },
+    {
+      "id": "GD-AUTO-FP-001",
+      "category": "false_positive_regression",
+      "semantic_unit_ref": "su_00083",
+      "article": "07 GARANTÍAS ASEGURABLES",
+      "coverage_path": ["2. INVALIDEZ PERMANENTE TOTAL Y/O PARCIAL:"],
+      "source_text": "En ningún caso se tomará en cuenta la profesión del ASEGURADO, por lo que no podrá alegarse una agravación en la invalidez en base a la actividad profesional.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "economicOccupation", "operator": "!=", "value": null, "evidence": "En ningún caso se tomará en cuenta la profesión del ASEGURADO, por lo que no podrá alegarse una agravación en la invalidez en base a la actividad profesional."}
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": ["economicOccupation"],
+      "guardrail_catches": false,
+      "notes": "Patrón nuevo (no visto en el golden set de Hogar): el texto dice EXPLÍCITAMENTE que la profesión NO se tiene en cuenta ('en ningún caso'), y aun así el LLM extrajo una dependencia positiva (economicOccupation != null). Es lo opuesto de una condición real -- una negación de relevancia, no una condición de aplicabilidad. 'value: null' con operador '!=' ya debería resultar sospechoso en sí mismo (¿!= null equivale a 'siempre', qué aporta como condición?). guardrail_catches=false porque economicOccupation (bare, holder) es un risk_field válido (Cno11EconomicOccupation, sin entrada en ALLOWED_OPERATORS_BY_DATA_TYPE -- cualquier operador/valor pasa sin validar, mismo criterio ya aceptado para 'list'). Correcion sugerida (sin implementar): añadir al prompt del extractor un contraejemplo explícito de 'cláusula que niega relevancia de un factor' junto a los ya existentes (continente, capítulos transversales). NOTA sobre el arnés (26/08): no se incluye 'alias_match_expectations' aquí -- el check --ontology solo corre 'Ontology Splitter' directamente sobre ontology-auto.md, sin simular la expansión de imports (Merge Shared Texts Into Ramo), así que no puede ver conceptos generados por figura como 'economicOccupation' (siempre da alias_match=false, falso negativo del arnés, no del sistema real). Pendiente extender run_offline_eval.js si se quiere validar alias_match sobre campos de Person/Base7Version."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-001",
+      "category": "hallucination_regression",
+      "subtype": "wrong_field_for_evidence",
+      "semantic_unit_ref": "su_00207",
+      "article": "19 QUEJAS Y RECLAMACIONES",
+      "coverage_path": ["19 QUEJAS Y RECLAMACIONES", "3. DEFENSA JURÍDICA Y RECLAMACIÓN DE DAÑOS"],
+      "source_text": "Reclamación de los daños derivados de un ACCIDENTE DE CIRCULACIÓN sufridos por el CONDUCTOR HABITUAL DECLARADO como peatón o ciclista.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "primaryDriver.drivingLicenses", "operator": "NOT_IN", "value": ["conductor habitual declarado"], "evidence": "Reclamación de los daños derivados de un ACCIDENTE DE CIRCULACIÓN sufridos por el CONDUCTOR HABITUAL DECLARADO como peatón o ciclista."},
+        {"risk_field": "primaryDriver.crmEmploymentStatus", "operator": "NOT_IN", "value": ["conductor habitual declarado"], "evidence": "Reclamación de los daños derivados de un ACCIDENTE DE CIRCULACIÓN sufridos por el CONDUCTOR HABITUAL DECLARADO como peatón o ciclista."}
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": ["primaryDriver.drivingLicenses", "primaryDriver.crmEmploymentStatus"],
+      "guardrail_catches": false,
+      "notes": "Doble alucinación sobre la MISMA evidencia (dos llamadas al LLM, o dos intentos dentro de la misma unidad, produjeron dos risk_field distintos e igual de equivocados) -- ninguno de los dos tiene relación semántica real con el texto, que describe una restricción de ALCANCE (el asegurado de esta garantía concreta es 'exclusivamente el conductor habitual declarado', y se excluye cuando actúa como peatón/ciclista, no como conductor) -- no es una condición ligada a un dato declarado del riesgo, es una definición de a quién cubre la garantía. drivingLicenses es 'list' -- confirmado que el guardrail NO tiene ninguna validación de operador/tipo para 'list' (ver comentario propio del nodo), así que esta alucinación pasaría sin ser detectada tal cual está el guardrail hoy."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-002",
+      "category": "hallucination_regression",
+      "subtype": "person_field_confused_with_vehicle_or_object",
+      "semantic_unit_ref": "su_00008",
+      "article": "04 PRÓLOGO",
+      "coverage_path": ["04 PRÓLOGO", "4.3. DEFINICIONES ESPECÍFICAS DEL SEGURO DE AUTOMÓVILES"],
+      "source_text": "VEHÍCULOS DE PRIMERA CATEGORÍA: dentro de esta categoría se incluyen los vehículos de cuatro o más ruedas, siempre que su peso total, incluida la carga útil, sea igual o inferior a 3.500 kg.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "owner.weight", "operator": "<=", "value": 3500, "evidence": "siempre que su peso total, incluida la carga útil, sea igual o inferior a 3.500 kg"}
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": ["owner.weight", "primaryDriver.weight", "secondaryDriver.weight", "weight"],
+      "guardrail_catches": false,
+      "notes": "REGRESIÓN REAL introducida (indirectamente) por el fix de sincronización del guardrail del 26/08 (commit b5a7af8): antes de ese commit, 'owner.weight' no estaba en el catálogo del guardrail y se rechazaba (por el motivo accidental equivocado); tras sincronizar los 88 campos de Person, 'owner.weight' es un risk_field válido con operador/tipo compatibles (integer, <=) y PASA el guardrail sin ser detectado -- el guardrail nunca ha validado semántica (confunde el peso de una PERSONA con el peso de un VEHÍCULO), solo catálogo+tipo, limitación estructural ya documentada. Backlog ya existente (CLAUDE.md §6 punto 6, 'variante campo equivocado') ahora con un caso real concreto además de los ya conocidos de Hogar (GD-HALLUC-003/004). Ver GD-AUTO-GAP-001 para el hueco de fondo (no existe ningún campo real de masa de vehículo)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-003",
+      "category": "hallucination_regression",
+      "subtype": "person_field_confused_with_vehicle_or_object",
+      "semantic_unit_ref": "su_00125",
+      "article": "07 GARANTÍAS ASEGURABLES",
+      "coverage_path": ["21. GASTOS POR INHABILITACIÓN DE LA CARAVANA."],
+      "source_text": "los animales domésticos, de hasta 75 kg. de peso",
+      "actual_coverage_dependencies": [
+        {"risk_field": "owner.weight", "operator": "<=", "value": 75, "evidence": "los animales domésticos, de hasta 75 kg. de peso"}
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": ["owner.weight", "primaryDriver.weight", "secondaryDriver.weight", "weight"],
+      "guardrail_catches": false,
+      "notes": "Misma alucinación estructural que GD-AUTO-HALLUC-002 (owner.weight, mismo campo real de una PERSONA) pero aquí el objeto real es una MASCOTA, no un vehículo -- confirma que el patrón no es 'el LLM confunde persona/vehículo' sino más genérico: 'weight' se asigna al primer/único campo de peso disponible en el contexto ontológico, sea cual sea el objeto real del que habla el texto (vehículo, remolque, mascota...). Mismo guardrail_catches=false por la misma razón (integer, operador válido, sin validación semántica)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-004",
+      "category": "hallucination_regression",
+      "subtype": "wrong_field_for_evidence",
+      "semantic_unit_ref": "su_00101",
+      "article": "07 GARANTÍAS ASEGURABLES",
+      "coverage_path": [],
+      "source_text": "El ASEGURADO para tener derecho a percibir las prestaciones deberá tener su domicilio en España, residir habitualmente en él.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "economicInactivityStatus", "operator": "=", "value": "residente en España", "evidence": "El ASEGURADO para tener derecho a percibir las prestaciones deberá tener su domicilio en España, residir habitualmente en él"}
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": ["economicInactivityStatus"],
+      "guardrail_catches": false,
+      "notes": "'economicInactivityStatus' (jubilado/estudiante/ama de casa...) no tiene ninguna relación con residencia/domicilio -- alucinación de campo por proximidad semántica débil ('situación' se asocia vagamente a 'residencia'). No existe ningún concepto de 'país/domicilio de residencia' en shared/person.md ni en ontology-auto.md hoy -- posible ontology_gap adicional si aparece otra cita real, no se marca como tal aquí porque no se ha confirmado que el backend no lo tenga (a diferencia de GD-AUTO-GAP-001, sin investigar todavía). guardrail_catches=false: economicInactivityStatus es un tipo objeto complejo sin entrada en ALLOWED_OPERATORS_BY_DATA_TYPE, cualquier operador/valor pasa sin validar."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-005",
+      "category": "hallucination_regression",
+      "subtype": "wrong_field_for_evidence",
+      "semantic_unit_ref": "su_00080",
+      "article": "07 GARANTÍAS ASEGURABLES",
+      "coverage_path": ["7.4.15. ACCIDENTES DEL CONDUCTOR"],
+      "source_text": "Se entiende por asegurado al conductor del vehículo asegurado en el momento del accidente siempre y cuando éste sea uno de los siguientes: el conductor titular declarado en la póliza, un conductor autorizado nominado en la póliza, o cualquier persona autorizada por el tomador.",
+      "actual_coverage_dependencies": [
+        {"risk_field": "crmEmploymentStatus", "operator": "IN", "value": ["conductor titular declarado", "conductor autorizado nominado", "persona autorizada por el tomador"], "evidence": "Se entiende por asegurado al conductor del vehículo asegurado en el momento del accidente siempre y cuando éste sea uno"}
+      ],
+      "expected_coverage_dependencies": [],
+      "must_not_contain_risk_fields": ["crmEmploymentStatus"],
+      "guardrail_catches": false,
+      "notes": "Mismo patrón que GD-AUTO-HALLUC-001 (definición de ALCANCE -- quién cuenta como 'asegurado' para esta garantía concreta -- confundida con una condición de riesgo). 'crmEmploymentStatus' (situación laboral: empleado/autónomo/parado...) no tiene ninguna relación con 'quién puede conducir' -- campo elegido probablemente por ser el único 'enum' de Person que quedaba libre en el contexto, no por relación semántica real. guardrail_catches=false: crmEmploymentStatus es enum válido (bare/holder), IN con strings no vacíos pasa isValueTypeValid sin comprobar que sean valores reales del catálogo (limitación ya documentada: 'no valida el VOCABULARIO de un enum')."
+    }
+  ]
+}

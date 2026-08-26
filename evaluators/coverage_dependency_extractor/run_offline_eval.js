@@ -3,7 +3,10 @@
 // que se pueda desincronizar -- y lo ejecuta contra los fixtures de golden_dataset.json.
 //
 // Uso:
-//   node run_offline_eval.js              -> corre todos los checks disponibles
+//   node run_offline_eval.js              -> corre todos los checks disponibles (ramo Hogar)
+//   node run_offline_eval.js --ramo=auto  -> mismos checks contra el golden set/ontologia
+//     de Autos (golden_dataset_auto.json / valid_risk_fields_auto.json / ontology-auto.md)
+//     -- combinable con cualquier otro flag, p.ej. --ramo=auto --hallucination
 //   node run_offline_eval.js --chunking   -> solo el check de chunking_boundary
 //   node run_offline_eval.js --hallucination -> solo el check de risk_field invalidos/guardrail
 //   node run_offline_eval.js --value-type -> solo el check de tipo de "value" vs data_type (Guardrail v4)
@@ -64,19 +67,39 @@ const ONTOLOGY_WORKFLOW_PATH = path.join(
   "workflows",
   "ontology indexing.json"
 );
-const ONTOLOGY_MD_PATH = path.join(
+// --ramo=home (default) | --ramo=auto -- selecciona el fichero de ontologia,
+// el golden set y el catalogo de risk_field validos del ramo correspondiente.
+// No cambia WORKFLOW_PATH/ONTOLOGY_WORKFLOW_PATH: el codigo de los nodos es
+// el mismo para todos los ramos (no esta scopeado por ontology_type).
+const RAMO_ONTOLOGY_MD = {
+  home: "ontology-home.md",
+  auto: "ontology-auto.md"
+};
+const RAMO_GOLDEN_DATASET = {
+  home: "golden_dataset.json",
+  auto: "golden_dataset_auto.json"
+};
+const RAMO_VALID_RISK_FIELDS = {
+  home: "valid_risk_fields.json",
+  auto: "valid_risk_fields_auto.json"
+};
+let ONTOLOGY_MD_PATH = path.join(
   REPO_ROOT,
   "knowledge",
   "ontologies",
-  "ontology-home.md"
+  RAMO_ONTOLOGY_MD.home
 );
-const GOLDEN_PATH = path.join(__dirname, "golden_dataset.json");
-const VALID_RISK_FIELDS_PATH = path.join(__dirname, "valid_risk_fields.json");
+let GOLDEN_PATH = path.join(__dirname, RAMO_GOLDEN_DATASET.home);
+let VALID_RISK_FIELDS_PATH = path.join(__dirname, RAMO_VALID_RISK_FIELDS.home);
 const GGCC_OUTPUTS_DIR = path.join(REPO_ROOT, "ggcc_outputs");
 const REAL_RUN_FILES = [
   "coverage_matcher_contract_2026-06-12T12-03-35-891Z.json",
   "coverage_matcher_contract_2026-07-15T12-52-00-850Z.json",
-  "coverage_matcher_contract_2026-07-15T13-25-51-018Z.json"
+  "coverage_matcher_contract_2026-07-15T13-25-51-018Z.json",
+  // Autos / Divina Seguros (26/08) -- la garantia del pre-filtro de coste es
+  // generica entre ramos, se valida contra todas las ejecuciones reales
+  // conocidas, no solo las de Hogar.
+  "coverage_matcher_contract_2026-08-26T12-16-28-186Z.json"
 ];
 
 function loadJson(p) {
@@ -571,6 +594,10 @@ function checkChunkLevelMatching(workflow, golden) {
   // Corre la cadena completa: Rule Chunker -> Explode -> Ontology Relevance
   // Filter (por chunk) -> Regroup
   const c = golden.cases.find(x => x.id === "GD-FP-003");
+  if (!c) {
+    console.log("Caso fijo 'GD-FP-003' no existe en este golden set (check especifico de Hogar) -- omitido.");
+    return 0;
+  }
   const [ruleOut] = runNode(workflow, "Rule Chunker", [
     { semantic_unit: { id: c.semantic_unit_ref, text: c.source_text, article: c.article }, semantic_unit_id: c.semantic_unit_ref }
   ]);
@@ -632,18 +659,30 @@ function checkCostPreFilter(workflow) {
     }
   }
 
-  console.log(`Resultado: ${total - failures}/${total} unidades reales (de 3 ejecuciones) respetan la garantia.`);
+  const existingRuns = REAL_RUN_FILES.filter(f => fs.existsSync(path.join(GGCC_OUTPUTS_DIR, f))).length;
+  console.log(`Resultado: ${total - failures}/${total} unidades reales (de ${existingRuns}/${REAL_RUN_FILES.length} ejecuciones presentes localmente) respetan la garantia.`);
   return failures;
 }
 
 function main() {
-  const args = process.argv.slice(2);
+  const rawArgs = process.argv.slice(2);
+  const ramoArg = rawArgs.find(a => a.startsWith("--ramo="));
+  const ramo = ramoArg ? ramoArg.split("=")[1] : "home";
+  const args = rawArgs.filter(a => !a.startsWith("--ramo="));
   const runAll = args.length === 0;
+
+  if (!RAMO_ONTOLOGY_MD[ramo]) {
+    throw new Error(`--ramo=${ramo} desconocido -- valores validos: ${Object.keys(RAMO_ONTOLOGY_MD).join(", ")}`);
+  }
+  ONTOLOGY_MD_PATH = path.join(REPO_ROOT, "knowledge", "ontologies", RAMO_ONTOLOGY_MD[ramo]);
+  GOLDEN_PATH = path.join(__dirname, RAMO_GOLDEN_DATASET[ramo]);
+  VALID_RISK_FIELDS_PATH = path.join(__dirname, RAMO_VALID_RISK_FIELDS[ramo]);
 
   const workflow = loadJson(WORKFLOW_PATH);
   const golden = loadJson(GOLDEN_PATH);
   const validRiskFields = loadJson(VALID_RISK_FIELDS_PATH);
 
+  console.log(`Ramo: ${ramo}`);
   console.log(`Golden set: ${golden.cases.length} casos cargados desde ${GOLDEN_PATH}`);
 
   let exitCode = 0;
