@@ -29,11 +29,23 @@ riesgo (no como `Person`, que puede tener varias figuras distintas).
 Sustituye el acceso a `base7Version.engine.type`/`Base7AvantEngine`
 (catálogo de solo 3 valores de salida que colapsa eléctrico/híbrido/
 hidrógeno a `Others`, confirmado con export real de `CRM_ENUM_MAPPING`)
-por `base7Version.base7Engine.description` (catálogo real de 13 valores
-que sí distingue eléctrico) — ver `shared/base7version.md` para el
-razonamiento completo. `vehicleType` (más abajo) se queda tal cual,
-ramo-específico a propósito (su catálogo de valores está filtrado por
-`BASE7_CATEGORY_ID = 1`, no es genérico entre categorías de vehículo).
+por `base7Version.base7Engine.id` (catálogo real de 13 valores que sí
+distingue eléctrico) — ver `shared/base7version.md` para el
+razonamiento completo. El antiguo concepto `vehicleType` (ramo-
+específico, `type.baseType.name`) se elimina de este fichero: se
+absorbe en `base7Version` como el campo `type` (`base7Type.id`), con el
+catálogo completo de 19 valores reales de `BASE7_TYPE` (no solo los 7 de
+Autos) — la ruta de acceso resultó ser genérica entre ramos, solo los
+*valores* que aparecen en la práctica son específicos de cada categoría
+de vehículo. **Rediseño de `.description` a `.id` (mismo día)**: los
+objetos reales (`Base7Engine`/`Base7Type`/`Base7Category`) no colapsan a
+string (a diferencia de `maritalStatus`/`housingUse`, que sí llevan
+`@JsonSerialize(CrmEnumJsonSerializer)`) — el `id` numérico es la
+comparación estable en el `FILTER_EXPR`/`VALUE_EXPR` real; el texto
+(`description`/`name`) queda solo como vocabulario de matching para
+flujo 2, con la traducción texto→id delegada a flujo 3
+(`value_matcher.js`), mismo mecanismo que ya existe para
+`housingUse`/`capitalInsuranceType` en Hogar.
 
 **AVISO (21/08, actualizado tras cruzar condicionados reales)**:
 `risk_field`, `data_type` y los valores de `garageType` están confirmados
@@ -387,67 +399,17 @@ resto de conceptos de tipo lista.
 ## base7Version
 imports: base7version
 interpretation:
-**Añadido 26/08**. Figura única (no hay varias instancias de
-`Base7Version` por riesgo, a diferencia de las figuras de `Person`).
-Confirmado idéntico en `MotorbikeRisk` (motos) -- misma clave real
-`base7Version`, mismo `@JsonView`, heredado de `MotorRisk` sin
-sobreescribir -- `Base7Version` es infraestructura transversal a ramos
-con vehículo, no específica de Autos. Expande `engine`/`category` de
+**Añadido 26/08, rediseñado el mismo día** (ver historial de git para el
+diseño intermedio con `.description`, descartado). Figura única (no hay
+varias instancias de `Base7Version` por riesgo, a diferencia de las
+figuras de `Person`). Confirmado idéntico en `MotorbikeRisk` (motos) --
+misma clave real `base7Version`, mismo `@JsonView`, heredado de
+`MotorRisk` sin sobreescribir -- `Base7Version` es infraestructura
+transversal a ramos con vehículo, no específica de Autos. Expande
+`engine`/`type`/`category` de
 `knowledge/ontologies/shared/base7version.md` con `risk_field:
 base7Version.<campo>` y `context: risk` (regla general, sin caso
-especial como `holder`).
-
----
-
-## vehicleType
-risk_field: base7Version.type.baseType.name
-data_type: enum
-meaning: Vehicle category (turismo, comercial derivado, monovolumen,
-todo terreno...) — determines which coverages apply or are excluded in
-some condicionados.
-aliases:
-- turismo
-- derivado de comercial
-- derivado de turismo
-- categoría del vehículo
-- tipo de vehículo
-contractual_examples:
-- cuando el vehículo sea un turismo
-- para vehículos derivados de turismo
-- esta cobertura no aplica a vehículos comerciales
-values:
-- TURISMO: turismo
-- COMERCIAL DERIVADO DE TURISMO: derivado de turismo, comercial derivado de turismo
-- COMERCIAL DERIVADO DE TT: derivado de todo terreno, comercial derivado de todo terreno
-- MONOVOLUMEN: monovolumen
-- TODO TERRENO: todo terreno
-- FURGONES Y CAMIONES LIGEROS: furgón, furgoneta, camión ligero
-- FURGONES HABILIT. A PASAJEROS: furgón habilitado para pasajeros
-interpretation:
-**Añadido 22/08**, a petición del usuario (motivación real: los
-condicionados pueden incluir/excluir coberturas según sea turismo o
-derivado comercial — patrón real de este ramo, no especulativo). Ruta de
-acceso completa, confirmada leyendo el backend real:
-`getBase7Version()` (`MotorRisk`, protegido, `@JsonView({ASM,
-COMPARATIVE_REQUEST})`, clave `base7Version`) → `getType()`
-(`Base7Version`, privado, `@JsonView({V1, COMPARATIVE_REQUEST})`, clave
-`type`) → devuelve un objeto `VehicleType{code, name, baseType}` construido
-como `new VehicleType(base7Class.description, base7Class.name,
-new VehicleBaseType(base7Type.description, base7Type.name))` — es decir,
-`type.name` es en realidad el `name` de `Base7Class` (catálogo de
-carrocería, 93 valores reales, ej. "BERLINA 3 Volúmenes", "PICK UP" —
-demasiado granular para esto) y `type.baseType.name` es el `name` de
-`Base7Type` (catálogo de categoría, 19 valores reales, el que de verdad
-distingue turismo/comercial). `code`/`name` de `VehicleBaseType` ambos
-`@JsonView({V1, COMPARATIVE_REQUEST})` — accesible.
-**Catálogo real confirmado por el usuario (22/08)**: export de las tablas
-`BASE7_TYPE`/`BASE7_CLASS` de la BBDD real. Los `values:` de arriba son las
-7 filas de `BASE7_TYPE` con `BASE7_CATEGORY_ID = 1` (categoría "Autos" —
-confirmado por el nombre real `Autos 1ª categoría (Turismos)` en
-`api_mappings_es.properties`); las otras 12 filas de `BASE7_TYPE`
-(motocicletas, vehículos industriales, agrícolas...) no aplican a
-`AutosRisk`, pertenecen a otros ramos/tipos de vehículo del mismo Base7.
-El campo `name` de `Base7Type` es el texto real usado como `values:` arriba
-(literal, en mayúsculas en la BBDD: "TURISMO", "COMERCIAL DERIVADO DE
-TURISMO", etc.) — normalizar mayúsculas al comparar, mismo criterio que el
-resto de enums del proyecto (`value_matcher.js`).
+especial como `holder`). El antiguo concepto `vehicleType` (ramo-
+específico, `type.baseType.name`) se elimina de aquí -- lo sustituye el
+campo `type` del fichero compartido (`base7Type.id`), con el catálogo
+completo de 19 valores reales (no solo los 7 de Autos) documentado allí.

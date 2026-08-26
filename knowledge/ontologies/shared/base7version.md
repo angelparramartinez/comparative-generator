@@ -24,23 +24,45 @@ general ya usada para `owner`/`primaryDriver`/`secondaryDriver` en
 Autos: `risk_field: base7Version.<field>` + `context: risk` (sin caso
 especial como `holder`). Los `field:` de aquí ya incluyen la ruta
 relativa completa desde `Base7Version` (pueden llevar varios niveles de
-punto, p.ej. `base7Engine.description`) -- el mecanismo de expansión solo
-concatena figura + campo, no necesita entender la ruta.
+punto) -- el mecanismo de expansión solo concatena figura + campo, no
+necesita entender la ruta.
 
-**Decisión de alcance (26/08)**: solo se generalizan aquí los campos
-cuyo catálogo de valores es **genuinamente universal** entre categorías
-de vehículo (Autos/Camiones/Motos/VMP). El campo `vehicleType`
-(`type.baseType.name`, ya existente en `ontology-auto.md`) se queda
-ramo-específico a propósito: su catálogo de 7 valores (TURISMO,
-MONOVOLUMEN...) está filtrado por `BASE7_CATEGORY_ID = 1` (AUTOS) en la
-tabla real `BASE7_TYPE` -- Motos tendría un catálogo real distinto
-(MOTOCICLETAS, CICLOMOTORES...) para la misma categoría de campo, así
-que generalizarlo ahora sería diseñar para una ontología de Motos que
-no existe todavía (YAGNI). Lo que sí es universal es el nivel **por
-encima** de `type`: `base7Category` (ver bloque `## category` abajo).
+**Rediseño (26/08, tras revisión del usuario)**: los tres campos de
+aquí usan **`.id`** (numérico), no `.description`/`.name` (texto). Los
+objetos reales (`Base7Engine`, `Base7Type`, `Base7Category`) no llevan
+ningún serializador de colapso a string (a diferencia de `maritalStatus`
+o `housingUse`, que sí tienen `@JsonSerialize(using =
+CrmEnumJsonSerializer.class)` directamente sobre el getter y por tanto
+sirven un string plano) -- en el JSON real que ve SPEL, estos tres
+objetos viajan como `{id, name, description}` completos, así que hay
+una elección real entre id/name/description como valor de comparación.
+`id` es la opción estable: es la clave primaria real de la tabla, no
+texto libre editable sin control de versión (ya se vio que `NAME` vs
+`DESCRIPTION` intercambian su papel de "texto natural" entre estas
+tablas sin ningún patrón fiable -- ver cada bloque). El texto
+(`description`/`name`) sigue siendo imprescindible como **vocabulario
+de matching** (`aliases`/`values`, lo que ve el LLM extractor en flujo
+2) -- el propio `FILTER_EXPR`/`VALUE_EXPR` de flujo 3 debe generarse
+contra el `id`, traduciendo el texto en español extraído por flujo 2 al
+id real (mismo mecanismo ya usado por `value_matcher.js` para
+`housingUse`/`capitalInsuranceType`, adaptado a un catálogo de ids en
+vez de un catálogo de strings de enum).
+
+**`type` (26/08)**: se pliega aquí el antiguo concepto `vehicleType` de
+`ontology-auto.md` (eliminado de ese fichero) usando `base7Type.id` en
+vez del wrapper `type.baseType` (que solo exponía `code`/`name`, sin
+`id` ni acceso a la categoría). A diferencia del diseño anterior (25/08)
+que dejaba `vehicleType` ramo-específico por su catálogo de valores no
+universal, **la ruta de acceso sí es 100% genérica** -- lo que cambia
+por categoría de vehículo (Autos/Camiones/Motos/VMP) son los valores que
+realmente aparecen, no el campo. El catálogo completo (19 filas reales
+de `BASE7_TYPE`, confirmado con export real 26/08) se documenta aquí
+íntegro, con su categoría, en vez de filtrar solo a Autos -- mismo
+criterio ya usado en `shared/person.md` (estructura completa según el
+backend, no solo lo que un ramo concreto ha usado hasta ahora).
 
 ## engine
-field: base7Engine.description
+field: base7Engine.id
 data_type: enum
 meaning: Engine/fuel type of the vehicle.
 aliases:
@@ -52,81 +74,140 @@ aliases:
 - vehículo eléctrico
 - vehículo híbrido
 values:
-- "ELÉCTRICO" (id 3)
-- "COMBUSTIÓN INTERNA DIESEL, COMBUSTIBLE GASOIL" (id 2)
-- "COMBUSTIÓN INTERNA OTTO, COMBUSTIBLE GASOLINA" (id 4)
-- "COMBUSTIÓN INTERNA COMBUSTIBLE BIOETANOL O ETANOL" (id 1)
-- "COMBUSTIÓN INTERNA, COMBUSTIBLE HIDRÓGENO" (id 5)
-- "COMBUSTIÓN INTERNA, COMBUSTIBLE GAS LICUADO DEL PETROLEO" (id 6)
-- "MOTOR HIBRIDO G+E" (id 7, híbrido NO enchufable)
-- "Motor Híbrido Gasolina + Eléctrico enchufable" (id 11)
-- "Motor Híbrido Diesel + Eléctrico enchufable" (id 12)
-- "ELÉCTRICO, COMBUSTIBLE HIDRÓGENO" (id 13, pila de combustible)
-- "OTROS" (id 8)
-- "DESCONOCIDO" (id 9, id 10)
+- 3: ELÉCTRICO
+- 2: COMBUSTIÓN INTERNA DIESEL, COMBUSTIBLE GASOIL (Diesel)
+- 4: COMBUSTIÓN INTERNA OTTO, COMBUSTIBLE GASOLINA (Gasolina)
+- 1: COMBUSTIÓN INTERNA COMBUSTIBLE BIOETANOL O ETANOL
+- 5: COMBUSTIÓN INTERNA, COMBUSTIBLE HIDRÓGENO
+- 6: COMBUSTIÓN INTERNA, COMBUSTIBLE GAS LICUADO DEL PETROLEO (GLP)
+- 7: MOTOR HIBRIDO G+E (híbrido NO enchufable)
+- 11: Motor Híbrido Gasolina + Eléctrico enchufable
+- 12: Motor Híbrido Diesel + Eléctrico enchufable
+- 13: ELÉCTRICO, COMBUSTIBLE HIDRÓGENO (pila de combustible)
+- 8: OTROS
+- 9: DESCONOCIDO
+- 10: DESCONOCIDO
 interpretation:
 Ruta completa: `getBase7Version()` (`MotorRisk`, `@JsonView({ASM,
 COMPARATIVE_REQUEST})`, clave `base7Version`) → `getBase7Engine()`
 (`Base7Version`, **sin ninguna `@JsonView`** -- visible en todas las
-vistas por regla de accesibilidad, clave `base7Engine`) → `getName()`/
-`getDescription()` (`Base7Engine extends ModelDto`, **tampoco llevan
-`@JsonView`** -- accesibles). **NO usar** `base7Version.engine.type`
-(`ApiVehicleEngine.type`, `Base7AvantEngine`): ese es un catálogo
-DISTINTO y más grueso (3 valores reales de salida: `Gasoline`/`Diesel`/
-`Others`) que colapsa eléctrico/híbrido/hidrógeno/etanol/GLP a
-`Others` en `CRM_ENUM_MAPPING` (confirmado 26/08 con export real,
-`DTO_CLASS='Base7AvantEngine'`) -- **no permite distinguir un vehículo
-eléctrico**. `base7Engine.description` sí lo permite: confirmado con
-export real de la tabla `BASE7_ENGINE` (26/08, 13 filas reales) --
-`NAME` es un código de una letra (B/D/E/G/H/L/X/O/Y/Z/P/R/C, no usar
-como valor de comparación), `DESCRIPTION` es el texto real en español
-usado arriba como `values:`.
+vistas por regla de accesibilidad, clave `base7Engine`) → `getId()`
+(`Base7Engine extends ModelDto`, heredado de `ModelDto.getId()`,
+**tampoco lleva `@JsonView`** -- accesible, confirmado por bytecode
+26/08, `com.codeoscopic.riality.dto.ModelDto` sin fuente disponible en
+este repo). El texto (`getName()`/`getDescription()`, también sin
+`@JsonView`) se usa solo como vocabulario de `values:` arriba, no como
+`risk_field` -- ver nota de rediseño en la cabecera del fichero.
+**NO usar** `base7Version.engine.type` (`ApiVehicleEngine.type`,
+`Base7AvantEngine`): ese es un catálogo DISTINTO y más grueso (3
+valores reales de salida: `Gasoline`/`Diesel`/`Others`) que colapsa
+eléctrico/híbrido/hidrógeno/etanol/GLP a `Others` en `CRM_ENUM_MAPPING`
+(confirmado 26/08 con export real, `DTO_CLASS='Base7AvantEngine'`) --
+**no permite distinguir un vehículo eléctrico**. `base7Engine`
+(catálogo real de la tabla `BASE7_ENGINE`, export real 26/08, 13 filas)
+sí lo permite -- ese export tiene `NAME` como código de una letra
+(B/D/E/G/H/L/X/O/Y/Z/P/R/C) y `DESCRIPTION` como texto real en español,
+usado arriba solo como vocabulario, el id es el de la propia fila.
 **Matiz importante para condiciones de "vehículo eléctrico enchufable /
 cable de recarga"**: solo los ids 3 (`ELÉCTRICO` puro), 11 y 12 (híbridos
 **enchufables**) tienen capacidad de carga por cable. El id 7 (`MOTOR
 HIBRIDO G+E`, sin "enchufable" en el nombre) es un híbrido convencional
 sin cable; los ids 5/13 son de hidrógeno (sin cable de recarga
 eléctrica). Una condición real que hable de "cable de recarga" debe
-mapear a `IN [id 3, id 11, id 12]`, no a "todo lo que contenga
-ELÉCTRICO" (el id 13 contiene la palabra "ELÉCTRICO" pero es pila de
-combustible de hidrógeno, no enchufable).
+mapear a `IN [3, 11, 12]`, no a "todo lo que contenga ELÉCTRICO" (el id
+13 contiene la palabra "ELÉCTRICO" pero es pila de combustible de
+hidrógeno, no enchufable).
+
+---
+
+## type
+field: base7Type.id
+data_type: enum
+meaning: Vehicle type/body within its category (turismo, motocicleta,
+camión...) -- more granular than `category`, scoped in practice to
+whichever category the insured vehicle belongs to.
+aliases:
+- turismo
+- derivado de comercial
+- derivado de turismo
+- categoría del vehículo
+- tipo de vehículo
+- motocicleta
+- ciclomotor
+- camión
+values:
+- 1: TURISMO (categoría AUTOS)
+- 2: MONOVOLUMEN (categoría AUTOS)
+- 3: TODO TERRENO (categoría AUTOS)
+- 4: COMERCIAL DERIVADO DE TT (categoría AUTOS)
+- 5: COMERCIAL DERIVADO DE TURISMO (categoría AUTOS)
+- 6: FURGONES Y CAMIONES LIGEROS (categoría AUTOS)
+- 7: FURGONES HABILIT. A PASAJEROS (categoría AUTOS)
+- 8: FURGONES PESADOS (categoría CAMIONES)
+- 9: CAMIONES (categoría CAMIONES)
+- 10: TRACTO-CAMIONES (categoría CAMIONES)
+- 11: AUTOCARES Y AUTOBUSES (categoría CAMIONES)
+- 12: VEHÍCULOS AGRÍCOLAS (categoría CAMIONES)
+- 13: VEHÍCULOS INDUSTRIALES (categoría CAMIONES)
+- 14: MOTOCICLETAS (categoría MOTOS)
+- 15: CICLOMOTORES (categoría MOTOS)
+- 16: BICICLETAS E-BIKES (categoría MOTOS)
+- 17: BICICLETAS S-PEDELEC (SPEED-PEDELEC) (categoría MOTOS)
+- 18: PERSONAL (categoría VMP)
+- 19: SERVICIOS (categoría VMP)
+interpretation:
+**Sustituye al antiguo concepto `vehicleType` de `ontology-auto.md`
+(eliminado 26/08)**, que usaba `type.baseType.name` -- un objeto
+envoltorio (`VehicleType`/`VehicleBaseType`) construido a mano en
+`Base7Version.getType()` que solo expone `code`/`name`, sin `id` ni
+acceso a la categoría. Ruta nueva: `getBase7Version()` → `getBase7Type()`
+(`Base7Version`, **sin ninguna `@JsonView`** -- accesible, clave
+`base7Type`, objeto real con más campos que el wrapper) → `getId()`
+(`Base7Type extends ModelDto`, sin `@JsonView` -- accesible).
+Catálogo completo confirmado con export real de `BASE7_TYPE` (26/08, 19
+filas con `BASE7_CATEGORY_ID`) -- las primeras 7 (categoría AUTOS) son
+las mismas ya validadas contra condicionados reales de Autos en la v1
+de `ontology-auto.md` (Mapfre/Generali/Axa/Divina...); las 12 restantes
+(Camiones/Motos/VMP) se documentan por completitud estructural, sin
+ninguna cita real todavía (mismo criterio que el resto de campos
+`shared/person.md` sin evidencia real -- estructura completa según el
+backend, alias/aplicabilidad real se confirma cuando exista una
+ontología de Motos/Camiones). En `BASE7_TYPE`, `NAME` es el campo de
+texto natural (TURISMO...) y `DESCRIPTION` es un código numérico interno
+("100", "120"...) -- **al revés** que en `category` (ver bloque
+siguiente); no asumir cuál columna es la de texto natural sin comprobar
+cada tabla.
 
 ---
 
 ## category
-field: base7Type.base7Category.description
+field: base7Type.base7Category.id
 data_type: enum
 meaning: High-level vehicle category (car, truck, motorcycle, personal
-mobility vehicle) -- broader and more universal than `vehicleType`
-(which is scoped to category "AUTOS" only).
+mobility vehicle) -- broader and more universal than `type`.
 aliases:
 - categoría del vehículo
 - tipo de vehículo
 values:
-- AUTOS (id 1)
-- CAMIONES (id 2)
-- MOTOS (id 3)
-- "Vehículos de movilidad personal VMP" (id 4)
+- 1: AUTOS
+- 2: CAMIONES
+- 3: MOTOS
+- 4: Vehículos de movilidad personal VMP
 interpretation:
-Ruta completa: `getBase7Version()` → `getBase7Type()` (`Base7Version`,
-**sin ninguna `@JsonView`** -- accesible, clave `base7Type`; **distinto**
-del `type.baseType` ya usado por el concepto `vehicleType` de
-`ontology-auto.md` -- ese es un objeto envoltorio (`VehicleType`/
-`VehicleBaseType`) construido a mano que solo expone `code`/`name` y
-pierde la categoría; `base7Type` es el objeto real, con más campos) →
-`getBase7Category()` (`Base7Type`, **tampoco lleva `@JsonView`** --
-accesible, clave `base7Category`) → `getDescription()`
-(`Base7Category extends CrmEnumMappingDto`, `@JsonView(V1)` heredado --
-accesible). Confirmado con export real de `BASE7_CATEGORY` (26/08, 4
-filas) y `BASE7_TYPE` (26/08, 19 filas con `BASE7_CATEGORY_ID`) --
-`NAME` de `BASE7_CATEGORY` es un código ordinal (PRIMERA/SEGUNDA/
-TERCERA/VMP, no usar), `DESCRIPTION` es el texto real usado arriba
-(nótese que aquí es al revés que en `BASE7_TYPE`/`BASE7_ENGINE`, donde
-`NAME` es el campo con texto natural -- confirmar siempre por tabla, no
-asumir).
-`vehicleType` (`type.baseType.name`, ontology-auto.md) da el subtipo
-concreto (TURISMO, MONOVOLUMEN...) dentro de `AUTOS`; este campo da el
-nivel por encima, útil para condiciones que excluyen/incluyen por
-categoría gruesa de vehículo en vez de por subtipo (p.ej. anexos de un
-condicionado que definen "vehículos de 2ª categoría" == `CAMIONES`,
-ver hallazgo real en Divina Seguros).
+Ruta completa: `getBase7Version()` → `getBase7Type()` (ver bloque
+`type`) → `getBase7Category()` (`Base7Type`, **tampoco lleva
+`@JsonView`** -- accesible, clave `base7Category`) → `getId()`
+(`Base7Category extends CrmEnumMappingDto extends IdDto`, `IdDto.getId()`
+sin `@JsonView` -- accesible). Confirmado con export real de
+`BASE7_CATEGORY` (26/08, 4 filas) + `BASE7_TYPE` (26/08, 19 filas con
+`BASE7_CATEGORY_ID`, ver bloque `type`) -- catálogo genuinamente
+universal (a diferencia de `type`, cuyo subconjunto de valores reales sí
+depende de la categoría). En `BASE7_CATEGORY`, `NAME` es un código
+ordinal (PRIMERA/SEGUNDA/TERCERA/VMP, no usar como vocabulario) y
+`DESCRIPTION` es el texto natural (AUTOS/CAMIONES/MOTOS/VMP, usado arriba
+solo como vocabulario de `values:`) -- **al revés** que en `BASE7_TYPE`.
+`type` da el subtipo concreto (TURISMO, MONOVOLUMEN...) dentro de una
+categoría; este campo da el nivel por encima, útil para condiciones que
+excluyen/incluyen por categoría gruesa de vehículo en vez de por subtipo
+(p.ej. anexos de un condicionado que definen "vehículos de 2ª categoría"
+== `CAMIONES` (id 2), ver hallazgo real en Divina Seguros).
