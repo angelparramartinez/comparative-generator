@@ -536,7 +536,36 @@ function checkHierarchyArticleDetection(workflow) {
   console.log(`${accentRobustOk ? "PASS" : "FAIL"} "Articulo" sin tilde (OCR) sigue reconociendose como nivel 1: article="${casoSinTilde[1].article}"`);
   if (!accentRobustOk) failures++;
 
-  console.log(`Resultado: ${5 - failures}/5 expectativas cumplidas.`);
+  // Caso D (27/08, Divina Seguros real): el indice usa numeros romanos
+  // para los anexos ("ANEXO I"/"ANEXO II") y el cuerpo usa arabigos
+  // ("ANEXO 1"/"ANEXO 2") para el mismo anexo -- sin la tolerancia a
+  // numeros romanos, titlesMatch nunca ancla estos anexos y todo su
+  // contenido cae bajo el ultimo capitulo numerado real (visto en
+  // produccion: "19 QUEJAS Y RECLAMACIONES"). Formato de tabla/pagina
+  // tomado literalmente de la ejecucion real 324.
+  const casoAnexosRomanos = assemble([
+    { type: "table", page: 3, content: "| 07 GARANTÍAS ASEGURABLES | 10 |\n| 19 QUEJAS Y RECLAMACIONES | 34 |\n| ANEXO I: Vehículos segunda categoría | 39 |\n| ANEXO II: Vehículos tercera categoría | 43 |" },
+    { type: "section_header", page: 10, content: "07 GARANTÍAS ASEGURABLES" },
+    { type: "text", page: 10, content: "Texto de cuerpo de garantías." },
+    { type: "section_header", page: 34, content: "19 QUEJAS Y RECLAMACIONES" },
+    { type: "text", page: 34, content: "Texto de cuerpo de quejas y reclamaciones." },
+    { type: "section_header", page: 40, content: "ANEXO 1. VEHÍCULOS DE SEGUNDA CATEGORÍA" },
+    { type: "text", page: 40, content: "Se consideran vehículos de segunda categoría los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg." },
+    { type: "section_header", page: 44, content: "ANEXO 2. VEHÍCULOS TERCERA CATEGORÍA" },
+    { type: "text", page: 44, content: "Se consideran vehículos de tercera categoría los vehículos de dos o tres ruedas." }
+  ]);
+
+  const anexo1Unit = casoAnexosRomanos.find(u => (u.text || "").includes("cuatro o más ruedas"));
+  const anexo1Ok = !!anexo1Unit && anexo1Unit.article === "ANEXO 1. VEHÍCULOS DE SEGUNDA CATEGORÍA";
+  console.log(`${anexo1Ok ? "PASS" : "FAIL"} "ANEXO I" (indice, romano) ancla "ANEXO 1" (cuerpo, arabigo) como nivel 1: article="${anexo1Unit && anexo1Unit.article}"`);
+  if (!anexo1Ok) failures++;
+
+  const anexo2Unit = casoAnexosRomanos.find(u => (u.text || "").includes("dos o tres ruedas"));
+  const anexo2Ok = !!anexo2Unit && anexo2Unit.article === "ANEXO 2. VEHÍCULOS TERCERA CATEGORÍA";
+  console.log(`${anexo2Ok ? "PASS" : "FAIL"} "ANEXO II" (indice, romano) ancla "ANEXO 2" (cuerpo, arabigo) como nivel 1: article="${anexo2Unit && anexo2Unit.article}"`);
+  if (!anexo2Ok) failures++;
+
+  console.log(`Resultado: ${7 - failures}/7 expectativas cumplidas.`);
   return failures;
 }
 
