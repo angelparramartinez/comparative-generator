@@ -29,7 +29,8 @@
       ],
       "expected_coverage_dependencies": "same_as_actual",
       "notes": "El LLM extrajo el risk_field CORRECTO a la primera (owner.identificationType) -- misma cita real que motivó todo el rediseño de holder/owner (ver project_ontology_shared_person_figuras). En la ejecución real (26/08) fue rechazado por el guardrail como risk_field_not_in_ontology_catalog -- no por ser inválido, sino porque el catálogo hardcodeado del guardrail solo tenía 5 de los 88 campos de Person en ese momento (corregido el mismo día, commit b5a7af8). Tras el fix, este caso pasa. Limitaciones conocidas sin resolver: (1) condición compuesta OR real (PROPIETARIO *o* TOMADOR) -- el LLM solo capturó 'owner', no también 'holder.identificationType' -- mismo tipo de limitación ya aceptada para 'continente' en Hogar (v1 no soporta condiciones compuestas); (2) el valor extraído es texto en español ('persona jurídica'), el valor real comparable en SPEL es 'Cif' (ver identificationType en shared/person.md) -- la traducción es tarea de value_matcher.js (flujo 3), que todavía no cubre ningún campo de Autos. ACTUALIZACION (27/08): en la ejecucion real posterior (tras los fixes de figure_aliases + guardrail), esta unidad ya no genera las 4 dependencias rechazadas de GD-AUTO-GAP-002 (vehicle.category/.weight/.mainUse/.authorizedForPassengerTransport) -- coverage_dependencies queda limpio, solo owner.identificationType, rejected_dependencies:[]. No se afirma con certeza que sea causa directa de los fixes (Haiku no es determinista entre ejecuciones) frente a variabilidad de muestreo -- se documenta como observacion, no como confirmacion.",
-      "guardrail_catches": false
+      "guardrail_catches": false,
+      "expected_coverage_scope_flagged": false
     },
     {
       "id": "GD-AUTO-HIER-001",
@@ -311,6 +312,74 @@
       "guardrail_catches": false,
       "notes": "Caso real nuevo de la 2a ejecucion de Divina (27/08, coverage_matcher_contract_2026-08-27T08-12-49-393Z.json), aparecido DESPUES de resolver GD-AUTO-HALLUC-004 (misma unidad su_00101, evidencia distinta -- no es la misma alucinacion recurriendo, el fix de figure_aliases funciono correctamente para el texto de residencia de esa unidad). El texto es una instruccion OPERATIVA de que dato aportar al llamar al telefono de asistencia (numero de poliza O matricula, alternativos), no una condicion de aplicabilidad de la garantia -- mismo tipo de antipatron que GD-AUTO-FP-001 (informacion procedimental confundida con condicion de riesgo), aunque aqui el campo elegido SI tiene relacion tematica real con el vehiculo (a diferencia de GD-AUTO-HALLUC-001/005, que eran contaminacion de alias de figura, ya resuelta). guardrail_catches=false: registrationPlate es un risk_field valido (string), '!=' con null pasa isValueTypeValid -- no hay ninguna validacion hoy que distinga una instruccion procedimental de una condicion real. Pendiente: mismo tipo de correccion sugerida ya en GD-AUTO-FP-001 (contraejemplo en el prompt del extractor), extendido a instrucciones operativas ademas de negaciones de relevancia. ACTUALIZACION (27/08, Guardrail v6): confirmado en produccion que la regla de prompt (REGLA DE INSTRUCCIONES OPERATIVAS/PROCEDIMENTALES) NO bastó -- la ejecucion real posterior (coverage_matcher_contract_2026-08-27T08-38-15-059Z.json) reproduce exactamente esta misma alucinacion (registrationPlate != null, misma evidencia literal). Se anade una señal de visibilidad determinista (Guardrail v6, mismo mecanismo que transversal_chapter/v5) sobre PROCEDURAL_INSTRUCTION_CUE_PATTERNS aplicados a 'evidence' -- no sustituye el fix de prompt, es una segunda red de seguridad para que flujo 3 (Coverage Match Decision Agent) tenga una pista adicional. Este caso sirve de test de regresion para v6.",
       "expected_procedural_instruction_flagged": true
+    },
+    {
+      "id": "GD-AUTO-HALLUC-007",
+      "category": "hallucination_regression",
+      "subtype": "coverage_scope_confused_with_condition",
+      "company": "Axa",
+      "semantic_unit_ref": "su_00056",
+      "article": "9. ACCIDENTES DEL CONDUCTOR",
+      "coverage_path": [
+        "9. ACCIDENTES DEL CONDUCTOR",
+        "¿Quién está asegurado?"
+      ],
+      "source_text": "El conductor, ya sea titular o autorizado, del vehículo asegurado en esta póliza, así como cualquier persona que conduzca el vehículo siempre que su edad y antigüedad del carné, siendo éste de igual categoría que la necesaria para la conducción del vehículo asegurado, estén expresamente definidas en este contrato.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.drivingLicenses",
+          "operator": "IN",
+          "value": [
+            "igual categoría que la necesaria para la conducción del vehículo asegurado"
+          ],
+          "evidence": "cualquier persona que conduzca el vehículo siempre que su edad y antigüedad del carné, siendo éste de igual categoría que la necesaria para la conducción del vehículo asegurado, estén expresamente definidas en este contrato"
+        },
+        {
+          "risk_field": "secondaryDriver.drivingLicenses",
+          "operator": "IN",
+          "value": [
+            "igual categoría que la necesaria para la conducción del vehículo asegurado"
+          ],
+          "evidence": "cualquier persona que conduzca el vehículo siempre que su edad y antigüedad del carné, siendo éste de igual categoría que la necesaria para la conducción del vehículo asegurado, estén expresamente definidas en este contrato"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_coverage_scope_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real de Axa (27/08, primera ejecucion cross-company real, coverage_matcher_contract_2026-08-27T10-26-22-639Z.json). El texto define QUIEN cuenta como asegurado/conductor cubierto para esta garantia concreta, bajo un epigrafe propio literal '¿Quien esta asegurado?' -- no es una condicion de riesgo, es la definicion de alcance de la garantia. Ademas duplicado sobre primaryDriver y secondaryDriver a la vez (mismo antipatron ya visto en GD-AUTO-HALLUC-001 de Divina). Patron 'objeto/alcance de la cobertura confundido con condicion' (patron 7 del cross-company testing, el mas repetido: aparecio en las 7 ejecuciones reales de la sesion). Este es uno de los DOS unicos casos (junto con GD-AUTO-HALLUC-008, Pelayo) con señal estructural aprovechable (coverage_path con epigrafe propio) -- el resto de instancias del mismo patron (Reale/Qualitas/Generali) no tienen ninguna señal asi, dependen enteramente de la REGLA DE ALCANCE DE LA GARANTIA en el prompt."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-008",
+      "category": "hallucination_regression",
+      "subtype": "coverage_scope_confused_with_condition",
+      "company": "Pelayo",
+      "semantic_unit_ref": "su_00114",
+      "article": null,
+      "coverage_path": [
+        "Vehículo de sustitución por avería en la asistencia en viaje azul plus+."
+      ],
+      "source_text": "Ponemos a tu disposición un turismo de alquiler con kilometraje ilimitado y seguro obligatorio para sustituir tu vehículo asegurado mientras es reparado en caso de avería. Si el vehículo asegurado es un monovolumen, pondremos un vehículo de similares características y con dispositivo de silla infantil si fuera necesario. Adicionalmente, un vehículo catalogado como \"Eco\" o \"Cero\" exclusivamente cuando el vehículo asegurado sea de las mismas características.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "=",
+          "value": "turismo",
+          "evidence": "Ponemos a tu disposición un turismo de alquiler con kilometraje ilimitado y seguro obligatorio para sustituir tu vehículo asegurado mientras es reparado en caso de avería"
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "IN",
+          "value": [
+            "Eco",
+            "Cero"
+          ],
+          "evidence": "adicionalmente, un vehículo catalogado como \"Eco\" o \"Cero\" exclusivamente cuando el vehículo asegurado sea de las mismas características"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_coverage_scope_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real de Pelayo (27/08, coverage_matcher_contract_2026-08-27T10-48-18-463Z.json). El propio coverage_path ('Vehiculo de sustitucion por averia...') delata que el texto describe el VEHICULO DE SUSTITUCION que proporciona la compañia -- distinto del vehiculo asegurado -- no una condicion sobre este ultimo. Nota: la misma unidad SI tiene una dependencia correcta no incluida aqui ('Si el vehiculo asegurado es un monovolumen, pondremos un vehiculo de similares caracteristicas' -> base7Type.id = monovolumen, esa condiciona genuinamente sobre el vehiculo ASEGURADO) -- el guardrail v8 marca TODA la unidad por ser estructural (igual que v5), asi que tambien marcaria esa dependencia correcta como 'coverage_scope_definition' -- es visibilidad, no bloqueo, flujo 3 sigue verificando el contenido real antes de decidir, tal como para v5/v6/v7."
     }
   ]
 }
