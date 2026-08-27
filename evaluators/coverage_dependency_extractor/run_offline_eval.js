@@ -17,6 +17,7 @@
 //   node run_offline_eval.js --hierarchy -> solo el check de deteccion de "article" (nivel 1)
 //   node run_offline_eval.js --watermark -> solo el check de eliminacion de marca de agua fusionada (ast walker)
 //   node run_offline_eval.js --transversal-chapter -> solo el check de visibilidad de capitulos transversales (Guardrail v5)
+//   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //
 // Checks disponibles hoy (antes de aplicar ninguna fase del plan):
 //   - chunking: valida Rule Chunker contra los casos chunking_boundary (documenta el bug conocido de la Fase 3)
@@ -99,7 +100,12 @@ const REAL_RUN_FILES = [
   // Autos / Divina Seguros (26/08) -- la garantia del pre-filtro de coste es
   // generica entre ramos, se valida contra todas las ejecuciones reales
   // conocidas, no solo las de Hogar.
-  "coverage_matcher_contract_2026-08-26T12-16-28-186Z.json"
+  "coverage_matcher_contract_2026-08-26T12-16-28-186Z.json",
+  // Autos / Divina Seguros (27/08) -- dos ejecuciones reales mas, antes y
+  // despues del fix de contaminacion de alias de figura + guardrail
+  // transversal-chapter (ver golden_dataset_auto.json).
+  "coverage_matcher_contract_2026-08-27T06-58-13-642Z.json",
+  "coverage_matcher_contract_2026-08-27T08-12-49-393Z.json"
 ];
 
 function loadJson(p) {
@@ -332,10 +338,11 @@ function checkEvidenceGrounding(workflow, golden) {
   return failures;
 }
 
-function checkTransversalChapterVisibility(workflow, golden) {
+function checkTransversalChapterVisibility(workflow, golden, validRiskFields) {
   console.log("\n=== Check: transversal_chapter_dependencies (nodo Coverage Dependency Risk Field Guardrail v5) ===");
 
   const cases = golden.cases.filter(c => c.expected_transversal_chapter_flagged !== undefined);
+  const validRiskFieldSet = new Set(validRiskFields.valid_risk_fields || []);
 
   if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
     console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
@@ -348,7 +355,11 @@ function checkTransversalChapterVisibility(workflow, golden) {
     const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
       {
         semantic_unit_id: c.semantic_unit_ref,
-        coverage_context: { article: c.article },
+        // coverage_path tambien se pasa (no solo article): el titulo real
+        // de un capitulo transversal puede vivir en un epigrafe mas
+        // profundo (caso real: "04 PROLOGO" > "4.3. Definiciones
+        // especificas...", Divina Seguros 27/08, ver GD-AUTO-GAP-001).
+        coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
         chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
         output: { coverage_dependencies: c.actual_coverage_dependencies },
         unit_ontology_matches: (c.actual_coverage_dependencies || []).map(d => ({ risk_field: d.risk_field }))
@@ -363,9 +374,16 @@ function checkTransversalChapterVisibility(workflow, golden) {
     // Anti-regresion critica: sea cual sea el resultado del chequeo de
     // visibilidad, NINGUNA dependencia debe desaparecer de
     // coverage_dependencies por culpa de este chequeo -- es un chequeo de
-    // visibilidad, no de bloqueo (ver notas del Guardrail v5).
+    // visibilidad, no de bloqueo (ver notas del Guardrail v5). Se compara
+    // solo contra los risk_field que YA eran validos en el catalogo real
+    // (los invalidos de "actual_coverage_dependencies" -- p.ej. el
+    // "vehicle.weight" alucinado de GD-AUTO-GAP-001 -- nunca iban a quedar
+    // aceptados por ningun otro chequeo del guardrail, y no es lo que este
+    // chequeo de visibilidad debe validar).
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
-    const expectedAcceptedFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const expectedAcceptedFields = (c.actual_coverage_dependencies || [])
+      .map(d => d.risk_field)
+      .filter(f => validRiskFieldSet.has(f));
     const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
 
     const ok = flagOk && nothingLost;
@@ -577,6 +595,160 @@ function checkOntology(workflow, golden) {
   return failures;
 }
 
+// Ejecuta "Merge Shared Texts Into Ramo" (workflow "ontology indexing")
+// fuera de n8n -- replica $input.all() y $('Prepare Import File Paths').all(),
+// las dos unicas dependencias externas del nodo real, sin mockear nada de
+// su logica. Resuelve el hueco documentado en GD-AUTO-FP-001 (26/08):
+// checkOntology() solo corre "Ontology Splitter" sobre el .md del ramo tal
+// cual, sin expandir los bloques de figura ("## owner\nimports: person"),
+// asi que nunca podia validar alias_match sobre conceptos generados por
+// figura (owner.*, primaryDriver.*, crmEmploymentStatus bare/holder...).
+function runMergeSharedTextsIntoRamo(ontologyWorkflow, ramoOntologyText, ramoOntologyType, sharedTextsByImportName) {
+  const node = findNode(ontologyWorkflow, "Merge Shared Texts Into Ramo");
+  if (!node) return null;
+
+  const importMatch = ramoOntologyText.match(/^Imports:\s*(.*)$/mi);
+  const importNames = importMatch
+    ? importMatch[1].split(",").map(s => s.trim()).filter(Boolean)
+    : [];
+
+  const originalItems = importNames.map(name => ({
+    json: {
+      import_name: name,
+      file_path: `/home/node/ontologies/shared/${name}.md`,
+      ramo_ontology_text: ramoOntologyText,
+      ramo_ontology_type: ramoOntologyType
+    }
+  }));
+
+  const sharedItems = importNames.map(name => ({
+    json: { shared_text: sharedTextsByImportName[name] || "" }
+  }));
+
+  const nodeRegistry = {
+    "Prepare Import File Paths": { all: () => originalItems }
+  };
+  const $ = name => {
+    if (!nodeRegistry[name]) {
+      throw new Error(`Mock $(): nodo '${name}' no registrado en el arnes.`);
+    }
+    return nodeRegistry[name];
+  };
+  const $input = { all: () => sharedItems, first: () => sharedItems[0] };
+
+  const fn = new Function("$input", "$", node.parameters.jsCode);
+  return fn($input, $).map(r => r.json);
+}
+
+// Bug real (Divina Seguros, 27/08): "Merge Shared Texts Into Ramo" mezclaba
+// los alias de la FIGURA ("propietario", "tomador", "conductor habitual" --
+// quien protagoniza el texto) dentro de "aliases" de CADA campo importado de
+// person.md, sin relacion con el significado real de ese campo -- la sola
+// mencion de "el tomador" activaba como candidato, p.ej., crmEmploymentStatus
+// (situacion laboral) para un texto que no hablaba de empleo en absoluto.
+// Confirmado con la ejecucion real 318 (Prepare Dependency Extractor Input):
+// matched_aliases=['tomador'] sobre crmEmploymentStatus/economicInactivityStatus,
+// matched_aliases=['conductor habitual'] sobre primaryDriver.crmEmploymentStatus/
+// .drivingLicenses/.economicOccupation. Ver GD-AUTO-HALLUC-001/004/005.
+function checkFigureAliasContamination(workflow, golden, ramo) {
+  console.log("\n=== Check: contaminacion de alias de figura (nodo Merge Shared Texts Into Ramo) ===");
+
+  if (ramo !== "auto") {
+    console.log("Check especifico de Autos (unico ramo con figuras Person distintas de 'holder' hoy) -- omitido para Hogar.");
+    return 0;
+  }
+
+  const ontologyWorkflow = loadJson(ONTOLOGY_WORKFLOW_PATH);
+  if (!findNode(ontologyWorkflow, "Merge Shared Texts Into Ramo")) {
+    console.log("Nodo 'Merge Shared Texts Into Ramo' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const ramoOntologyText = fs.readFileSync(ONTOLOGY_MD_PATH, "utf8");
+  const personText = fs.readFileSync(
+    path.join(REPO_ROOT, "knowledge", "ontologies", "shared", "person.md"),
+    "utf8"
+  );
+  const base7Text = fs.readFileSync(
+    path.join(REPO_ROOT, "knowledge", "ontologies", "shared", "base7version.md"),
+    "utf8"
+  );
+
+  const points = runMergeSharedTextsIntoRamo(ontologyWorkflow, ramoOntologyText, "auto", {
+    person: personText,
+    base7version: base7Text
+  });
+  const qdrantResult = points.map(p => ({ score: 0, payload: p }));
+
+  // Texto real de la ejecucion 318 (Divina Seguros, 27/08), sin editar --
+  // ver evaluators/coverage_dependency_extractor/golden_dataset_auto.json
+  // (GD-AUTO-HALLUC-001/004/005, GD-AUTO-FP-001, GD-AUTO-REF-001) para el
+  // caso de dependencia completo de cada uno.
+  const cases = [
+    {
+      id: "su_00080_c2",
+      text: "Se entiende por asegurado al conductor del vehículo asegurado en el momento del accidente siempre y cuando éste sea uno de los siguientes: el conductor titular declarado, las personas nominadas como conductores autorizados o cualquier persona autorizada por el tomador que conduzca el vehículo siempre que sus características de edad y antigüedad de carné sean similares a las del conductor declarado.",
+      must_not_match: ["crmEmploymentStatus"]
+    },
+    {
+      id: "su_00101_c9",
+      text: "En los supuestos en que no fuera posible una intervención directa del asegurador, por causa de fuerza mayor, y los gastos en que hubiera incurrido el ASEGURADO se hallen garantizados por las coberturas de esta garantía, el asegurador abonará, contra la presentación de la documentación acreditativa de los mismos, y en el plazo máximo de TREINTA DIAS desde la recepción de dicha información, la asistencia al asegurado en base a las tarifas medias de la zona donde se produzca el percance, una vez que las causas hayan sido definidas. No se atenderán los reembolsos de las prestaciones que no sean proporcionadas por Divina Seguros Asistencia ni aquellas a las que no haya dado su previo consentimiento. Se considera ASEGURADO aquella persona física, residente en España, TOMADOR de la póliza, así como su cónyuge, ascendientes y descendientes de primer grado que con él convivan integrados en la unidad económica familiar. También tienen la condición de asegurados los ocupantes a título gratuito del vehículo asegurado en caso de avería o siniestro sobrevenido al mismo. El ASEGURADO para tener derecho a percibir las prestaciones deberá tener su domicilio en España, residir habitualmente en él y el tiempo máximo de permanencia fuera de dicha residencia habitual no exceder de 90 días por desplazamiento o viaje.",
+      must_not_match: ["economicInactivityStatus", "crmEmploymentStatus"]
+    },
+    {
+      id: "su_00207_c2",
+      text: "Reclamación de los daños derivados de un ACCIDENTE DE CIRCULACIÓN sufridos por el CONDUCTOR HABITUAL DECLARADO como peatón o ciclista.",
+      must_not_match: ["primaryDriver.crmEmploymentStatus", "primaryDriver.drivingLicenses", "primaryDriver.economicOccupation"]
+    },
+    {
+      id: "su_00207_c3",
+      text: "Reclamación de daños personales que pueda sufrir el TOMADOR como pasajero de cualquier vehículo privado.",
+      must_not_match: ["crmEmploymentStatus", "drivingLicenses"]
+    },
+    // No-regresion: los alias PROPIOS del campo (no los de figura) deben
+    // seguir generando el match -- este fix no debe volverse una purga
+    // general de alias_match.
+    {
+      id: "su_00146_c13_noreg",
+      text: "Cuando el PROPIETARIO del vehículo o TOMADOR del seguro sea una persona jurídica, el asegurador NO cubre los desembolsos debidos a obligaciones frente a socios y representantes legítimos de la misma, y frente a los familiares de estos hasta el tercer grado de consanguinidad o afinidad.",
+      must_match: ["owner.identificationType"]
+    },
+    {
+      id: "su_00083_c2_noreg",
+      text: "En ningún caso se tomará en cuenta la profesión del ASEGURADO, por lo que no podrá alegarse una agravación en la invalidez en base a la actividad profesional.",
+      must_match: ["economicOccupation", "owner.economicOccupation", "secondaryDriver.economicOccupation"]
+    }
+  ];
+
+  let failures = 0;
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Ontology Relevance Filter", [
+      { chunk: { chunk_id: `${c.id}`, text: c.text }, result: qdrantResult }
+    ]);
+    const aliasMatchedFields = (result.ontology_matches || [])
+      .filter(m => m.alias_match)
+      .map(m => m.risk_field);
+
+    for (const forbidden of c.must_not_match || []) {
+      const ok = !aliasMatchedFields.includes(forbidden);
+      if (!ok) failures++;
+      console.log(
+        `${ok ? "PASS" : "FAIL"} ${c.id}: "${forbidden}" NO debe alias-matchear -- alias_matched=${JSON.stringify(aliasMatchedFields)}`
+      );
+    }
+    for (const required of c.must_match || []) {
+      const ok = aliasMatchedFields.includes(required);
+      if (!ok) failures++;
+      console.log(
+        `${ok ? "PASS" : "FAIL"} ${c.id}: "${required}" SI debe seguir alias-matcheando -- alias_matched=${JSON.stringify(aliasMatchedFields)}`
+      );
+    }
+  }
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
+  return failures;
+}
+
 function checkChunkLevelMatching(workflow, golden) {
   console.log("\n=== Check: matching a nivel de chunk (Fase 4 / Punto 1) ===");
 
@@ -703,6 +875,10 @@ function main() {
     exitCode += checkOntology(workflow, golden) > 0 ? 1 : 0;
   }
 
+  if (runAll || args.includes("--figure-aliases")) {
+    exitCode += checkFigureAliasContamination(workflow, golden, ramo) > 0 ? 1 : 0;
+  }
+
   if (runAll || args.includes("--chunk-matching")) {
     exitCode += checkChunkLevelMatching(workflow, golden) > 0 ? 1 : 0;
   }
@@ -716,7 +892,7 @@ function main() {
   }
 
   if (runAll || args.includes("--transversal-chapter")) {
-    exitCode += checkTransversalChapterVisibility(workflow, golden) > 0 ? 1 : 0;
+    exitCode += checkTransversalChapterVisibility(workflow, golden, validRiskFields) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
