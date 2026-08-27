@@ -18,6 +18,7 @@
 //   node run_offline_eval.js --watermark -> solo el check de eliminacion de marca de agua fusionada (ast walker)
 //   node run_offline_eval.js --transversal-chapter -> solo el check de visibilidad de capitulos transversales (Guardrail v5)
 //   node run_offline_eval.js --procedural-instruction -> solo el check de visibilidad de instrucciones operativas/procedimentales (Guardrail v6)
+//   node run_offline_eval.js --person-field-mismatch -> solo el check de visibilidad de campos de peso de persona en evidencia de vehiculo/animal (Guardrail v7)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -453,6 +454,62 @@ function checkProceduralInstructionVisibility(workflow, golden, validRiskFields)
 
     console.log(
       `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_procedural_instruction_flagged}) | sigue_aceptada=${nothingLost}`
+    );
+    if (!ok) {
+      console.log("  evidence:", JSON.stringify((c.actual_coverage_dependencies || []).map(d => d.evidence)));
+      console.log("  flagged_fields:", JSON.stringify(flaggedFields));
+      console.log("  accepted_fields:", JSON.stringify(acceptedFields));
+    }
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// Mismo patron que checkProceduralInstructionVisibility, para el Guardrail
+// v7 (27/08): marca dependencias cuyo risk_field es un campo de peso de
+// PERSONA (weight/owner.weight/primaryDriver.weight/secondaryDriver.weight)
+// pero cuyo "evidence" menciona vehiculo/animal/objeto -- visibilidad, no
+// bloqueo.
+function checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) {
+  console.log("\n=== Check: person_field_mismatch_dependencies (nodo Coverage Dependency Risk Field Guardrail v7) ===");
+
+  const cases = golden.cases.filter(c => c.expected_person_field_mismatch_flagged !== undefined);
+  const validRiskFieldSet = new Set(validRiskFields.valid_risk_fields || []);
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      {
+        semantic_unit_id: c.semantic_unit_ref,
+        coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
+        chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
+        output: { coverage_dependencies: c.actual_coverage_dependencies },
+        unit_ontology_matches: (c.actual_coverage_dependencies || []).map(d => ({ risk_field: d.risk_field }))
+      }
+    ]);
+
+    const flaggedFields = (result.person_field_mismatch_dependencies || []).map(d => d.risk_field);
+    const isFlagged = flaggedFields.length > 0;
+    const flagOk = isFlagged === c.expected_person_field_mismatch_flagged;
+
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const expectedAcceptedFields = (c.actual_coverage_dependencies || [])
+      .map(d => d.risk_field)
+      .filter(f => validRiskFieldSet.has(f));
+    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+
+    const ok = flagOk && nothingLost;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_person_field_mismatch_flagged}) | sigue_aceptada=${nothingLost}`
     );
     if (!ok) {
       console.log("  evidence:", JSON.stringify((c.actual_coverage_dependencies || []).map(d => d.evidence)));
@@ -1112,6 +1169,10 @@ function main() {
 
   if (runAll || args.includes("--procedural-instruction")) {
     exitCode += checkProceduralInstructionVisibility(workflow, golden, validRiskFields) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--person-field-mismatch")) {
+    exitCode += checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
