@@ -104,11 +104,15 @@ const REAL_RUN_FILES = [
   // generica entre ramos, se valida contra todas las ejecuciones reales
   // conocidas, no solo las de Hogar.
   "coverage_matcher_contract_2026-08-26T12-16-28-186Z.json",
-  // Autos / Divina Seguros (27/08) -- dos ejecuciones reales mas, antes y
-  // despues del fix de contaminacion de alias de figura + guardrail
-  // transversal-chapter (ver golden_dataset_auto.json).
+  // Autos / Divina Seguros (27/08) -- cinco ejecuciones reales mas a lo
+  // largo de la sesion, una por cada tanda de fixes desplegados (ver
+  // golden_dataset_auto.json, schema_notes.session_27_08_closure para el
+  // resumen completo de la cadena de hallazgos).
   "coverage_matcher_contract_2026-08-27T06-58-13-642Z.json",
-  "coverage_matcher_contract_2026-08-27T08-12-49-393Z.json"
+  "coverage_matcher_contract_2026-08-27T08-12-49-393Z.json",
+  "coverage_matcher_contract_2026-08-27T08-38-15-059Z.json",
+  "coverage_matcher_contract_2026-08-27T09-58-30-291Z.json",
+  "coverage_matcher_contract_2026-08-27T10-18-50-347Z.json"
 ];
 
 function loadJson(p) {
