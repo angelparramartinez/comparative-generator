@@ -188,6 +188,15 @@ mobility vehicle) -- broader and more universal than `type`.
 aliases:
 - categoría del vehículo
 - tipo de vehículo
+- primera categoría
+- segunda categoría
+- tercera categoría
+- vehículos de primera categoría
+- vehículos de segunda categoría
+- vehículos de tercera categoría
+- vehículo de primera categoría
+- vehículo de segunda categoría
+- vehículo de tercera categoría
 values:
 - 1: AUTOS
 - 2: CAMIONES
@@ -203,11 +212,29 @@ sin `@JsonView` -- accesible). Confirmado con export real de
 `BASE7_CATEGORY_ID`, ver bloque `type`) -- catálogo genuinamente
 universal (a diferencia de `type`, cuyo subconjunto de valores reales sí
 depende de la categoría). En `BASE7_CATEGORY`, `NAME` es un código
-ordinal (PRIMERA/SEGUNDA/TERCERA/VMP, no usar como vocabulario) y
-`DESCRIPTION` es el texto natural (AUTOS/CAMIONES/MOTOS/VMP, usado arriba
-solo como vocabulario de `values:`) -- **al revés** que en `BASE7_TYPE`.
-`type` da el subtipo concreto (TURISMO, MONOVOLUMEN...) dentro de una
-categoría; este campo da el nivel por encima, útil para condiciones que
-excluyen/incluyen por categoría gruesa de vehículo en vez de por subtipo
-(p.ej. anexos de un condicionado que definen "vehículos de 2ª categoría"
-== `CAMIONES` (id 2), ver hallazgo real en Divina Seguros).
+ordinal (PRIMERA/SEGUNDA/TERCERA/VMP) y `DESCRIPTION` es el texto natural
+(AUTOS/CAMIONES/MOTOS/VMP, usado arriba solo como vocabulario de
+`values:`) -- **al revés** que en `BASE7_TYPE`. `type` da el subtipo
+concreto (TURISMO, MONOVOLUMEN...) dentro de una categoría; este campo da
+el nivel por encima, útil para condiciones que excluyen/incluyen por
+categoría gruesa de vehículo en vez de por subtipo.
+
+**Correspondencia con la clasificación legal "primera/segunda/tercera
+categoría" (27/08, confirmado por el usuario, no asumido)**: pese a la
+advertencia previa de `GD-AUTO-GAP-001` (`evaluators/coverage_dependency_
+extractor/golden_dataset_auto.json`) de no confundir esta clasificación
+con `category` sin confirmar la correspondencia -- el usuario confirmó
+explícitamente la equivalencia real: **primera categoría → AUTOS (id 1)**,
+**segunda categoría → CAMIONES (id 2)** (incluye maquinaria agrícola y
+remolques, coincide con el propio catálogo `BASE7_TYPE` bajo CAMIONES:
+`VEHÍCULOS AGRÍCOLAS`), **tercera categoría → MOTOS (id 3)**, **incluye
+los quads** (confirmado explícitamente, pese a que un quad tiene 4 ruedas
+-- no se clasifica por nº de ruedas sino por esta equivalencia). Coincide
+además con el propio `NAME` ordinal de `BASE7_CATEGORY`
+(PRIMERA/SEGUNDA/TERCERA/VMP) -- evidencia adicional independiente de que
+la correspondencia es real, no una coincidencia de nombre. Caso real que
+motivó esto: anexos de un condicionado que definen "vehículos de 2ª
+categoría" (Divina Seguros, `su_00185`/`su_00008`) -- antes sin alias
+literal (el condicionado dice "segunda categoría", no "categoría del
+vehículo"), así que el concepto ni siquiera entraba como candidato en
+`Ontology Relevance Filter`.

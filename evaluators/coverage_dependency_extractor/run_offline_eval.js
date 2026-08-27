@@ -18,6 +18,7 @@
 //   node run_offline_eval.js --watermark -> solo el check de eliminacion de marca de agua fusionada (ast walker)
 //   node run_offline_eval.js --transversal-chapter -> solo el check de visibilidad de capitulos transversales (Guardrail v5)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
+//   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
 // Checks disponibles hoy (antes de aplicar ninguna fase del plan):
 //   - chunking: valida Rule Chunker contra los casos chunking_boundary (documenta el bug conocido de la Fase 3)
@@ -749,6 +750,89 @@ function checkFigureAliasContamination(workflow, golden, ramo) {
   return failures;
 }
 
+// Cubre gaps de vocabulario ya corregidos en las ontologias (alias que
+// faltaban para una frase real de un condicionado, sin ningun cambio de
+// codigo de por medio) -- distinto de checkFigureAliasContamination (esa
+// es sobre un BUG de codigo). Reutiliza el mismo runMergeSharedTextsIntoRamo
+// para las ontologias con figuras (auto); para Hogar (sin figuras propias
+// hoy) corre "Ontology Splitter" directo, igual que checkOntology.
+function checkVocabularyGapFixes(workflow, golden, ramo) {
+  console.log("\n=== Check: gaps de vocabulario ya corregidos en la ontologia ===");
+
+  const ontologyWorkflow = loadJson(ONTOLOGY_WORKFLOW_PATH);
+  let qdrantResult;
+
+  if (ramo === "auto") {
+    const ramoOntologyText = fs.readFileSync(ONTOLOGY_MD_PATH, "utf8");
+    const personText = fs.readFileSync(
+      path.join(REPO_ROOT, "knowledge", "ontologies", "shared", "person.md"),
+      "utf8"
+    );
+    const base7Text = fs.readFileSync(
+      path.join(REPO_ROOT, "knowledge", "ontologies", "shared", "base7version.md"),
+      "utf8"
+    );
+    const points = runMergeSharedTextsIntoRamo(ontologyWorkflow, ramoOntologyText, "auto", {
+      person: personText,
+      base7version: base7Text
+    });
+    qdrantResult = points.map(p => ({ score: 0, payload: p }));
+  } else {
+    const ontologyText = fs.readFileSync(ONTOLOGY_MD_PATH, "utf8");
+    const concepts = runNode(ontologyWorkflow, "Ontology Splitter", [{ ontology_text: ontologyText }]);
+    if (!concepts) {
+      console.log("Nodo 'Ontology Splitter' no encontrado -- check omitido.");
+      return 0;
+    }
+    qdrantResult = concepts.map(c => ({ score: 0, payload: c }));
+  }
+
+  // Caso real (27/08, Divina Seguros): "category" (shared/base7version.md)
+  // no tenia "primera/segunda/tercera categoria" como alias literal, pese
+  // a ser la frase exacta que usa el condicionado (su_00008/su_00185) --
+  // el concepto ni siquiera entraba como candidato en Ontology Relevance
+  // Filter. Correspondencia confirmada por el usuario (no asumida): 1a=
+  // AUTOS, 2a=CAMIONES, 3a=MOTOS (incluye quads).
+  const cases = ramo === "auto" ? [
+    {
+      id: "su_00185_c1",
+      text: "Se consideran vehículos de segunda categoría los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg:",
+      must_match: ["base7Version.base7Type.base7Category.id"]
+    },
+    {
+      id: "vocab-primera-categoria",
+      text: "Cuando el vehículo asegurado sea de primera categoría, los daños causados por remolcaje...",
+      must_match: ["base7Version.base7Type.base7Category.id"]
+    }
+  ] : [];
+
+  if (cases.length === 0) {
+    console.log(`Sin casos de vocabulario documentados para ramo '${ramo}' todavia -- check omitido.`);
+    return 0;
+  }
+
+  let failures = 0;
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Ontology Relevance Filter", [
+      { chunk: { chunk_id: c.id, text: c.text }, result: qdrantResult }
+    ]);
+    const aliasMatchedFields = (result.ontology_matches || [])
+      .filter(m => m.alias_match)
+      .map(m => m.risk_field);
+
+    for (const required of c.must_match || []) {
+      const ok = aliasMatchedFields.includes(required);
+      if (!ok) failures++;
+      console.log(
+        `${ok ? "PASS" : "FAIL"} ${c.id}: "${required}" debe alias-matchear -- alias_matched=${JSON.stringify(aliasMatchedFields)}`
+      );
+    }
+  }
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
+  return failures;
+}
+
 function checkChunkLevelMatching(workflow, golden) {
   console.log("\n=== Check: matching a nivel de chunk (Fase 4 / Punto 1) ===");
 
@@ -877,6 +961,10 @@ function main() {
 
   if (runAll || args.includes("--figure-aliases")) {
     exitCode += checkFigureAliasContamination(workflow, golden, ramo) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--vocab-gaps")) {
+    exitCode += checkVocabularyGapFixes(workflow, golden, ramo) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--chunk-matching")) {
