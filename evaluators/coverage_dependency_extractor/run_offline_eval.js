@@ -565,7 +565,44 @@ function checkHierarchyArticleDetection(workflow) {
   console.log(`${anexo2Ok ? "PASS" : "FAIL"} "ANEXO II" (indice, romano) ancla "ANEXO 2" (cuerpo, arabigo) como nivel 1: article="${anexo2Unit && anexo2Unit.article}"`);
   if (!anexo2Ok) failures++;
 
-  console.log(`Resultado: ${7 - failures}/7 expectativas cumplidas.`);
+  // Caso E: contenido justo despues del ultimo capitulo anclado (indice
+  // agotado) sigue anidando bajo el, ventana acotada -- caso real Divina
+  // (ANEXO II es la ultima entrada, el documento termina 2 paginas
+  // despues, ver caso D arriba).
+  const casoColaCorta = assemble([
+    // HAS_INDICE exige >=3 entradas parseadas -- las dos primeras no
+    // necesitan aparecer como section_header real en el cuerpo, solo
+    // estar en la tabla para que el indice cuente como "real".
+    { type: "table", page: 3, content: "| CAPITULO A | 10 |\n| CAPITULO B | 25 |\n| ULTIMO CAPITULO DEL INDICE | 40 |" },
+    { type: "section_header", page: 40, content: "ULTIMO CAPITULO DEL INDICE" },
+    { type: "text", page: 40, content: "Texto de cabecera del ultimo capitulo real." },
+    { type: "section_header", page: 41, content: "1. Subgarantia A" },
+    { type: "text", page: 41, content: "Texto de la subgarantia A, dos paginas despues del ultimo anclaje." }
+  ]);
+  const colaCortaUnit = casoColaCorta.find(u => (u.text || "").includes("subgarantia A"));
+  const colaCortaOk = !!colaCortaUnit && colaCortaUnit.article === "ULTIMO CAPITULO DEL INDICE";
+  console.log(`${colaCortaOk ? "PASS" : "FAIL"} Cola corta (1 pagina) tras agotar el indice sigue anidada bajo el ultimo capitulo: article="${colaCortaUnit && colaCortaUnit.article}"`);
+  if (!colaCortaOk) failures++;
+
+  // Caso F (anti-regresion Axa real, CLAUDE.md SS5.10): un capitulo entero
+  // SIN LISTAR en el indice, muchas paginas mas alla del ultimo anclaje --
+  // NO debe anidarse bajo el ultimo capitulo confirmado, debe seguir
+  // cayendo en el fallback heuristico original (capitulo nuevo de nivel 1).
+  const casoColaLarga = assemble([
+    { type: "table", page: 3, content: "| CAPITULO A | 10 |\n| CAPITULO B | 25 |\n| SOLUCION DE CONFLICTOS | 58 |" },
+    { type: "section_header", page: 58, content: "SOLUCION DE CONFLICTOS" },
+    { type: "text", page: 58, content: "Texto de cabecera de solucion de conflictos." },
+    { type: "section_header", page: 90, content: "CONSORCIO DE COMPENSACIÓN DE SEGUROS" },
+    { type: "text", page: 90, content: "Texto de cabecera del Consorcio, capitulo entero sin listar en el indice." },
+    { type: "section_header", page: 90, content: "1. Ámbito de aplicación" },
+    { type: "text", page: 90, content: "Texto de la subgarantia del Consorcio, 32 paginas despues del ultimo anclaje." }
+  ]);
+  const colaLargaUnit = casoColaLarga.find(u => (u.text || "").includes("subgarantia del Consorcio"));
+  const colaLargaOk = !!colaLargaUnit && colaLargaUnit.article === "1. Ámbito de aplicación";
+  console.log(`${colaLargaOk ? "PASS" : "FAIL"} Cola larga (32 paginas) tras agotar el indice vuelve al fallback (capitulo nuevo, no anidado): article="${colaLargaUnit && colaLargaUnit.article}"`);
+  if (!colaLargaOk) failures++;
+
+  console.log(`Resultado: ${9 - failures}/9 expectativas cumplidas.`);
   return failures;
 }
 
