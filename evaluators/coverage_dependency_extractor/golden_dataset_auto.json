@@ -7,7 +7,8 @@
     "ontology_gap (categoría nueva, 26/08)": "Caso donde el condicionado real tiene una condición de riesgo genuina, pero NO existe ningún risk_field en la ontología real (confirmado leyendo el backend, no solo 'no se nos ha ocurrido') que la represente -- distinto de 'hallucination_regression' (que asume que SÍ existe un campo correcto al que redirigir). No tiene 'must_not_contain_risk_fields' con una alternativa válida porque no la hay todavía; documenta el hueco para que quien amplíe la ontología de Autos no tenga que releer el condicionado desde cero.",
     "regression_from_guardrail_sync_fix (26/08, IMPORTANTE)": "Varios casos de este dataset (GD-AUTO-HALLUC-002/003/004/005) fueron rechazados en la ejecución real como 'risk_field_not_in_ontology_catalog' -- pero esa razón de rechazo era ACCIDENTAL: el guardrail real desplegado en n8n solo tenía 5 de los 88 campos de Person sincronizados en ese momento (commit b5a7af8 lo corrigió el mismo día, ver project_base7version_ontology). Con el catálogo ya sincronizado, estos 4 casos SÍ pasarían el guardrail (son risk_field válidos con operador/tipo compatibles) pese a ser alucinaciones reales -- el guardrail nunca ha validado semántica, solo catálogo+tipo (limitación ya documentada en el propio código del nodo). 'guardrail_catches' en estos casos refleja el comportamiento CORRECTO tras el fix (false), no el accidental de la ejecución original.",
     "figure_alias_and_transversal_chapter_fix_confirmed_27_08": "Tras la revision manual de la ejecucion del 27/08 06:58 (coverage_matcher_contract_2026-08-27T06-58-13-642Z.json) se identifico un bug real en 'Merge Shared Texts Into Ramo' (workflow 'ontology indexing'): los alias de FIGURA ('tomador', 'propietario', 'conductor habitual') se mezclaban en 'aliases' de CADA campo importado de person.md, activando como candidato cualquier campo de esa figura (crmEmploymentStatus, economicInactivityStatus...) con la sola mencion del nombre de la figura, sin relacion semantica real con el texto. Se corrigio (los alias de figura solo enriquecen ahora el texto de embedding, no el array 'aliases' de match literal) junto con un fix independiente en 'Coverage Dependency Risk Field Guardrail' v5 (transversal_chapter_dependencies revisa tambien coverage_path, no solo article, y retira la numeracion de epigrafe antes de comparar). Validados offline (run_offline_eval.js --figure-aliases / --transversal-chapter, 0 fallos en ambos ramos) y desplegados via API el 27/08. El usuario reindexo Qdrant y relanzo 'coverage rules extraction GGCC' sobre Divina (coverage_matcher_contract_2026-08-27T08-12-49-393Z.json) -- CONFIRMADO EN PRODUCCION: GD-AUTO-HALLUC-001/005 resueltas (las unidades su_00207/su_00080 ya ni siquiera generan llamada LLM -- sin la contaminacion, ya no cruzan el gate de Candidate Detector), GD-AUTO-GAP-001/GD-AUTO-HALLUC-002 (su_00008) ahora marcadas transversal_chapter:true (mejora de VISIBILIDAD -- la alucinacion de fondo, campo de masa de vehiculo inexistente, sigue sin resolverse, fuera de alcance de este fix). GD-AUTO-HALLUC-003 (su_00125), GD-AUTO-FP-001 (su_00083) y GD-AUTO-HIER-001 (su_00185) se reproducen identicas -- esperado, ninguno de los dos fixes tocaba esos patrones. Caso nuevo aparecido en la 2a ejecucion: GD-AUTO-HALLUC-006 (su_00101, registrationPlate -- instruccion operativa confundida con condicion de aplicabilidad, sin relacion con la contaminacion de alias ya resuelta en esa misma unidad).",
-    "session_27_08_closure": "Sesion larga del 27/08 sobre la primera ejecucion real de Divina (26/08) y las 4 reejecuciones reales posteriores del mismo dia. Cadena completa de hallazgos y fixes, todos validados offline antes de desplegar y confirmados con ejecuciones reales sucesivas: (1) contaminacion de alias de figura en Merge Shared Texts Into Ramo -- RESUELTO; (2) Guardrail v5 (capitulos transversales) ampliado a coverage_path + numeracion -- RESUELTO; (3) vocabulario 'primera/segunda/tercera categoria' en base7version.md -- RESUELTO; (4) regla de negacion de relevancia (prompt) -- RESUELTO (confirmado por ausencia, su_00083 dejo de aparecer); (5) regla de instrucciones operativas (prompt) -- NO resuelta por prompt solo, requirio (6) Guardrail v6 como red de seguridad -- CONFIRMADO funcionando (su_00101 sigue generando la dependencia pero siempre marcada); (7) regla de entidad del campo persona vs vehiculo/animal (prompt) -- parcialmente resuelta (funciona para owner.weight de forma fiable, no para variantes bare/holder de forma fiable), requirio (8) Guardrail v7 como red de seguridad -- CONFIRMADO funcionando; (9) numeros romanos vs arabigos en el indice (Hierarchy Builder) -- RESUELTO, ANEXO I/II anclan correctamente; (10) cola acotada tras agotar el indice (Hierarchy Builder) -- RESUELTO, ANEXO II anida su contenido completo; (11) regla de categoria de vehiculo implicita por el propio capitulo (prompt) -- RESUELTO al primer intento (su_00207/211/217 ahora usan '=' con la categoria correcta del anexo, no 'NOT_IN' sobre la categoria mencionada de forma comparativa). Patron general confirmado en esta sesion: los fixes de GUARDRAIL (codigo puro) son 100% fiables y validables offline; los fixes de PROMPT son de eficacia variable (a veces bastan al primer intento -- capitulos transversales, negacion, categoria implicita --, a veces no -- instrucciones operativas, entidad del campo -- y necesitan Guardrail de respaldo). Para cualquier alucinacion nueva y recurrente, mejor plantear desde el principio ambas capas (prompt + guardrail de visibilidad) en vez de esperar a que el prompt falle una vez para añadir la segunda red."
+    "session_27_08_closure": "Sesion larga del 27/08 sobre la primera ejecucion real de Divina (26/08) y las 4 reejecuciones reales posteriores del mismo dia. Cadena completa de hallazgos y fixes, todos validados offline antes de desplegar y confirmados con ejecuciones reales sucesivas: (1) contaminacion de alias de figura en Merge Shared Texts Into Ramo -- RESUELTO; (2) Guardrail v5 (capitulos transversales) ampliado a coverage_path + numeracion -- RESUELTO; (3) vocabulario 'primera/segunda/tercera categoria' en base7version.md -- RESUELTO; (4) regla de negacion de relevancia (prompt) -- RESUELTO (confirmado por ausencia, su_00083 dejo de aparecer); (5) regla de instrucciones operativas (prompt) -- NO resuelta por prompt solo, requirio (6) Guardrail v6 como red de seguridad -- CONFIRMADO funcionando (su_00101 sigue generando la dependencia pero siempre marcada); (7) regla de entidad del campo persona vs vehiculo/animal (prompt) -- parcialmente resuelta (funciona para owner.weight de forma fiable, no para variantes bare/holder de forma fiable), requirio (8) Guardrail v7 como red de seguridad -- CONFIRMADO funcionando; (9) numeros romanos vs arabigos en el indice (Hierarchy Builder) -- RESUELTO, ANEXO I/II anclan correctamente; (10) cola acotada tras agotar el indice (Hierarchy Builder) -- RESUELTO, ANEXO II anida su contenido completo; (11) regla de categoria de vehiculo implicita por el propio capitulo (prompt) -- RESUELTO al primer intento (su_00207/211/217 ahora usan '=' con la categoria correcta del anexo, no 'NOT_IN' sobre la categoria mencionada de forma comparativa). Patron general confirmado en esta sesion: los fixes de GUARDRAIL (codigo puro) son 100% fiables y validables offline; los fixes de PROMPT son de eficacia variable (a veces bastan al primer intento -- capitulos transversales, negacion, categoria implicita --, a veces no -- instrucciones operativas, entidad del campo -- y necesitan Guardrail de respaldo). Para cualquier alucinacion nueva y recurrente, mejor plantear desde el principio ambas capas (prompt + guardrail de visibilidad) en vez de esperar a que el prompt falle una vez para añadir la segunda red.",
+    "driving_license_list_misuse (28/08, Guardrail v9)": "Categoria nueva para el patron 3 (negacion invertida / antiguedad de carne, ver project_autos_multicompany_testing_27_08 en memoria): 'drivingLicenses' es una lista, nunca un campo escalar. Confirmado accesible via SPEL (DrivingLicense.java, date/type con @JsonView V1) el 28/08 -- el problema nunca fue de accesibilidad, solo de representacion. Se anadieron dos campos sinteticos a shared/person.md (licenseYears: antiguedad en anios via $utils.dateLessThan/dateLessOrEqualThan; licenseType: enum del tipo de carne, mas relevante cuando se aborde Motos) y el Guardrail v9 rechaza cualquier uso escalar directo de 'drivingLicenses' (rejection_reason driving_licenses_used_as_scalar), con o sin corrected_coverage_dependencies segun si la condicion real cabe en los campos nuevos (antiguedad/tipo) o es una mera existencia/ausencia (sigue siendo ontology_gap, ver GD-AUTO-HALLUC-009). Motos NO se ha abordado todavia -- licenseType documentado como preparacion forward-compatible, sin ontology-moto.md ni golden set propios."
   },
   "cases": [
     {
@@ -344,9 +345,10 @@
         }
       ],
       "expected_coverage_dependencies": [],
-      "expected_coverage_scope_flagged": true,
-      "guardrail_catches": false,
-      "notes": "Caso real de Axa (27/08, primera ejecucion cross-company real, coverage_matcher_contract_2026-08-27T10-26-22-639Z.json). El texto define QUIEN cuenta como asegurado/conductor cubierto para esta garantia concreta, bajo un epigrafe propio literal '¿Quien esta asegurado?' -- no es una condicion de riesgo, es la definicion de alcance de la garantia. Ademas duplicado sobre primaryDriver y secondaryDriver a la vez (mismo antipatron ya visto en GD-AUTO-HALLUC-001 de Divina). Patron 'objeto/alcance de la cobertura confundido con condicion' (patron 7 del cross-company testing, el mas repetido: aparecio en las 7 ejecuciones reales de la sesion). Este es uno de los DOS unicos casos (junto con GD-AUTO-HALLUC-008, Pelayo) con señal estructural aprovechable (coverage_path con epigrafe propio) -- el resto de instancias del mismo patron (Reale/Qualitas/Generali) no tienen ninguna señal asi, dependen enteramente de la REGLA DE ALCANCE DE LA GARANTIA en el prompt."
+      "expected_coverage_scope_flagged": false,
+      "guardrail_catches": true,
+      "notes": "Caso real de Axa (27/08, primera ejecucion cross-company real, coverage_matcher_contract_2026-08-27T10-26-22-639Z.json). El texto define QUIEN cuenta como asegurado/conductor cubierto para esta garantia concreta, bajo un epigrafe propio literal '¿Quien esta asegurado?' -- no es una condicion de riesgo, es la definicion de alcance de la garantia. Ademas duplicado sobre primaryDriver y secondaryDriver a la vez (mismo antipatron ya visto en GD-AUTO-HALLUC-001 de Divina). Patron 'objeto/alcance de la cobertura confundido con condicion' (patron 7 del cross-company testing, el mas repetido: aparecio en las 7 ejecuciones reales de la sesion). Este es uno de los DOS unicos casos (junto con GD-AUTO-HALLUC-008, Pelayo) con señal estructural aprovechable (coverage_path con epigrafe propio) -- el resto de instancias del mismo patron (Reale/Qualitas/Generali) no tienen ninguna señal asi, dependen enteramente de la REGLA DE ALCANCE DE LA GARANTIA en el prompt. ACTUALIZACION (28/08, Guardrail v9): con el nuevo rechazo duro de 'drivingLicenses' usado como escalar (driving_licenses_used_as_scalar), estas dos dependencias ahora se RECHAZAN antes de llegar al chequeo de visibilidad v8 (coverage_scope_dependencies solo marca dependencias ya aceptadas) -- expected_coverage_scope_flagged pasa de true a false porque ya no hay nada que flagear, se rechaza antes. guardrail_catches pasa de false a true: v9 SI detecta este caso, aunque por una via distinta a la prevista originalmente (no por ser alcance de garantia, sino por ser un uso invalido de un campo de lista) -- doble motivo real para descartar esta dependencia, no una contradiccion.",
+      "expected_accepted_risk_fields": []
     },
     {
       "id": "GD-AUTO-HALLUC-008",
@@ -380,6 +382,135 @@
       "expected_coverage_scope_flagged": true,
       "guardrail_catches": false,
       "notes": "Caso real de Pelayo (27/08, coverage_matcher_contract_2026-08-27T10-48-18-463Z.json). El propio coverage_path ('Vehiculo de sustitucion por averia...') delata que el texto describe el VEHICULO DE SUSTITUCION que proporciona la compañia -- distinto del vehiculo asegurado -- no una condicion sobre este ultimo. Nota: la misma unidad SI tiene una dependencia correcta no incluida aqui ('Si el vehiculo asegurado es un monovolumen, pondremos un vehiculo de similares caracteristicas' -> base7Type.id = monovolumen, esa condiciona genuinamente sobre el vehiculo ASEGURADO) -- el guardrail v8 marca TODA la unidad por ser estructural (igual que v5), asi que tambien marcaria esa dependencia correcta como 'coverage_scope_definition' -- es visibilidad, no bloqueo, flujo 3 sigue verificando el contenido real antes de decidir, tal como para v5/v6/v7."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-009",
+      "category": "driving_license_list_misuse",
+      "semantic_unit_ref": "su_00050",
+      "source_company": "Axa (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-26-22-639Z.json)",
+      "article": "7. RIESGOS EXCLUIDOS A TODAS LAS GARANTÍAS VOLUNTARIAS",
+      "source_text": "Los producidos cuando el conductor carezca del correspondiente permiso de conducir o haya quebrantado la sanción de anulación o retirada del mismo, con excepción de lo previsto para los hijos menores de edad en la garantía de ampliación de responsabilidad civil.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.drivingLicenses",
+          "operator": "!=",
+          "value": null,
+          "evidence": "Los producidos cuando el conductor carezca del correspondiente permiso de conducir o haya quebrantado la sanción de anulación o retirada del mismo"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "secondaryDriver.drivingLicenses"
+      ],
+      "corrected_coverage_dependencies": null,
+      "notes": "Caso real (27/08). 'carezca del permiso' es una condicion de mera EXISTENCIA/ausencia, no de antiguedad ni de tipo -- ningun campo sintetico nuevo (licenseYears/licenseType) la representa. El LLM extrajo ademas el signo CONTRARIO (presencia via '!=null' para una frase que expresa ausencia). Con el guardrail v9, esta dependencia se rechaza siempre (driving_licenses_used_as_scalar) en vez de colarse como falso positivo -- no se resuelve la extraccion correcta (sigue siendo un ontology_gap real: falta un campo de existencia), pero deja de contaminar coverage_dependencies. corrected_coverage_dependencies queda vacio a proposito: 'omitir' es el comportamiento correcto aqui, no hay ninguna dependencia valida que generar todavia."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-010",
+      "category": "driving_license_list_misuse",
+      "semantic_unit_ref": "su_00036",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-46-09-386Z.json)",
+      "article": null,
+      "source_text": "Debe declararse como conductor principal a la persona que conduzca habitualmente el vehículo, independientemente de la edad. Son asegurables las personas físicas que cumplan los siguientes requisitos: Antigüedad del carné superior a 1 año. Edad igual o superior a 25 años e inferior a 76 años.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.drivingLicenses",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Antigüedad del carné superior a 1 año."
+        },
+        {
+          "risk_field": "primaryDriver.drivingLicenses",
+          "operator": ">=",
+          "value": 25,
+          "evidence": "Edad igual o superior a 25 años e inferior a 76 años."
+        },
+        {
+          "risk_field": "primaryDriver.drivingLicenses",
+          "operator": "<",
+          "value": 76,
+          "evidence": "Edad igual o superior a 25 años e inferior a 76 años."
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "primaryDriver.drivingLicenses"
+      ],
+      "corrected_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.licenseYears",
+          "operator": ">",
+          "value": 1,
+          "evidence": "Antigüedad del carné superior a 1 año."
+        }
+      ],
+      "notes": "Caso real (27/08). Dos condiciones distintas mezcladas: 'antiguedad del carne' (SI cabe en licenseYears, corrected_coverage_dependencies) y 'edad' de la persona (birthDate, NO licenseYears -- el LLM alucino '>=25'/'<76' sobre drivingLicenses para la EDAD, una confusion de campo distinta, ya cubierta por REGLA DE ENTIDAD/nueva frase explicita de 'no confundir carne con edad' en el prompt -- este caso no reclama que las dos dependencias de edad se corrijan a birthDate, solo que las 3 variantes de drivingLicenses sean rechazadas por el guardrail v9)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-011",
+      "category": "driving_license_list_misuse",
+      "semantic_unit_ref": "su_00039",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-46-09-386Z.json)",
+      "article": null,
+      "source_text": "Cualquier conductor de edad <= 25 años debe estar declarado para que esté cubierto por la póliza (siempre que conduzca de forma habitual, debe ser incluido como principal), cuando ésta sea menor de 25 años y/o su permiso de conducir sea inferior a 1 año.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.drivingLicenses",
+          "operator": "<",
+          "value": 1,
+          "evidence": "cuando ésta sea menor de 25 años y/o su permiso de conducir sea inferior a 1 año"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "secondaryDriver.drivingLicenses"
+      ],
+      "corrected_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.licenseYears",
+          "operator": "<",
+          "value": 1,
+          "evidence": "su permiso de conducir sea inferior a 1 año"
+        }
+      ],
+      "notes": "Caso real (27/08), variante limpia (una sola dependencia, sin mezcla de edad) de 'antiguedad del carne inferior a N anios' -- el mismo texto real (con variantes de redaccion) aparece 5 veces en Qualitas (su_00027/029/030/031/071, ver GD-AUTO-HALLUC-012), consistentemente mal extraido con operator/risk_field distintos cada vez ('!=null', '>=2', duplicado primary+secondary sobre la misma evidencia) -- evidencia de que el problema es sistematico, no un caso aislado."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-012",
+      "category": "driving_license_list_misuse",
+      "semantic_unit_ref": "su_00071",
+      "source_company": "Qualitas (ggcc_outputs/coverage_matcher_contract_2026-08-27T11-40-54-531Z.json, reejecucion tras el fix del patron 7)",
+      "article": "1. 6. Cláusulas comunes a las garantías voluntarias y opcionales",
+      "source_text": "Los daños ocasionados en el vehículo asegurado cuando sea conducido por una persona menor de 25 años de edad o con menos de dos años de antigüedad del permiso de conducir que no esté expresamente designado como conductor del vehículo asegurado en las Condiciones Particulares o por una persona que no esté habilitada legalmente para conducir. Quedan excluidos todos aquellos conductores que no tengan carné de conducir aun cuando utilizasen el vehículo con el consentimiento del tomador/propietario.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.drivingLicenses",
+          "operator": "!=",
+          "value": null,
+          "evidence": "Los daños ocasionados en el vehículo asegurado cuando sea conducido por una persona menor de 25 años de edad o con menos de dos años de antigüedad del permiso de conducir que no esté expresamente designado como conductor del vehículo asegurado en las Condiciones Particulares o por una persona que no esté habilitada legalmente para conducir."
+        },
+        {
+          "risk_field": "secondaryDriver.drivingLicenses",
+          "operator": "!=",
+          "value": null,
+          "evidence": "Los daños ocasionados en el vehículo asegurado cuando sea conducido por una persona menor de 25 años de edad o con menos de dos años de antigüedad del permiso de conducir que no esté expresamente designado como conductor del vehículo asegurado en las Condiciones Particulares o por una persona que no esté habilitada legalmente para conducir."
+        },
+        {
+          "risk_field": "primaryDriver.drivingLicenses",
+          "operator": "!=",
+          "value": null,
+          "evidence": "Quedan excluidos todos aquellos conductores que no tengan carné de conducir aun cuando utilizasen el vehículo con el consentimiento del tomador/propietario."
+        },
+        {
+          "risk_field": "secondaryDriver.drivingLicenses",
+          "operator": "!=",
+          "value": null,
+          "evidence": "Quedan excluidos todos aquellos conductores que no tengan carné de conducir aun cuando utilizasen el vehículo con el consentimiento del tomador/propietario."
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "primaryDriver.drivingLicenses",
+        "secondaryDriver.drivingLicenses"
+      ],
+      "corrected_coverage_dependencies": null,
+      "notes": "Caso real (27/08, reejecucion). 4 dependencias, las 4 sobre 'drivingLicenses' directamente, las 4 con evidence identica para primary Y secondary (mismo antipatron de duplicado sobre la misma evidencia ya visto en Divina/Axa -- patron 2, seleccion de figura -- fuera de alcance de este fix). Ninguna de las 4 usa licenseYears/licenseType pese a que la primera evidencia SI menciona antiguedad ('menos de dos años') -- prueba de que el prompt solo no basta (mismo patron ~50% de fallo ya documentado en la sesion 27/08 para otras reglas), confirma la necesidad del guardrail v9 como red de seguridad. corrected_coverage_dependencies vacio: no se reclama aqui la extraccion perfecta (edad+antiguedad+figura correcta), solo que el guardrail rechace las 4 variantes erroneas."
     }
   ]
 }

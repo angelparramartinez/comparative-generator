@@ -73,7 +73,93 @@ aliases:
 interpretation:
 `getDrivingLicenses()`: `@JsonView({V1, COMPARATIVE_REQUEST})` -- visible
 en ASM, clave real `drivingLicenses`. No es un campo escalar -- no
-extraer como risk_field/operator/value plano.
+extraer como risk_field/operator/value plano. Ver `licenseYears`/
+`licenseType` (campos sintéticos derivados de esta lista, para las dos
+condiciones reales que sí aparecen en condicionados: antigüedad y tipo
+de carné).
+
+---
+
+## licenseType
+field: licenseType
+data_type: enum
+meaning: Type/category of the person's relevant driving license -- car
+license (B/LVA) for Autos, motorbike license (A/A1/A2/AM/LCM) for Motos.
+aliases:
+- carné A1
+- carné A2
+- carné tipo A
+- carné B
+- permiso A2
+- carné de moto
+values:
+- A1: moto, edad mínima 15, hasta 125cc
+- A2: moto, edad mínima 18, hasta 48cv
+- A: moto, edad mínima 20
+- AM: moto (ciclomotor), edad mínima 15, hasta 50cc
+- LCM: moto (ciclomotor), edad mínima 14, hasta 50cc
+- B: coche, edad mínima 18
+- LVA: coche (vehículo agrícola), edad mínima 16
+interpretation:
+**Sintético, añadido 28/08** -- no es un getter Java real. `drivingLicenses`
+(concepto anterior) es una lista de objetos `{type, date, issuingZone}`;
+`type` vive dentro de un elemento de esa lista, no en el DTO de la
+persona, así que no puede extraerse como campo escalar directo. Este
+campo existe para que flujo 2 capture "qué tipo de carné" cuando el
+condicionado lo menciona explícitamente -- mucho más relevante en Motos
+(`Person.setMotorbikePermissionType`, sin valor por defecto, el usuario
+elige el tipo real) que en Autos, donde el carné de coche se persiste
+siempre con tipo fijo `B` sin preguntarlo (`Person.setPermissionDate` ->
+`new DrivingLicense(new DriverLicenseType(DriverLicenseType.B),
+permissionDate)`, confirmado en `avant-front/src/production/common/
+components/Persons/utils.ts:248`, `person.drivingLicenseType ||
+DrivingLicenseTypeId.B`). Flujo 3 (aún sin construir esta parte) debe
+traducirlo a una selección real sobre la lista:
+`insurance["risk"].<figura>.drivingLicenses.?[type.id == <id real>]`.
+Si en el mismo bloque también aparece `licenseYears` para la misma
+figura, ambas dependencias comparten la misma entrada de lista -- flujo
+3 debe fusionarlas en una única selección en vez de generar dos
+filtros independientes.
+
+---
+
+## licenseYears
+field: licenseYears
+data_type: integer
+meaning: Years elapsed since the date of the person's relevant driving
+license (car license for Autos, motorbike license for Motos) -- the
+license's age, NOT the person's age.
+aliases:
+- antigüedad del carné
+- antigüedad del permiso de conducir
+- carné con menos de
+- carné con más de
+- años de carné
+interpretation:
+**Sintético, añadido 28/08** -- no es un getter Java real, deriva de
+`drivingLicenses[].date` (`DrivingLicense.getDate()`,
+`@JsonView({V1, COMPARATIVE_REQUEST})` -- confirmado accesible en ASM,
+serializado como string `yyyy-MM-dd` vía `@JsonDate`, avant-back
+`vehicle/dto/DrivingLicense.java`). Añadido tras confirmar (28/08) que
+el gap no era de accesibilidad -- `DrivingLicense.java` sí expone
+`date`/`type` -- sino de representación: un campo de lista no cabe en
+la tripleta plana risk_field/operator/value de flujo 2. Flujo 3 (aún
+sin construir esta parte) debe traducirlo con el helper ya real
+`$utils.dateLessThan(init, end, offsetAndUnit)` / `dateLessOrEqualThan(
+...)` (`AsmMethodsUtility`, expuesto al contexto SPEL como `$utils` en
+`SpelContext.createContext`, ya usado en producción para validaciones
+de tuning), filtrando antes la lista por el tipo de carné relevante del
+ramo (`B`/`LVA` en Autos, `A`/`A1`/`A2`/`AM`/`LCM` en Motos) salvo que
+`licenseType` haya fijado un valor concreto en el mismo bloque. Ejemplo
+de expresión real esperada (Autos, "menos de 2 años"):
+`!insurance["risk"].primaryDriver.drivingLicenses.?[type.id ==
+4].isEmpty() and $utils.dateLessThan(insurance["risk"].primaryDriver.
+drivingLicenses.?[type.id == 4][0].date, insurance['effectiveDate'],
+'2year')`. Limitación conocida sin resolver: una condición de mera
+EXISTENCIA/ausencia de carné ("carezca de permiso de conducir", sin
+mencionar antigüedad ni tipo) no tiene campo dedicado todavía -- ni
+`licenseYears` ni `licenseType` la representan, se omite la
+dependencia (caso real: Axa su_00050).
 
 ---
 

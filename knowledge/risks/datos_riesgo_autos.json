@@ -56,7 +56,7 @@
             "type": "Date"
         },
         "primaryDriver.drivingLicenses": {
-            "constraints": "No es un campo escalar -- lista de objetos {type, date, issuingZone}. Ver interpretation en ontology-auto.md antes de usarlo en una dependencia",
+            "constraints": "No es un campo escalar -- lista de objetos {type, date, issuingZone}. NUNCA extraer como risk_field/operator/value plano (p.ej. 'drivingLicenses != null' o '>= N') -- usar primaryDriver.licenseYears/licenseType en su lugar. Ver interpretation en shared/person.md",
             "possibleValues": "Lista de DrivingLicense (type: enum DriverLicenseType, date: fecha, issuingZone: enum ExpeditionZone)",
             "type": "List<DrivingLicense>"
         },
@@ -64,6 +64,26 @@
             "constraints": "Mismo caso que primaryDriver.drivingLicenses",
             "possibleValues": "Lista de DrivingLicense",
             "type": "List<DrivingLicense>"
+        },
+        "primaryDriver.licenseYears": {
+            "constraints": "Sintetico (28/08), no es un getter Java real -- deriva de primaryDriver.drivingLicenses[].date filtrado por tipo de carne de coche (B=4/LVA). Antiguedad del carne en anios, NO la edad de la persona. Ver interpretation en shared/person.md (licenseYears) para la traduccion SPEL real ($utils.dateLessThan/dateLessOrEqualThan)",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
+        },
+        "secondaryDriver.licenseYears": {
+            "constraints": "Mismo caso que primaryDriver.licenseYears",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
+        },
+        "primaryDriver.licenseType": {
+            "constraints": "Sintetico (28/08), no es un getter Java real -- deriva de primaryDriver.drivingLicenses[].type. En Autos el tipo real persistido es siempre B (constante de ramo, no se le pregunta al usuario) -- rara vez aparece como condicion explicita en Autos, mas relevante cuando se aborde Motos (tipo real elegido por el usuario: A/A1/A2/AM/LCM). Ver interpretation en shared/person.md",
+            "possibleValues": "A1, A2, A, AM, LCM (moto), B, LVA (coche) -- catalogo real DriverLicenseType",
+            "type": "String enum (sintetico)"
+        },
+        "secondaryDriver.licenseType": {
+            "constraints": "Mismo caso que primaryDriver.licenseType",
+            "possibleValues": "A1, A2, A, AM, LCM (moto), B, LVA (coche)",
+            "type": "String enum (sintetico)"
         },
         "base7Options": {
             "constraints": "No es un campo escalar -- lista de Base7OptionPack (accesorios de fabrica). Ver interpretation en ontology-auto.md antes de usarlo en una dependencia",

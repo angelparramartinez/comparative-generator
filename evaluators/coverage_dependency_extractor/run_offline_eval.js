@@ -20,6 +20,7 @@
 //   node run_offline_eval.js --procedural-instruction -> solo el check de visibilidad de instrucciones operativas/procedimentales (Guardrail v6)
 //   node run_offline_eval.js --person-field-mismatch -> solo el check de visibilidad de campos de peso de persona en evidencia de vehiculo/animal (Guardrail v7)
 //   node run_offline_eval.js --coverage-scope -> solo el check de visibilidad de alcance de garantia confundido con condicion (Guardrail v8)
+//   node run_offline_eval.js --driving-license -> solo el check de rechazo de uso escalar de "drivingLicenses" (lista) y aceptacion de licenseYears/licenseType (Guardrail v9)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -564,9 +565,17 @@ function checkCoverageScopeVisibility(workflow, golden, validRiskFields) {
     const flagOk = isFlagged === c.expected_coverage_scope_flagged;
 
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
-    const expectedAcceptedFields = (c.actual_coverage_dependencies || [])
-      .map(d => d.risk_field)
-      .filter(f => validRiskFieldSet.has(f));
+    // "expected_accepted_risk_fields" es un override explicito por caso -- solo
+    // hace falta cuando otro chequeo mas estricto (p.ej. Guardrail v9, que
+    // rechaza "drivingLicenses" siempre) legitimamente retira del catalogo
+    // general algo que este chequeo, por defecto, asumiria que sigue aceptado
+    // (ver GD-AUTO-HALLUC-007, 28/08). Sin el campo, comportamiento identico a
+    // antes de v9.
+    const expectedAcceptedFields = c.expected_accepted_risk_fields !== undefined
+      ? c.expected_accepted_risk_fields
+      : (c.actual_coverage_dependencies || [])
+          .map(d => d.risk_field)
+          .filter(f => validRiskFieldSet.has(f));
     const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
 
     const ok = flagOk && nothingLost;
@@ -580,6 +589,62 @@ function checkCoverageScopeVisibility(workflow, golden, validRiskFields) {
       console.log("  flagged_fields:", JSON.stringify(flaggedFields));
       console.log("  accepted_fields:", JSON.stringify(acceptedFields));
     }
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// Guardrail v9 (28/08): a diferencia de v5-v8 (visibilidad), este chequeo
+// verifica un RECHAZO real (mismo nivel que checkValueTypeValidation) --
+// cualquier risk_field terminado en "drivingLicenses" usado directamente
+// (lista, no escalar) debe rechazarse con driving_licenses_used_as_scalar.
+// Cuando el caso trae "corrected_coverage_dependencies" (la extraccion
+// correcta usando licenseYears/licenseType), se verifica ademas que ESA
+// si pase el guardrail sin problema -- confirma que el escape hatch nuevo
+// funciona, no solo que el uso incorrecto se bloquea.
+function checkDrivingLicenseListMisuse(workflow, golden) {
+  console.log("\n=== Check: driving_license_list_misuse (nodo Coverage Dependency Risk Field Guardrail v9) ===");
+
+  const cases = golden.cases.filter(c => c.category === "driving_license_list_misuse");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [badResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (badResult.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "driving_licenses_used_as_scalar")
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_risk_fields || [];
+    const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
+    const nothingLeaked = (badResult.output?.coverage_dependencies || [])
+      .every(d => !/(^|\.)drivingLicenses$/.test(d.risk_field));
+
+    let correctedOk = true;
+    let correctedAccepted = [];
+    if (c.corrected_coverage_dependencies) {
+      const [goodResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+        { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.corrected_coverage_dependencies } }
+      ]);
+      correctedAccepted = (goodResult.output?.coverage_dependencies || []).map(d => d.risk_field);
+      correctedOk = c.corrected_coverage_dependencies.every(d => correctedAccepted.includes(d.risk_field));
+    }
+
+    const ok = allExpectedRejected && nothingLeaked && correctedOk;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}) | nada_se_cuela=${nothingLeaked}` +
+        (c.corrected_coverage_dependencies ? ` | corregida_aceptada=${correctedOk} (${JSON.stringify(correctedAccepted)})` : "")
+    );
   }
 
   console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
@@ -1241,6 +1306,10 @@ function main() {
 
   if (runAll || args.includes("--coverage-scope")) {
     exitCode += checkCoverageScopeVisibility(workflow, golden, validRiskFields) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--driving-license")) {
+    exitCode += checkDrivingLicenseListMisuse(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
