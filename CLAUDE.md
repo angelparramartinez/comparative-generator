@@ -486,7 +486,7 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
   ejecuciones, pero no parece tener una operación de "ejecutar solo un nodo" — eso
   sigue siendo función de la UI (pin data). Confirmar en
   `docs.n8n.io/connect/n8n-api/api-reference` si hace falta más granularidad.
-- **Ejecución del flujo**: No debes ejecutar el flujo de n8n en ningún caso. Cuando sea necesario probar, avísame y lo ejecutaré yo manualmente. Después podrás leer el resultado si es necesario. Esta regla es independiente de cuánta autonomía se te dé para el resto de pasos (editar ficheros, desplegar por API, ejecutar el arnés offline) — nunca se extiende a disparar una ejecución real.
+- **Ejecución del flujo (relajada el 31/08)**: puedes ejecutar un flujo de n8n (vía API) **solo cuando el usuario te lo pida explícitamente en ese momento** — nunca de forma autónoma o proactiva, ni siquiera dentro de una fase ya aprobada para otros pasos (editar ficheros, desplegar por API, ejecutar el arnés offline). Si crees que hace falta una ejecución real para validar algo, propónlo y espera confirmación explícita antes de lanzarla — no asumas que una autorización pasada para otro paso cubre también esto. Motivo del cambio (indicado por el usuario): los flujos ya están más estables y los inputs de prueba son más sencillos que al principio del proyecto.
 
 ## 8. Glosario rápido
 
