@@ -21,6 +21,7 @@
 //   node run_offline_eval.js --person-field-mismatch -> solo el check de visibilidad de campos de peso de persona en evidencia de vehiculo/animal (Guardrail v7)
 //   node run_offline_eval.js --coverage-scope -> solo el check de visibilidad de alcance de garantia confundido con condicion (Guardrail v8)
 //   node run_offline_eval.js --driving-license -> solo el check de rechazo de uso escalar de "drivingLicenses" (lista) y aceptacion de licenseYears/licenseType (Guardrail v9)
+//   node run_offline_eval.js --list-field-scalar -> solo el check de rechazo de uso escalar de cualquier risk_field data_type "list" (base7Options, nonBase7Options, economicActivities...) (Guardrail v10)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -644,6 +645,48 @@ function checkDrivingLicenseListMisuse(workflow, golden) {
     console.log(
       `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}) | nada_se_cuela=${nothingLeaked}` +
         (c.corrected_coverage_dependencies ? ` | corregida_aceptada=${correctedOk} (${JSON.stringify(correctedAccepted)})` : "")
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// Guardrail v10 (31/08): generaliza v9 -- rechaza cualquier risk_field cuyo
+// data_type real sea "list" (base7Options, nonBase7Options,
+// economicActivities...), no solo drivingLicenses. rejection_reason nuevo
+// "list_field_used_as_scalar", distinto de "driving_licenses_used_as_scalar"
+// (v9 se mantiene intacto). Ver golden_dataset_auto.json,
+// schema_notes["list_field_used_as_scalar (31/08, Guardrail v10 -- patron 6 cerrado)"].
+function checkListFieldUsedAsScalar(workflow, golden) {
+  console.log("\n=== Check: list_field_used_as_scalar (nodo Coverage Dependency Risk Field Guardrail v10) ===");
+
+  const cases = golden.cases.filter(c => c.category === "list_field_used_as_scalar");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "list_field_used_as_scalar")
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_risk_fields || [];
+    const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
+    const nothingLeaked = (result.output?.coverage_dependencies || []).length === 0;
+
+    const ok = allExpectedRejected && nothingLeaked;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}) | nada_se_cuela=${nothingLeaked}`
     );
   }
 
@@ -1310,6 +1353,10 @@ function main() {
 
   if (runAll || args.includes("--driving-license")) {
     exitCode += checkDrivingLicenseListMisuse(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--list-field-scalar")) {
+    exitCode += checkListFieldUsedAsScalar(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
