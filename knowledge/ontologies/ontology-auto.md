@@ -97,13 +97,53 @@ Getter de negocio `getMatriculationDate()` (`@JsonView({V1, V1_B2C,
 COMPARATIVE_REQUEST})`), pero `@JsonProperty("registrationDate")` — la clave
 real accesible desde SPEL es `registrationDate`, no `matriculationDate`.
 Confirmado leyendo `MotorRisk.java` (proyecto avant-back) el 21/08.
-**Limitación conocida, sin resolver**: es una fecha absoluta, no un año
-suelto como `yearBuilt`/`lastReformDate` en Hogar. Una condición real del
-tipo "vehículo con menos de 5 años de antigüedad" es relativa a la fecha de
-evaluación, no una fecha fija — cuando aparezca la primera dependencia real
-así, decidir con el usuario cómo debe representarse `value` (fecha absoluta
-calculada por el LLM, o duración relativa que resuelva flujo 3) antes de
-generar el `FILTER_EXPR`, no asumir.
+**Limitación resuelta (31/08)**: es una fecha absoluta, no un año suelto
+como `yearBuilt`/`lastReformDate` en Hogar. Una condición real del tipo
+"vehículo con menos de 5 años de antigüedad" es relativa a la fecha de
+evaluación, no una fecha fija — sigue siendo válido usar `registrationDate`
+directamente para una condición de fecha de calendario genuinamente fija
+(p.ej. "vehículos matriculados a partir del 1/1/2020", un ancla real que no
+cambia con el tiempo), pero NUNCA para expresar antigüedad en años. Para
+eso, ver `registrationYears` a continuación.
+
+---
+
+## registrationYears
+risk_field: registrationYears
+data_type: integer
+meaning: Years elapsed since the vehicle's registration (matriculation)
+date — the vehicle's age, NOT an absolute date.
+aliases:
+- antigüedad del vehículo
+- años de antigüedad
+- matriculado hace más de
+- matriculado hace menos de
+- desde la fecha de primera matriculación
+contractual_examples:
+- "desde la fecha de primera matriculación hasta el segundo año de
+  antigüedad del vehículo, se indemnizará por el valor a nuevo"
+- "durante el tercero, cuarto y quinto año de antigüedad del vehículo se
+  indemnizará por el valor de mercado ampliado"
+interpretation:
+**Sintético, añadido 31/08** — no es un getter Java real, deriva de
+`registrationDate` (ver arriba). Mismo mecanismo ya validado con
+`licenseYears` (`shared/person.md`, patrón 3): decisión explícita del
+usuario (31/08) de representar SIEMPRE la antigüedad como duración
+relativa, nunca como fecha absoluta — el JSON de dependencias alimenta
+expresiones SPEL que se persisten en BBDD y se reutilizan para
+comparativas futuras, así que una fecha absoluta calculada ahora ("hoy
+menos 5 años") quedaría obsoleta con el tiempo. Flujo 3 (aún sin construir
+esta parte) debe traducirlo con el mismo helper real ya usado para
+`licenseYears`: `$utils.dateLessThan(insurance["risk"].registrationDate,
+insurance['effectiveDate'], 'Nyear')` / `dateLessOrEqualThan(...)`.
+Hallado en un caso real de Zurich (27/08, `su_00077`/`su_00086`/`su_00092`,
+condicionado de Zurich Autos): el LLM generó consistentemente
+`owner.birthDate >= 2` / `<= 5` etc. para expresar la antigüedad del
+VEHÍCULO — confusión de entidad (persona en vez de vehículo, ver
+`shared/person.md`/`age` y la `REGLA DE ENTIDAD DEL CAMPO` del prompt) Y de
+representación (entero pequeño contra un campo de fecha absoluta). Con
+`registrationYears` disponible, la condición correcta es
+`registrationYears < 2` / `>= 3`, etc.
 
 ---
 
@@ -118,7 +158,13 @@ aliases:
 interpretation:
 Sin renombrado — `getPurchaseDate()` ya usa `@JsonView({V1, V1_B2C,
 COMPARATIVE_REQUEST})` con el mismo nombre de clave. Misma limitación de
-fecha absoluta vs. duración relativa que `registrationDate`.
+fecha absoluta vs. duración relativa que `registrationDate` — si aparece
+una condición real de antigüedad "desde la compra" (distinta de la
+antigüedad desde matriculación), decidir con el usuario un campo sintético
+análogo a `registrationYears` antes de asumirlo; no se ha visto ningún
+caso real todavía (solo un caso real, Reale `su_00064`, que usa
+`purchaseDate` incorrectamente para expresar la EDAD de la persona, no la
+antigüedad del vehículo — ver `shared/person.md`/`age`).
 
 ---
 

@@ -55,10 +55,46 @@ field: birthDate
 data_type: date
 meaning: Date of birth of a person.
 aliases:
-- edad
+- fecha de nacimiento
+- nacido antes de
+- nacido después de
 interpretation:
 `getBirthDate()`: `@JsonView({V1, V1_B2C, CRM, COMPARATIVE_REQUEST})` --
-visible en ASM (V1 explícito), clave real `birthDate`.
+visible en ASM (V1 explícito), clave real `birthDate`. Sigue siendo válido
+para una condición de fecha de calendario genuinamente fija (rara en la
+práctica) -- para una condición de EDAD ("mayor de 25 años", "menor de 18
+años"), usar el campo sintético `age` (ver a continuación), nunca un
+entero directamente contra `birthDate`. El alias "edad" se retiró de aquí
+(31/08) y vive ahora en `age`, para que el matching ontológico dirija las
+menciones de edad al campo correcto desde el principio.
+
+---
+
+## age
+field: age
+data_type: integer
+meaning: Age of a person, in years -- NOT the date of birth itself.
+aliases:
+- edad
+- años de edad
+- edad mínima
+- edad máxima
+interpretation:
+**Sintético, añadido 31/08** -- no es un getter Java real, deriva de
+`birthDate` (ver arriba). Mismo mecanismo ya validado con `licenseYears`
+(patrón 3) y `registrationYears` (`ontology-auto.md`, patrón 1): decisión
+explícita del usuario (31/08) de representar SIEMPRE la edad/antigüedad
+como duración relativa, nunca como fecha absoluta -- el JSON de
+dependencias alimenta expresiones SPEL que se persisten en BBDD y se
+reutilizan para comparativas futuras, así que una fecha absoluta calculada
+ahora quedaría obsoleta con el tiempo. Flujo 3 (aún sin construir esta
+parte) debe traducirlo con el mismo helper real ya usado para
+`licenseYears`/`registrationYears`: `$utils.dateLessThan(insurance["risk"]
+.<figura>.birthDate, insurance['effectiveDate'], 'Nyear')` /
+`dateLessOrEqualThan(...)`. No confundir con `licenseYears` (antigüedad
+del CARNÉ) -- son dos condiciones distintas que pueden aparecer juntas en
+la misma frase (ver `REGLA DE CARNÉ DE CONDUCIR` del prompt, ya advierte
+de esto).
 
 ---
 

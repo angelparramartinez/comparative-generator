@@ -99,6 +99,31 @@
             "constraints": "Catalogo real BASE7_TYPE (BBDD), filtrado a BASE7_CATEGORY_ID=1 (categoria Autos/Turismos) -- 7 valores reales",
             "possibleValues": "TURISMO, MONOVOLUMEN, TODO TERRENO, COMERCIAL DERIVADO DE TT, COMERCIAL DERIVADO DE TURISMO, FURGONES Y CAMIONES LIGEROS, FURGONES HABILIT. A PASAJEROS",
             "type": "String"
+        },
+        "registrationYears": {
+            "constraints": "Sintetico (31/08), no es un getter Java real -- deriva de registrationDate. Antiguedad del VEHICULO en anios, nunca representar como fecha absoluta (se persiste en SPEL reutilizado para comparativas futuras). Ver interpretation en knowledge/ontologies/ontology-auto.md (registrationYears) para la traduccion SPEL real ($utils.dateLessThan/dateLessOrEqualThan contra insurance['effectiveDate']).",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
+        },
+        "age": {
+            "constraints": "Sintetico (31/08), no es un getter Java real -- deriva de birthDate. Edad de la PERSONA en anios, nunca representar como fecha absoluta (se persiste en SPEL reutilizado para comparativas futuras). No confundir con licenseYears (antiguedad del carne, campo distinto). Ver interpretation en knowledge/ontologies/shared/person.md (age) para la traduccion SPEL real ($utils.dateLessThan/dateLessOrEqualThan contra insurance['effectiveDate']).",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
+        },
+        "owner.age": {
+            "constraints": "Sintetico (31/08), no es un getter Java real -- deriva de owner.birthDate. Edad de la PERSONA en anios, nunca representar como fecha absoluta (se persiste en SPEL reutilizado para comparativas futuras). No confundir con licenseYears (antiguedad del carne, campo distinto). Ver interpretation en knowledge/ontologies/shared/person.md (age) para la traduccion SPEL real ($utils.dateLessThan/dateLessOrEqualThan contra insurance['effectiveDate']).",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
+        },
+        "primaryDriver.age": {
+            "constraints": "Sintetico (31/08), no es un getter Java real -- deriva de primaryDriver.birthDate. Edad de la PERSONA en anios, nunca representar como fecha absoluta (se persiste en SPEL reutilizado para comparativas futuras). No confundir con licenseYears (antiguedad del carne, campo distinto). Ver interpretation en knowledge/ontologies/shared/person.md (age) para la traduccion SPEL real ($utils.dateLessThan/dateLessOrEqualThan contra insurance['effectiveDate']).",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
+        },
+        "secondaryDriver.age": {
+            "constraints": "Sintetico (31/08), no es un getter Java real -- deriva de secondaryDriver.birthDate. Edad de la PERSONA en anios, nunca representar como fecha absoluta (se persiste en SPEL reutilizado para comparativas futuras). No confundir con licenseYears (antiguedad del carne, campo distinto). Ver interpretation en knowledge/ontologies/shared/person.md (age) para la traduccion SPEL real ($utils.dateLessThan/dateLessOrEqualThan contra insurance['effectiveDate']).",
+            "possibleValues": "Entero >= 0 (anios)",
+            "type": "Integer (sintetico)"
         }
     }
 }

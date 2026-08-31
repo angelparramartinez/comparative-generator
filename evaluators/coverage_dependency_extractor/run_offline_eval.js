@@ -22,6 +22,7 @@
 //   node run_offline_eval.js --coverage-scope -> solo el check de visibilidad de alcance de garantia confundido con condicion (Guardrail v8)
 //   node run_offline_eval.js --driving-license -> solo el check de rechazo de uso escalar de "drivingLicenses" (lista) y aceptacion de licenseYears/licenseType (Guardrail v9)
 //   node run_offline_eval.js --list-field-scalar -> solo el check de rechazo de uso escalar de cualquier risk_field data_type "list" (base7Options, nonBase7Options, economicActivities...) (Guardrail v10)
+//   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -694,6 +695,62 @@ function checkListFieldUsedAsScalar(workflow, golden) {
   return failures;
 }
 
+// Guardrail v11 (31/08): verifica que ningun risk_field de la categoria
+// person_vehicle_field_confusion se cuele en coverage_dependencies -- sea
+// cual sea la capa que lo rechace (v11 nueva, isImplausibleYearValue; o el
+// chequeo de forma ya existente, isValueTypeValid, para variantes con
+// value string/array). Cada caso declara "expected_rejection_reason" para
+// verificar tambien QUE capa lo rechaza, no solo que se rechace. Cuando el
+// caso trae "corrected_coverage_dependencies" (usando registrationYears/
+// age), se verifica ademas que ESA pase el guardrail sin problema.
+function checkRelativeDurationMisuse(workflow, golden) {
+  console.log("\n=== Check: person_vehicle_field_confusion (nodo Coverage Dependency Risk Field Guardrail v11) ===");
+
+  const cases = golden.cases.filter(c => c.category === "person_vehicle_field_confusion");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (result.rejected_dependencies || [])
+      .filter(d => !c.expected_rejection_reason || d.rejection_reason === c.expected_rejection_reason)
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_risk_fields || [];
+    const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
+    const nothingLeaked = (result.output?.coverage_dependencies || [])
+      .every(d => !expectedRejected.includes(d.risk_field));
+
+    let correctedOk = true;
+    let correctedAccepted = [];
+    if (c.corrected_coverage_dependencies) {
+      const [goodResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+        { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.corrected_coverage_dependencies } }
+      ]);
+      correctedAccepted = (goodResult.output?.coverage_dependencies || []).map(d => d.risk_field);
+      correctedOk = c.corrected_coverage_dependencies.every(d => correctedAccepted.includes(d.risk_field));
+    }
+
+    const ok = allExpectedRejected && nothingLeaked && correctedOk;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}, razon ${c.expected_rejection_reason || "cualquiera"}) | nada_se_cuela=${nothingLeaked}` +
+        (c.corrected_coverage_dependencies ? ` | corregida_aceptada=${correctedOk} (${JSON.stringify(correctedAccepted)})` : "")
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
 function checkHierarchyArticleDetection(workflow) {
   console.log("\n=== Check: deteccion de 'article' (nodos Hierarchy Builder / Semantic Assembler) ===");
 
@@ -1357,6 +1414,10 @@ function main() {
 
   if (runAll || args.includes("--list-field-scalar")) {
     exitCode += checkListFieldUsedAsScalar(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--relative-duration")) {
+    exitCode += checkRelativeDurationMisuse(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
