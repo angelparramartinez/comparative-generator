@@ -10,7 +10,8 @@
     "session_27_08_closure": "Sesion larga del 27/08 sobre la primera ejecucion real de Divina (26/08) y las 4 reejecuciones reales posteriores del mismo dia. Cadena completa de hallazgos y fixes, todos validados offline antes de desplegar y confirmados con ejecuciones reales sucesivas: (1) contaminacion de alias de figura en Merge Shared Texts Into Ramo -- RESUELTO; (2) Guardrail v5 (capitulos transversales) ampliado a coverage_path + numeracion -- RESUELTO; (3) vocabulario 'primera/segunda/tercera categoria' en base7version.md -- RESUELTO; (4) regla de negacion de relevancia (prompt) -- RESUELTO (confirmado por ausencia, su_00083 dejo de aparecer); (5) regla de instrucciones operativas (prompt) -- NO resuelta por prompt solo, requirio (6) Guardrail v6 como red de seguridad -- CONFIRMADO funcionando (su_00101 sigue generando la dependencia pero siempre marcada); (7) regla de entidad del campo persona vs vehiculo/animal (prompt) -- parcialmente resuelta (funciona para owner.weight de forma fiable, no para variantes bare/holder de forma fiable), requirio (8) Guardrail v7 como red de seguridad -- CONFIRMADO funcionando; (9) numeros romanos vs arabigos en el indice (Hierarchy Builder) -- RESUELTO, ANEXO I/II anclan correctamente; (10) cola acotada tras agotar el indice (Hierarchy Builder) -- RESUELTO, ANEXO II anida su contenido completo; (11) regla de categoria de vehiculo implicita por el propio capitulo (prompt) -- RESUELTO al primer intento (su_00207/211/217 ahora usan '=' con la categoria correcta del anexo, no 'NOT_IN' sobre la categoria mencionada de forma comparativa). Patron general confirmado en esta sesion: los fixes de GUARDRAIL (codigo puro) son 100% fiables y validables offline; los fixes de PROMPT son de eficacia variable (a veces bastan al primer intento -- capitulos transversales, negacion, categoria implicita --, a veces no -- instrucciones operativas, entidad del campo -- y necesitan Guardrail de respaldo). Para cualquier alucinacion nueva y recurrente, mejor plantear desde el principio ambas capas (prompt + guardrail de visibilidad) en vez de esperar a que el prompt falle una vez para añadir la segunda red.",
     "driving_license_list_misuse (28/08, Guardrail v9)": "Categoria nueva para el patron 3 (negacion invertida / antiguedad de carne, ver project_autos_multicompany_testing_27_08 en memoria): 'drivingLicenses' es una lista, nunca un campo escalar. Confirmado accesible via SPEL (DrivingLicense.java, date/type con @JsonView V1) el 28/08 -- el problema nunca fue de accesibilidad, solo de representacion. Se anadieron dos campos sinteticos a shared/person.md (licenseYears: antiguedad en anios via $utils.dateLessThan/dateLessOrEqualThan; licenseType: enum del tipo de carne, mas relevante cuando se aborde Motos) y el Guardrail v9 rechaza cualquier uso escalar directo de 'drivingLicenses' (rejection_reason driving_licenses_used_as_scalar), con o sin corrected_coverage_dependencies segun si la condicion real cabe en los campos nuevos (antiguedad/tipo) o es una mera existencia/ausencia (sigue siendo ontology_gap, ver GD-AUTO-HALLUC-009). Motos NO se ha abordado todavia -- licenseType documentado como preparacion forward-compatible, sin ontology-moto.md ni golden set propios.",
     "list_field_used_as_scalar (31/08, Guardrail v10 -- patron 6 cerrado)": "Generaliza driving_license_list_misuse (28/08, Guardrail v9) a CUALQUIER risk_field cuyo data_type real sea \"list\" (base7Options, nonBase7Options, economicActivities...), no solo drivingLicenses. rejection_reason nuevo \"list_field_used_as_scalar\", distinto de \"driving_licenses_used_as_scalar\" (v9 se mantiene intacto, no se fusiona, para no romper GD-AUTO-HALLUC-009/010/011/012). 3 casos reales (GD-AUTO-HALLUC-013/014/015): dos son definiciones puras de capital por defecto (Zurich su_00014, Generali su_00021, ambas bajo capitulo 'Definiciones' -- ya llevaban transversal_chapter=true por v5, ahora ademas rechazadas por v10), una es una excepcion a una exclusion general de poliza (Generali su_00078, capitulo de exclusiones generales -- no definiciones -- decision del usuario 31/08: ninguna genera dependencia, ni siquiera con un campo sintetico de agregado, porque no condiciona una garantia concreta). Cierra el patron 6 del backlog de project_autos_multicompany_testing_27_08.md (orden acordado 27/08: patron7 -> patron3 -> patron6 -> patron1 -> patron2).",
-    "person_vehicle_field_confusion (31/08, Guardrail v11 -- patron 1, mitad \"representacion\" cerrada)": "Generaliza el patron ya visto con weight (Guardrail v7, visibilidad) a campos de FECHA (birthDate/registrationDate/purchaseDate) usados para expresar antiguedad/edad con un entero de años -- pero a diferencia de v7, aqui SI se rechaza (mismo nivel que v9/v10): un value entero <1900 contra un campo data_type \"date\" (isImplausibleYearValue, rejection_reason \"date_field_used_with_relative_duration_value\") es casi siempre una duracion mal aplicada, independientemente de si la entidad (persona vs. vehiculo) es correcta o no. Decision del usuario (31/08): las condiciones de antiguedad/edad se representan SIEMPRE como duracion relativa -- nunca fecha absoluta -- via campos sinteticos nuevos registrationYears (ontology-auto.md, vehiculo) y age (shared/person.md, persona), mismo mecanismo que licenseYears (patron 3). 3 casos reales (GD-AUTO-HALLUC-016/017/018): Zurich su_00077 (entity+representation, fix nuevo), Zurich su_00082 (misma unidad en otra variante, ya rechazada por chequeo de tipo existente, regresion), Reale su_00064 (direccion invertida -- purchaseDate del vehiculo usado para edad de persona, ya rechazada, regresion). Solo la mitad \"persona/vehiculo mas alla de weight\" queda con Guardrail v7 generalizado como trabajo pendiente -- ver project_autos_multicompany_testing_27_08.md."
+    "person_vehicle_field_confusion (31/08, Guardrail v11 -- patron 1, mitad \"representacion\" cerrada)": "Generaliza el patron ya visto con weight (Guardrail v7, visibilidad) a campos de FECHA (birthDate/registrationDate/purchaseDate) usados para expresar antiguedad/edad con un entero de años -- pero a diferencia de v7, aqui SI se rechaza (mismo nivel que v9/v10): un value entero <1900 contra un campo data_type \"date\" (isImplausibleYearValue, rejection_reason \"date_field_used_with_relative_duration_value\") es casi siempre una duracion mal aplicada, independientemente de si la entidad (persona vs. vehiculo) es correcta o no. Decision del usuario (31/08): las condiciones de antiguedad/edad se representan SIEMPRE como duracion relativa -- nunca fecha absoluta -- via campos sinteticos nuevos registrationYears (ontology-auto.md, vehiculo) y age (shared/person.md, persona), mismo mecanismo que licenseYears (patron 3). 3 casos reales (GD-AUTO-HALLUC-016/017/018): Zurich su_00077 (entity+representation, fix nuevo), Zurich su_00082 (misma unidad en otra variante, ya rechazada por chequeo de tipo existente, regresion), Reale su_00064 (direccion invertida -- purchaseDate del vehiculo usado para edad de persona, ya rechazada, regresion). Solo la mitad \"persona/vehiculo mas alla de weight\" queda con Guardrail v7 generalizado como trabajo pendiente -- ver project_autos_multicompany_testing_27_08.md.",
+    "inconsistent_figure_selection (31/08, Guardrail v12 -- patron 2, mitad \"deteccion\" cerrada)": "Detecta (VISIBILIDAD, no bloqueo -- mismo nivel que v5-v8) cuando el mismo campo BASE de Person (identificationType, birthDate...) aparece con figuras (holder/owner/primaryDriver/secondaryDriver) distintas entre las dependencias ACEPTADAS de la misma llamada al LLM -- indicio de que el mismo referente textual (p.ej. \"el Tomador\") se asigno a figuras distintas dentro de la misma unidad. No corrige cual es la figura correcta (eso exige leer el texto, lo hace la nueva REGLA DE SELECCION DE FIGURA del prompt) -- solo hace visible la contradiccion via figure_selection_dependencies. 2 casos reales (GD-AUTO-HALLUC-019/020): Axa su_00070 y Zurich su_00035, mismo patron ('Tomador'/'titular de la poliza' mapeado de forma inconsistente dentro de la misma unidad) en 2 companias distintas. Tercer sub-patron del patron 2 (\"el Conductor\" generico sin especificar habitual/ocasional, asignado arbitrariamente a una figura -- Axa su_00050) resuelto solo por prompt (decision del usuario 31/08: omitir cuando sea ambiguo, nunca elegir al azar ni duplicar salvo que el texto lo pida explicitamente) -- sin guardrail de respaldo posible (no hay forma de detectar por codigo que una omision hubiera sido lo correcto). Ver project_autos_multicompany_testing_27_08.md para el resto del patron 2."
   },
   "cases": [
     {
@@ -710,6 +711,82 @@
       ],
       "notes": "Caso real (27/08, patron 1, direccion INVERTIDA -- vehiculo usado para persona). El texto condiciona por la EDAD del conductor ('Menor de 28 años'), pero el LLM eligio purchaseDate (fecha de COMPRA del VEHICULO, mencionada solo como medio de verificacion documental de la edad, REGLA DE INSTRUCCIONES OPERATIVAS) con un value string sin sentido. Ya rechazado hoy (3 ejecuciones distintas, siempre value_type_incompatible_with_data_type -- value no es ni fecha ISO ni entero) sin necesidad de cambios de esta sesion -- caso de regresion, no de fix nuevo. corrected_coverage_dependencies usa el campo sintetico 'age' (nuevo, 31/08) para dejar constancia de cual seria la extraccion correcta si el LLM identificase bien la entidad (persona, no vehiculo).",
       "expected_rejection_reason": "value_type_incompatible_with_data_type"
+    },
+    {
+      "id": "GD-AUTO-HALLUC-019",
+      "category": "inconsistent_figure_selection",
+      "semantic_unit_ref": "su_00070",
+      "source_company": "Axa (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-26-22-639Z.json)",
+      "article": "10. PROTECCIÓN JURÍDICA",
+      "source_text": "Sufridos en accidente de circulación por el Tomador como persona física en los supuestos de conducción ocasional de cualquier vehículo ajeno, de categoría equivalente, pero distinto al vehículo asegurado. ... En el supuesto de que el Tomador sea una persona jurídica, la aplicación de estas coberturas tendrán lugar a quien se acredite documentalmente como conductor habitual y autorizado del vehículo asegurado.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "owner.identificationType",
+          "operator": "=",
+          "value": "persona física",
+          "evidence": "Sufridos en accidente de circulación por el Tomador como persona física en los supuestos de conducción ocasional de cualquier vehículo ajeno"
+        },
+        {
+          "risk_field": "identificationType",
+          "operator": "=",
+          "value": "persona jurídica",
+          "evidence": "En el supuesto de que el Tomador sea una persona jurídica, la aplicación de estas coberturas tendrán lugar a quien se acredite documentalmente como conductor habitual y autorizado del vehículo asegurado"
+        }
+      ],
+      "expected_flagged_risk_fields": [
+        "owner.identificationType",
+        "identificationType"
+      ],
+      "corrected_coverage_dependencies": [
+        {
+          "risk_field": "identificationType",
+          "operator": "=",
+          "value": "persona física",
+          "evidence": "Sufridos en accidente de circulación por el Tomador como persona física en los supuestos de conducción ocasional de cualquier vehículo ajeno"
+        },
+        {
+          "risk_field": "identificationType",
+          "operator": "=",
+          "value": "persona jurídica",
+          "evidence": "En el supuesto de que el Tomador sea una persona jurídica, la aplicación de estas coberturas tendrán lugar a quien se acredite documentalmente como conductor habitual y autorizado del vehículo asegurado"
+        }
+      ],
+      "notes": "Caso real (27/08, patron 2). \"el Tomador\" mencionado dos veces en la misma unidad -- misma entidad real (holder), pero el LLM genero una vez owner.identificationType (INCORRECTO, Tomador != Propietario) y otra vez identificationType sin prefijo (CORRECTO). Ninguna dependencia individual es invalida por si sola (catalogo/tipo/operador correctos) -- el problema solo aparece al comparar ambas entre si, de ahi que ningun guardrail anterior (v1-v11) lo detectase. Guardrail v12 (visibilidad, no bloqueo) marca ambas con inconsistent_figure_selection=true via figure_selection_dependencies -- no corrige cual es la correcta (eso lo hace la nueva REGLA DE SELECCION DE FIGURA del prompt), solo hace visible la contradiccion. corrected_coverage_dependencies usa 'identificationType' (bare/holder) en las dos, la figura correcta segun el texto ('Tomador' = holder en toda la ontologia de Autos)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-020",
+      "category": "inconsistent_figure_selection",
+      "semantic_unit_ref": "su_00035",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-35-22-637Z.json)",
+      "article": "3-. Asistencia en viaje",
+      "source_text": "Asegurado: la persona física, residente en España, titular de la póliza, así como su cónyuge... Si el titular de la póliza fuera una persona jurídica se entiende por Asegurado la persona que figure en el contrato como Conductor del vehículo asegurado.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "identificationType",
+          "operator": "=",
+          "value": "persona física",
+          "evidence": "Asegurado: la persona física, residente en España, titular de la póliza"
+        },
+        {
+          "risk_field": "identificationType",
+          "operator": "=",
+          "value": "residente en España",
+          "evidence": "la persona física, residente en España, titular de la póliza"
+        },
+        {
+          "risk_field": "primaryDriver.identificationType",
+          "operator": "=",
+          "value": "persona jurídica",
+          "evidence": "Si el titular de la póliza fuera una persona jurídica se entiende por Asegurado la persona que figure en el contrato como Conductor del vehículo asegurado"
+        }
+      ],
+      "expected_flagged_risk_fields": [
+        "identificationType",
+        "identificationType",
+        "primaryDriver.identificationType"
+      ],
+      "corrected_coverage_dependencies": null,
+      "notes": "Caso real (27/08, patron 2). \"el titular de la poliza\" (=Tomador) mencionado dos veces en la misma unidad -- correcto (identificationType bare) la primera vez, incorrecto (primaryDriver.identificationType) la segunda, mismo patron que GD-AUTO-HALLUC-019 en otra compania. Guardrail v12 marca las 3 dependencias que comparten el campo base 'identificationType' (las 2 bare + la de primaryDriver), aunque solo 2 de las 3 refieran realmente al mismo Tomador -- el guardrail no distingue esto (no lee semantica), solo agrupa por campo base+figura distinta, es una señal de visibilidad deliberadamente amplia. corrected_coverage_dependencies no se reclama aqui (ademas de la figura, 'residente en España' es un valor invalido para identificationType -- gap de ontologia ya documentado, distinto de este patron, sin campo dedicado todavia)."
     }
   ]
 }

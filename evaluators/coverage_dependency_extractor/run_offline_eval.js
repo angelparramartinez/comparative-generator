@@ -23,6 +23,7 @@
 //   node run_offline_eval.js --driving-license -> solo el check de rechazo de uso escalar de "drivingLicenses" (lista) y aceptacion de licenseYears/licenseType (Guardrail v9)
 //   node run_offline_eval.js --list-field-scalar -> solo el check de rechazo de uso escalar de cualquier risk_field data_type "list" (base7Options, nonBase7Options, economicActivities...) (Guardrail v10)
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
+//   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -751,6 +752,48 @@ function checkRelativeDurationMisuse(workflow, golden) {
   return failures;
 }
 
+// Guardrail v12 (31/08): visibilidad -- verifica que figure_selection_dependencies
+// marca (inconsistent_figure_selection=true) cualquier dependencia aceptada
+// cuyo campo base de Person tambien aparece con una figura distinta en la
+// misma llamada, y que ninguna dependencia se pierde de coverage_dependencies
+// (es visibilidad, no bloqueo).
+function checkFigureSelectionVisibility(workflow, golden) {
+  console.log("\n=== Check: inconsistent_figure_selection (nodo Coverage Dependency Risk Field Guardrail v12) ===");
+
+  const cases = golden.cases.filter(c => c.category === "inconsistent_figure_selection");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const flaggedFields = (result.figure_selection_dependencies || []).map(d => d.risk_field);
+    const expectedFlagged = c.expected_flagged_risk_fields || [];
+
+    const nothingLost = c.actual_coverage_dependencies.every(d => acceptedFields.includes(d.risk_field));
+    const allFlaggedPresent = expectedFlagged.every(f => flaggedFields.includes(f));
+    const countsMatch = flaggedFields.length === expectedFlagged.length;
+
+    const ok = nothingLost && allFlaggedPresent && countsMatch;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${JSON.stringify(flaggedFields)} (esperado ${JSON.stringify(expectedFlagged)}) | sigue_aceptada=${nothingLost}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
 function checkHierarchyArticleDetection(workflow) {
   console.log("\n=== Check: deteccion de 'article' (nodos Hierarchy Builder / Semantic Assembler) ===");
 
@@ -1418,6 +1461,10 @@ function main() {
 
   if (runAll || args.includes("--relative-duration")) {
     exitCode += checkRelativeDurationMisuse(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--figure-selection")) {
+    exitCode += checkFigureSelectionVisibility(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
