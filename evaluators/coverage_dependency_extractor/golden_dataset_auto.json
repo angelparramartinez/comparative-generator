@@ -12,7 +12,8 @@
     "list_field_used_as_scalar (31/08, Guardrail v10 -- patron 6 cerrado)": "Generaliza driving_license_list_misuse (28/08, Guardrail v9) a CUALQUIER risk_field cuyo data_type real sea \"list\" (base7Options, nonBase7Options, economicActivities...), no solo drivingLicenses. rejection_reason nuevo \"list_field_used_as_scalar\", distinto de \"driving_licenses_used_as_scalar\" (v9 se mantiene intacto, no se fusiona, para no romper GD-AUTO-HALLUC-009/010/011/012). 3 casos reales (GD-AUTO-HALLUC-013/014/015): dos son definiciones puras de capital por defecto (Zurich su_00014, Generali su_00021, ambas bajo capitulo 'Definiciones' -- ya llevaban transversal_chapter=true por v5, ahora ademas rechazadas por v10), una es una excepcion a una exclusion general de poliza (Generali su_00078, capitulo de exclusiones generales -- no definiciones -- decision del usuario 31/08: ninguna genera dependencia, ni siquiera con un campo sintetico de agregado, porque no condiciona una garantia concreta). Cierra el patron 6 del backlog de project_autos_multicompany_testing_27_08.md (orden acordado 27/08: patron7 -> patron3 -> patron6 -> patron1 -> patron2).",
     "person_vehicle_field_confusion (31/08, Guardrail v11 -- patron 1, mitad \"representacion\" cerrada)": "Generaliza el patron ya visto con weight (Guardrail v7, visibilidad) a campos de FECHA (birthDate/registrationDate/purchaseDate) usados para expresar antiguedad/edad con un entero de años -- pero a diferencia de v7, aqui SI se rechaza (mismo nivel que v9/v10): un value entero <1900 contra un campo data_type \"date\" (isImplausibleYearValue, rejection_reason \"date_field_used_with_relative_duration_value\") es casi siempre una duracion mal aplicada, independientemente de si la entidad (persona vs. vehiculo) es correcta o no. Decision del usuario (31/08): las condiciones de antiguedad/edad se representan SIEMPRE como duracion relativa -- nunca fecha absoluta -- via campos sinteticos nuevos registrationYears (ontology-auto.md, vehiculo) y age (shared/person.md, persona), mismo mecanismo que licenseYears (patron 3). 3 casos reales (GD-AUTO-HALLUC-016/017/018): Zurich su_00077 (entity+representation, fix nuevo), Zurich su_00082 (misma unidad en otra variante, ya rechazada por chequeo de tipo existente, regresion), Reale su_00064 (direccion invertida -- purchaseDate del vehiculo usado para edad de persona, ya rechazada, regresion). Solo la mitad \"persona/vehiculo mas alla de weight\" queda con Guardrail v7 generalizado como trabajo pendiente -- ver project_autos_multicompany_testing_27_08.md.",
     "inconsistent_figure_selection (31/08, Guardrail v12 -- patron 2, mitad \"deteccion\" cerrada)": "Detecta (VISIBILIDAD, no bloqueo -- mismo nivel que v5-v8) cuando el mismo campo BASE de Person (identificationType, birthDate...) aparece con figuras (holder/owner/primaryDriver/secondaryDriver) distintas entre las dependencias ACEPTADAS de la misma llamada al LLM -- indicio de que el mismo referente textual (p.ej. \"el Tomador\") se asigno a figuras distintas dentro de la misma unidad. No corrige cual es la figura correcta (eso exige leer el texto, lo hace la nueva REGLA DE SELECCION DE FIGURA del prompt) -- solo hace visible la contradiccion via figure_selection_dependencies. 2 casos reales (GD-AUTO-HALLUC-019/020): Axa su_00070 y Zurich su_00035, mismo patron ('Tomador'/'titular de la poliza' mapeado de forma inconsistente dentro de la misma unidad) en 2 companias distintas. Tercer sub-patron del patron 2 (\"el Conductor\" generico sin especificar habitual/ocasional, asignado arbitrariamente a una figura -- Axa su_00050) resuelto solo por prompt (decision del usuario 31/08: omitir cuando sea ambiguo, nunca elegir al azar ni duplicar salvo que el texto lo pida explicitamente) -- sin guardrail de respaldo posible (no hay forma de detectar por codigo que una omision hubiera sido lo correcto). Ver project_autos_multicompany_testing_27_08.md para el resto del patron 2.",
-    "figure_keyword_mismatch / duplicate_figure_without_distinction (31/08, Guardrail v13 -- patron 2 reforzado)": "Confirmado con 5 ejecuciones reales (31/08, Axa/Qualitas/Reale/Zurich/Generali) que la REGLA DE SELECCION DE FIGURA del prompt (desplegada el mismo dia) NO basto sola: 0/2 casos de vocabulario corregidos (Axa su_00070, Zurich su_00035 -- 'Tomador'/'titular de la poliza' seguian mapeandose a owner/primaryDriver en vez de holder) y la duplicacion arbitraria seguia reproduciendose (Qualitas su_00071). Guardrail v13 añade DOS rechazos duros (a diferencia de v12, que solo marca visibilidad): (a) figure_keyword_mismatch -- vocabulario español inequivoco en 'evidence' (Tomador/titular de la poliza -> holder; Propietario/titular del vehiculo -> owner; Conductor Habitual/principal -> primaryDriver; Conductor Ocasional/secundario -> secondaryDriver) contra una figura distinta de la esperada -- solo actua si evidence menciona EXACTAMENTE una figura (evita falsos positivos con frases que mencionan varias); (b) duplicate_figure_without_distinction -- misma evidencia normalizada duplicada en primaryDriver Y secondaryDriver sin que el texto distinga los roles explicitamente (sin FIGURE_INCLUSIVE_PATTERNS, p.ej. 'ya sea titular o autorizado' -- ese patron SI es correcto duplicar, caso ya resuelto por otra via en Axa su_00056). GD-AUTO-HALLUC-019/020 (antes solo v12/visibilidad) se recategorizaron a figure_keyword_mismatch tras confirmar que v13 los resuelve por completo (mismo patron ya visto con v9 sobre v8, GD-AUTO-HALLUC-007). GD-AUTO-HALLUC-021 (Qualitas su_00071, nuevo) cubre duplicate_figure_without_distinction con datos de la reejecucion real del 31/08.\n\nCORRECCION IMPORTANTE (31/08, mismo dia): los 2 casos reales que motivaron figure_keyword_mismatch (Axa su_00070, Zurich su_00035) fueron RECLASIFICADOS a patron 7 (coverage_scope_confused_with_condition, ver GD-AUTO-HALLUC-019/020 actualizados) tras confirmar leyendo el condicionado que ambos son en realidad secciones de definicion de 'a quien beneficia la garantia' (alcance), no condiciones de seleccion de figura -- ninguna figura habria sido correcta, la correccion real es OMITIR, no elegir holder. figure_keyword_mismatch queda desplegado como mecanismo (sigue siendo un diseño solido para un futuro caso genuino), pero SIN ningun caso real confirmado todavia -- ambas motivaciones originales resultaron ser el patron equivocado. duplicate_figure_without_distinction si mantiene su confirmacion real intacta (Qualitas su_00071/su_00030, genuina ambiguedad de rol de conductor, no de alcance de garantia)."
+    "figure_keyword_mismatch / duplicate_figure_without_distinction (31/08, Guardrail v13 -- patron 2 reforzado)": "Confirmado con 5 ejecuciones reales (31/08, Axa/Qualitas/Reale/Zurich/Generali) que la REGLA DE SELECCION DE FIGURA del prompt (desplegada el mismo dia) NO basto sola: 0/2 casos de vocabulario corregidos (Axa su_00070, Zurich su_00035 -- 'Tomador'/'titular de la poliza' seguian mapeandose a owner/primaryDriver en vez de holder) y la duplicacion arbitraria seguia reproduciendose (Qualitas su_00071). Guardrail v13 añade DOS rechazos duros (a diferencia de v12, que solo marca visibilidad): (a) figure_keyword_mismatch -- vocabulario español inequivoco en 'evidence' (Tomador/titular de la poliza -> holder; Propietario/titular del vehiculo -> owner; Conductor Habitual/principal -> primaryDriver; Conductor Ocasional/secundario -> secondaryDriver) contra una figura distinta de la esperada -- solo actua si evidence menciona EXACTAMENTE una figura (evita falsos positivos con frases que mencionan varias); (b) duplicate_figure_without_distinction -- misma evidencia normalizada duplicada en primaryDriver Y secondaryDriver sin que el texto distinga los roles explicitamente (sin FIGURE_INCLUSIVE_PATTERNS, p.ej. 'ya sea titular o autorizado' -- ese patron SI es correcto duplicar, caso ya resuelto por otra via en Axa su_00056). GD-AUTO-HALLUC-019/020 (antes solo v12/visibilidad) se recategorizaron a figure_keyword_mismatch tras confirmar que v13 los resuelve por completo (mismo patron ya visto con v9 sobre v8, GD-AUTO-HALLUC-007). GD-AUTO-HALLUC-021 (Qualitas su_00071, nuevo) cubre duplicate_figure_without_distinction con datos de la reejecucion real del 31/08.\n\nCORRECCION IMPORTANTE (31/08, mismo dia): los 2 casos reales que motivaron figure_keyword_mismatch (Axa su_00070, Zurich su_00035) fueron RECLASIFICADOS a patron 7 (coverage_scope_confused_with_condition, ver GD-AUTO-HALLUC-019/020 actualizados) tras confirmar leyendo el condicionado que ambos son en realidad secciones de definicion de 'a quien beneficia la garantia' (alcance), no condiciones de seleccion de figura -- ninguna figura habria sido correcta, la correccion real es OMITIR, no elegir holder. figure_keyword_mismatch queda desplegado como mecanismo (sigue siendo un diseño solido para un futuro caso genuino), pero SIN ningun caso real confirmado todavia -- ambas motivaciones originales resultaron ser el patron equivocado. duplicate_figure_without_distinction si mantiene su confirmacion real intacta (Qualitas su_00071/su_00030, genuina ambiguedad de rol de conductor, no de alcance de garantia).",
+    "indemnification_multiplier / policy_contracting_condition (31/08, prompt-only, sin guardrail)": "2 categorias nuevas encontradas en la ronda de validacion Axa/Pelayo/Reale del 31/08 (tras confirmar patron 1/6/7-4subcaso en produccion). (1) indemnification_multiplier_confused_with_condition: el texto describe un escenario que MULTIPLICA/DUPLICA el capital indemnizado ('doble capital'), no si una garantia esta incluida -- 2 casos reales (GD-AUTO-HALLUC-022 Qualitas, GD-AUTO-HALLUC-023 Axa), mismo dia, ambos con la edad de HIJOS/beneficiarios mal asignada a un conductor. Diagnostico inicial erroneo del asistente (crey que era solo confusion de entidad) corregido por el usuario -- el problema real es que NINGUNA figura seria correcta, la clausula entera es un detalle de calculo de indemnizacion. (2) policy_contracting_condition_confused_with_coverage_condition: el texto condiciona si la POLIZA/MODALIDAD se puede contratar (admision/suscripcion), no si una garantia ya contratada aplica -- 1 caso real (GD-AUTO-HALLUC-024, Reale). Ambas corregidas con ejemplos/reglas nuevas en el prompt, sin guardrail de respaldo posible (el risk_field/operador/tipo son siempre validos en estos casos, el problema es puramente semantico -- mismo tipo de limitacion ya aceptada para otros sub-casos de alcance de garantia). Pendiente confirmar en produccion con una ejecucion real futura."
   },
   "cases": [
     {
@@ -836,6 +837,79 @@
       "expected_rejection_reason": "duplicate_figure_without_distinction",
       "corrected_coverage_dependencies": null,
       "notes": "Caso real (31/08, reejecucion tras desplegar los fixes de patron 1/2/6 -- confirma que el sub-patron de duplicacion arbitraria seguia reproduciendose pese a la nueva REGLA DE SELECCION DE FIGURA del prompt, que instruye omitir cuando el texto no distingue habitual/ocasional). \"el conductor\" generico (sin distinguir habitual/ocasional) genera 4 dependencias -- 2 pares identicos, uno de 'age' y otro de 'licenseYears', cada par duplicado sobre primaryDriver Y secondaryDriver con evidencia EXACTAMENTE igual dentro de cada par. Ninguna evidencia contiene una frase inclusiva real (tipo 'ya sea principal u ocasional'), asi que Guardrail v13 (duplicate_figure_without_distinction) rechaza las 4 -- decision del usuario (31/08): omitir es lo correcto, no hay forma de saber cual de las dos figuras (si alguna) es la real. corrected_coverage_dependencies vacio a proposito: no se reclama ninguna extraccion valida, la omision completa es el comportamiento correcto aqui."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-022",
+      "category": "hallucination_regression",
+      "subtype": "indemnification_multiplier_confused_with_condition",
+      "company": "Qualitas",
+      "semantic_unit_ref": "su_00068",
+      "article": "1. 5. Sección 5: Seguro accidentes del conductor",
+      "coverage_path": [
+        "1. 5. Sección 5: Seguro accidentes del conductor",
+        "Alcance del seguro",
+        "Porcentaje",
+        "Diagnóstico"
+      ],
+      "source_text": "La garantía \"doble capital\" tendrá efecto tras el fallecimiento en accidente de circulación del conductor asegurado que tuviera hijos menores de edad a su cargo y si como consecuencia del mismo falleciera también el otro progenitor. Dicha garantía multiplicará por dos la cantidad prevista para la cobertura de muerte.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": ">",
+          "value": 0,
+          "evidence": "La garantía \"doble capital\" tendrá efecto tras el fallecimiento en accidente de circulación del conductor asegurado que tuviera hijos menores de edad a su cargo"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "guardrail_catches": false,
+      "notes": "Caso real (31/08, pagina 46 del PDF de Qualitas). Diagnostico inicial erroneo: se penso que era 'hijos confundidos con conductor' (entidad equivocada). El usuario corrigio: no es una condicion de aplicabilidad en absoluto -- describe EN QUE ESCENARIO el capital indemnizado se duplica ('doble capital'), un detalle de calculo de indemnizacion, no si la garantia de accidentes del conductor esta incluida o no. Mismo patron real que GD-AUTO-HALLUC-023 (Axa su_00063). Fix (31/08): ejemplo ilustrativo añadido a la regla ya existente de 'NO extraigas dependencias cuando el campo aparece solo para calcular una indemnizacion' -- puramente prompt-only, sin guardrail de respaldo posible (el risk_field/operador/tipo son validos, el problema es puramente semantico)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-023",
+      "category": "hallucination_regression",
+      "subtype": "indemnification_multiplier_confused_with_condition",
+      "company": "Axa",
+      "semantic_unit_ref": "su_00063",
+      "article": "9. ACCIDENTES DEL CONDUCTOR",
+      "coverage_path": [
+        "9. ACCIDENTES DEL CONDUCTOR",
+        "9.3. GASTOS DE CURACIÓN"
+      ],
+      "source_text": "Si debido a un mismo accidente fallecieran el conductor y su cónyuge, dejando como beneficiarios hijos de ambos menores de 18 años, o mayores de edad incapacitados, se duplicará el capital contratado.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.age",
+          "operator": "<",
+          "value": 18,
+          "evidence": "Si debido a un mismo accidente fallecieran el conductor y su cónyuge, dejando como beneficiarios hijos de ambos menores de 18 años, o mayores de edad incapacitados, se duplicará el capital contratado"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "guardrail_catches": false,
+      "notes": "Caso real (27/08, pagina 15 del PDF de Axa). Mismo patron y misma correccion que GD-AUTO-HALLUC-022 (Qualitas su_00068) -- describe cuando el capital se duplica, no si la garantia aplica. La edad (18 años) es de los HIJOS BENEFICIARIOS, no de ningun conductor -- asignada aqui a secondaryDriver.age, doblemente incorrecto (entidad Y naturaleza de la clausula). Mismo fix de prompt que GD-AUTO-HALLUC-022."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-024",
+      "category": "hallucination_regression",
+      "subtype": "policy_contracting_condition_confused_with_coverage_condition",
+      "company": "Reale",
+      "semantic_unit_ref": "su_00043",
+      "article": null,
+      "coverage_path": [
+        "1.3.4 Pólizas para un segundo vehículo con el mismo conductor"
+      ],
+      "source_text": "Pólizas para un segundo vehículo con el mismo conductor: ... siempre que no hay en la unidad familiar hijos en edad comprendida entre 18 y 25 años.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.age",
+          "operator": "=",
+          "value": 0,
+          "evidence": "no hay en la unidad familiar hijos en edad comprendida entre 18 y 25 años"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "guardrail_catches": false,
+      "notes": "Caso real (31/08, pagina 14 del PDF de Reale). Diagnostico inicial erroneo: se penso que era 'hijos confundidos con conductor' (entidad equivocada). El usuario corrigio: es una restriccion sobre si la POLIZA/MODALIDAD (segundo vehiculo con el mismo conductor) se puede CONTRATAR en absoluto -- requisito de admision/suscripcion -- no una condicion de aplicabilidad de ninguna garantia dentro de una poliza ya contratada. Categoria nueva, distinta de las anteriores (no es limite/capital, no es alcance de garantia -- es alcance de CONTRATACION). Fix (31/08): nueva 'REGLA DE CONDICIONES DE CONTRATACION DE POLIZA (NO DE COBERTURA)' en el prompt, distinguiendo condicion de contratacion (fuera de alcance) de condicion de aplicabilidad de garantia (dentro de alcance). Ademas el valor generado (=0) tampoco tenia sentido para expresar 'ausencia de hijos en un rango' -- doble fallo, pero ya no relevante tras omitir la dependencia por completo. Puramente prompt-only, sin guardrail de respaldo posible."
     }
   ]
 }
