@@ -12,7 +12,7 @@
     "list_field_used_as_scalar (31/08, Guardrail v10 -- patron 6 cerrado)": "Generaliza driving_license_list_misuse (28/08, Guardrail v9) a CUALQUIER risk_field cuyo data_type real sea \"list\" (base7Options, nonBase7Options, economicActivities...), no solo drivingLicenses. rejection_reason nuevo \"list_field_used_as_scalar\", distinto de \"driving_licenses_used_as_scalar\" (v9 se mantiene intacto, no se fusiona, para no romper GD-AUTO-HALLUC-009/010/011/012). 3 casos reales (GD-AUTO-HALLUC-013/014/015): dos son definiciones puras de capital por defecto (Zurich su_00014, Generali su_00021, ambas bajo capitulo 'Definiciones' -- ya llevaban transversal_chapter=true por v5, ahora ademas rechazadas por v10), una es una excepcion a una exclusion general de poliza (Generali su_00078, capitulo de exclusiones generales -- no definiciones -- decision del usuario 31/08: ninguna genera dependencia, ni siquiera con un campo sintetico de agregado, porque no condiciona una garantia concreta). Cierra el patron 6 del backlog de project_autos_multicompany_testing_27_08.md (orden acordado 27/08: patron7 -> patron3 -> patron6 -> patron1 -> patron2).",
     "person_vehicle_field_confusion (31/08, Guardrail v11 -- patron 1, mitad \"representacion\" cerrada)": "Generaliza el patron ya visto con weight (Guardrail v7, visibilidad) a campos de FECHA (birthDate/registrationDate/purchaseDate) usados para expresar antiguedad/edad con un entero de años -- pero a diferencia de v7, aqui SI se rechaza (mismo nivel que v9/v10): un value entero <1900 contra un campo data_type \"date\" (isImplausibleYearValue, rejection_reason \"date_field_used_with_relative_duration_value\") es casi siempre una duracion mal aplicada, independientemente de si la entidad (persona vs. vehiculo) es correcta o no. Decision del usuario (31/08): las condiciones de antiguedad/edad se representan SIEMPRE como duracion relativa -- nunca fecha absoluta -- via campos sinteticos nuevos registrationYears (ontology-auto.md, vehiculo) y age (shared/person.md, persona), mismo mecanismo que licenseYears (patron 3). 3 casos reales (GD-AUTO-HALLUC-016/017/018): Zurich su_00077 (entity+representation, fix nuevo), Zurich su_00082 (misma unidad en otra variante, ya rechazada por chequeo de tipo existente, regresion), Reale su_00064 (direccion invertida -- purchaseDate del vehiculo usado para edad de persona, ya rechazada, regresion). Solo la mitad \"persona/vehiculo mas alla de weight\" queda con Guardrail v7 generalizado como trabajo pendiente -- ver project_autos_multicompany_testing_27_08.md.",
     "inconsistent_figure_selection (31/08, Guardrail v12 -- patron 2, mitad \"deteccion\" cerrada)": "Detecta (VISIBILIDAD, no bloqueo -- mismo nivel que v5-v8) cuando el mismo campo BASE de Person (identificationType, birthDate...) aparece con figuras (holder/owner/primaryDriver/secondaryDriver) distintas entre las dependencias ACEPTADAS de la misma llamada al LLM -- indicio de que el mismo referente textual (p.ej. \"el Tomador\") se asigno a figuras distintas dentro de la misma unidad. No corrige cual es la figura correcta (eso exige leer el texto, lo hace la nueva REGLA DE SELECCION DE FIGURA del prompt) -- solo hace visible la contradiccion via figure_selection_dependencies. 2 casos reales (GD-AUTO-HALLUC-019/020): Axa su_00070 y Zurich su_00035, mismo patron ('Tomador'/'titular de la poliza' mapeado de forma inconsistente dentro de la misma unidad) en 2 companias distintas. Tercer sub-patron del patron 2 (\"el Conductor\" generico sin especificar habitual/ocasional, asignado arbitrariamente a una figura -- Axa su_00050) resuelto solo por prompt (decision del usuario 31/08: omitir cuando sea ambiguo, nunca elegir al azar ni duplicar salvo que el texto lo pida explicitamente) -- sin guardrail de respaldo posible (no hay forma de detectar por codigo que una omision hubiera sido lo correcto). Ver project_autos_multicompany_testing_27_08.md para el resto del patron 2.",
-    "figure_keyword_mismatch / duplicate_figure_without_distinction (31/08, Guardrail v13 -- patron 2 reforzado)": "Confirmado con 5 ejecuciones reales (31/08, Axa/Qualitas/Reale/Zurich/Generali) que la REGLA DE SELECCION DE FIGURA del prompt (desplegada el mismo dia) NO basto sola: 0/2 casos de vocabulario corregidos (Axa su_00070, Zurich su_00035 -- 'Tomador'/'titular de la poliza' seguian mapeandose a owner/primaryDriver en vez de holder) y la duplicacion arbitraria seguia reproduciendose (Qualitas su_00071). Guardrail v13 añade DOS rechazos duros (a diferencia de v12, que solo marca visibilidad): (a) figure_keyword_mismatch -- vocabulario español inequivoco en 'evidence' (Tomador/titular de la poliza -> holder; Propietario/titular del vehiculo -> owner; Conductor Habitual/principal -> primaryDriver; Conductor Ocasional/secundario -> secondaryDriver) contra una figura distinta de la esperada -- solo actua si evidence menciona EXACTAMENTE una figura (evita falsos positivos con frases que mencionan varias); (b) duplicate_figure_without_distinction -- misma evidencia normalizada duplicada en primaryDriver Y secondaryDriver sin que el texto distinga los roles explicitamente (sin FIGURE_INCLUSIVE_PATTERNS, p.ej. 'ya sea titular o autorizado' -- ese patron SI es correcto duplicar, caso ya resuelto por otra via en Axa su_00056). GD-AUTO-HALLUC-019/020 (antes solo v12/visibilidad) se recategorizaron a figure_keyword_mismatch tras confirmar que v13 los resuelve por completo (mismo patron ya visto con v9 sobre v8, GD-AUTO-HALLUC-007). GD-AUTO-HALLUC-021 (Qualitas su_00071, nuevo) cubre duplicate_figure_without_distinction con datos de la reejecucion real del 31/08."
+    "figure_keyword_mismatch / duplicate_figure_without_distinction (31/08, Guardrail v13 -- patron 2 reforzado)": "Confirmado con 5 ejecuciones reales (31/08, Axa/Qualitas/Reale/Zurich/Generali) que la REGLA DE SELECCION DE FIGURA del prompt (desplegada el mismo dia) NO basto sola: 0/2 casos de vocabulario corregidos (Axa su_00070, Zurich su_00035 -- 'Tomador'/'titular de la poliza' seguian mapeandose a owner/primaryDriver en vez de holder) y la duplicacion arbitraria seguia reproduciendose (Qualitas su_00071). Guardrail v13 añade DOS rechazos duros (a diferencia de v12, que solo marca visibilidad): (a) figure_keyword_mismatch -- vocabulario español inequivoco en 'evidence' (Tomador/titular de la poliza -> holder; Propietario/titular del vehiculo -> owner; Conductor Habitual/principal -> primaryDriver; Conductor Ocasional/secundario -> secondaryDriver) contra una figura distinta de la esperada -- solo actua si evidence menciona EXACTAMENTE una figura (evita falsos positivos con frases que mencionan varias); (b) duplicate_figure_without_distinction -- misma evidencia normalizada duplicada en primaryDriver Y secondaryDriver sin que el texto distinga los roles explicitamente (sin FIGURE_INCLUSIVE_PATTERNS, p.ej. 'ya sea titular o autorizado' -- ese patron SI es correcto duplicar, caso ya resuelto por otra via en Axa su_00056). GD-AUTO-HALLUC-019/020 (antes solo v12/visibilidad) se recategorizaron a figure_keyword_mismatch tras confirmar que v13 los resuelve por completo (mismo patron ya visto con v9 sobre v8, GD-AUTO-HALLUC-007). GD-AUTO-HALLUC-021 (Qualitas su_00071, nuevo) cubre duplicate_figure_without_distinction con datos de la reejecucion real del 31/08.\n\nCORRECCION IMPORTANTE (31/08, mismo dia): los 2 casos reales que motivaron figure_keyword_mismatch (Axa su_00070, Zurich su_00035) fueron RECLASIFICADOS a patron 7 (coverage_scope_confused_with_condition, ver GD-AUTO-HALLUC-019/020 actualizados) tras confirmar leyendo el condicionado que ambos son en realidad secciones de definicion de 'a quien beneficia la garantia' (alcance), no condiciones de seleccion de figura -- ninguna figura habria sido correcta, la correccion real es OMITIR, no elegir holder. figure_keyword_mismatch queda desplegado como mecanismo (sigue siendo un diseño solido para un futuro caso genuino), pero SIN ningun caso real confirmado todavia -- ambas motivaciones originales resultaron ser el patron equivocado. duplicate_figure_without_distinction si mantiene su confirmacion real intacta (Qualitas su_00071/su_00030, genuina ambiguedad de rol de conductor, no de alcance de garantia)."
   },
   "cases": [
     {
@@ -715,7 +715,7 @@
     },
     {
       "id": "GD-AUTO-HALLUC-019",
-      "category": "figure_keyword_mismatch",
+      "category": "hallucination_regression",
       "semantic_unit_ref": "su_00070",
       "source_company": "Axa (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-26-22-639Z.json)",
       "article": "10. PROTECCIÓN JURÍDICA",
@@ -734,29 +734,25 @@
           "evidence": "En el supuesto de que el Tomador sea una persona jurídica, la aplicación de estas coberturas tendrán lugar a quien se acredite documentalmente como conductor habitual y autorizado del vehículo asegurado"
         }
       ],
-      "corrected_coverage_dependencies": [
-        {
-          "risk_field": "identificationType",
-          "operator": "=",
-          "value": "persona física",
-          "evidence": "Sufridos en accidente de circulación por el Tomador como persona física en los supuestos de conducción ocasional de cualquier vehículo ajeno"
-        },
-        {
-          "risk_field": "identificationType",
-          "operator": "=",
-          "value": "persona jurídica",
-          "evidence": "En el supuesto de que el Tomador sea una persona jurídica, la aplicación de estas coberturas tendrán lugar a quien se acredite documentalmente como conductor habitual y autorizado del vehículo asegurado"
-        }
+      "notes": "Caso real (27/08, reejecutado 31/08 con datos ligeramente distintos por variabilidad de Haiku). Diagnostico INICIAL erroneo (31/08): se catalogo como patron 2 (seleccion de figura) porque 'el Tomador'/'persona juridica' se mapeaba a owner/primaryDriver en vez de holder -- se diseño Guardrail v13 (figure_keyword_mismatch) pensando que el fix era corregir la figura. El usuario, leyendo el condicionado (pagina 17 del PDF, capitulo 'Ampliacion reclamacion Daños'), identifico el diagnostico correcto: el texto completo es una enumeracion de A QUIEN beneficia la ampliacion de la garantia segun el estatus del Tomador (persona fisica -> el propio Tomador y familia; persona juridica -> el conductor habitual y autorizado) -- no es una condicion de riesgo en absoluto, es alcance de garantia (patron 7), igual que GD-AUTO-HALLUC-007/008. NINGUNA figura seria correcta -- la correccion real es OMITIR por completo, no elegir holder en vez de owner. Guardrail v13 (figure_keyword_mismatch) queda diseñado pero sin ningun caso real confirmado que lo necesite todavia -- se mantiene como red de seguridad razonable para un futuro caso genuino de figura mal elegida en una condicion real. Fix aplicado (31/08): 4o sub-caso añadido a la REGLA DE ALCANCE DE LA GARANTIA del prompt ('definir a quien beneficia una garantia segun un atributo del Tomador'), con este texto como ejemplo ilustrativo. Sin guardrail de respaldo (el coverage_path no coincide con ningun COVERAGE_SCOPE_TITLE_PATTERNS existente) -- puramente prompt-only, mismo patron ~50% de fiabilidad ya documentado, expected_coverage_scope_flagged=false documenta esta limitacion conocida. Matiz de guardrail (comprobado 31/08): con los datos reales de esta unidad (27/08), Guardrail v13a (figure_keyword_mismatch) SI rechaza 'owner.identificationType' de forma incidental -- su evidencia menciona UNICAMENTE 'Tomador' (un solo keyword, holder esperado, figura real owner -> mismatch) -- pero deja pasar 'identificationType' bare porque su evidencia menciona 'Tomador' Y 'conductor habitual' a la vez (ambiguo, v13a se abstiene). expected_accepted_risk_fields=['identificationType'] documenta este estado real MIXTO -- ni v13a ni ningun guardrail resuelven el problema de fondo (alcance de garantia), solo eliminan por casualidad una de las dos variantes incorrectas.",
+      "subtype": "coverage_scope_confused_with_condition",
+      "company": "Axa",
+      "coverage_path": [
+        "10. PROTECCIÓN JURÍDICA",
+        "Disposición del servicio",
+        "Reclamación de daños",
+        "Ampliación reclamación Daños"
       ],
-      "notes": "Caso real (27/08, patron 2). \"el Tomador\" mencionado dos veces en la misma unidad -- misma entidad real (holder), pero el LLM genero una vez owner.identificationType (INCORRECTO, Tomador != Propietario) y otra vez identificationType sin prefijo (CORRECTO). ACTUALIZACION (31/08): confirmado con 5 ejecuciones reales que la REGLA DE SELECCION DE FIGURA del prompt sola no basta (el bug se reprodujo identico en la reejecucion) -- Guardrail v13 (figure_keyword_mismatch) ahora rechaza directamente owner.identificationType porque \"evidence\" menciona inequivocamente \"Tomador\" (una sola figura en FIGURE_KEYWORD_PATTERNS) y el risk_field usa una figura distinta de la esperada (holder). La dependencia identificationType (bare, correcta) para la segunda mencion de \"Tomador\" NO se rechaza (coincide con la figura esperada). Este caso ya no llega al mecanismo de visibilidad v12 (superado por v13, mismo patron ya visto con v9 sobre v8 en GD-AUTO-HALLUC-007).",
-      "expected_rejected_risk_fields": [
-        "owner.identificationType"
-      ],
-      "expected_rejection_reason": "figure_keyword_mismatch"
+      "expected_coverage_dependencies": [],
+      "expected_coverage_scope_flagged": false,
+      "guardrail_catches": false,
+      "expected_accepted_risk_fields": [
+        "identificationType"
+      ]
     },
     {
       "id": "GD-AUTO-HALLUC-020",
-      "category": "figure_keyword_mismatch",
+      "category": "hallucination_regression",
       "semantic_unit_ref": "su_00035",
       "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-08-27T10-35-22-637Z.json)",
       "article": "3-. Asistencia en viaje",
@@ -781,12 +777,19 @@
           "evidence": "Si el titular de la póliza fuera una persona jurídica se entiende por Asegurado la persona que figure en el contrato como Conductor del vehículo asegurado"
         }
       ],
-      "corrected_coverage_dependencies": null,
-      "notes": "Caso real (27/08, patron 2). \"el titular de la poliza\" (=Tomador) mencionado dos veces en la misma unidad -- correcto (identificationType bare) la primera vez, incorrecto (primaryDriver.identificationType) la segunda. ACTUALIZACION (31/08): en la reejecucion real del 31/08, las DOS menciones de \"titular de la poliza\" pasaron a usar owner.* de forma CONSISTENTE (ya no primaryDriver) -- el guardrail v12 (visibilidad, solo detecta contradiccion) ya no lo marcaria porque no hay inconsistencia, pero la figura sigue siendo INCORRECTA (deberia ser holder/bare, no owner). Este caso concreto (con la figura original primaryDriver.identificationType de la ejecucion del 27/08) queda como regresion para Guardrail v13 (figure_keyword_mismatch): \"evidence\" menciona inequivocamente \"titular de la poliza\" (holder) y el risk_field usa primaryDriver -> se rechaza. Las otras 2 dependencias bare (identificationType, correctas) no se rechazan.",
-      "expected_rejected_risk_fields": [
-        "primaryDriver.identificationType"
+      "notes": "Caso real (27/08). Mismo diagnostico erroneo inicial y misma correccion que GD-AUTO-HALLUC-019 (ver esa nota para el detalle completo) -- el texto empieza literalmente 'A efectos de la presente garantia se entiende por: Asegurado: la persona fisica... titular de la poliza...' -- es una seccion de DEFINICIONES de quien cuenta como 'Asegurado' para la garantia 'Asistencia en viaje', no una condicion de riesgo. Confirmado por el usuario (31/08) al releer el texto completo. NINGUNA figura seria correcta -- se omite por completo, no se corrige a holder. Mismo fix de prompt aplicado (4o sub-caso de REGLA DE ALCANCE DE LA GARANTIA), sin guardrail de respaldo (coverage_path '3-. Asistencia en viaje' tampoco coincide con ningun COVERAGE_SCOPE_TITLE_PATTERNS). Matiz de guardrail (comprobado 31/08): Guardrail v13a rechaza 'primaryDriver.identificationType' de forma incidental -- su evidencia dice 'Conductor' a secas (sin 'habitual'/'principal'), asi que el unico keyword que matchea es 'titular de la poliza' (holder esperado, figura real primaryDriver -> mismatch) -- pero deja pasar las 2 dependencias bare (identificationType), correctas en figura pero igualmente incorrectas de fondo (alcance de garantia, no condicion). expected_accepted_risk_fields=['identificationType','identificationType'] documenta este estado real mixto.",
+      "subtype": "coverage_scope_confused_with_condition",
+      "company": "Zurich",
+      "coverage_path": [
+        "3-. Asistencia en viaje"
       ],
-      "expected_rejection_reason": "figure_keyword_mismatch"
+      "expected_coverage_dependencies": [],
+      "expected_coverage_scope_flagged": false,
+      "guardrail_catches": false,
+      "expected_accepted_risk_fields": [
+        "identificationType",
+        "identificationType"
+      ]
     },
     {
       "id": "GD-AUTO-HALLUC-021",
