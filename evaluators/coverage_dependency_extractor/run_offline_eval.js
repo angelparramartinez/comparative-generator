@@ -24,6 +24,7 @@
 //   node run_offline_eval.js --list-field-scalar -> solo el check de rechazo de uso escalar de cualquier risk_field data_type "list" (base7Options, nonBase7Options, economicActivities...) (Guardrail v10)
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
+//   node run_offline_eval.js --artifact-threading -> solo el check generico de que las 8 listas del guardrail (rejected/ungrounded/unverified_evidence/transversal_chapter/procedural_instruction/person_field_mismatch/coverage_scope/figure_selection) se propagan intactas a Build Coverage Dependency Artifact / Build Coverage Matcher Contract
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -794,6 +795,73 @@ function checkFigureSelectionVisibility(workflow, golden) {
   return failures;
 }
 
+// 31/08: hallado en produccion (5 ejecuciones reales, Axa/Qualitas/Reale/
+// Zurich/Generali) que "figure_selection_dependencies" (Guardrail v12)
+// nunca llegaba al artefacto final -- el flag inline
+// "inconsistent_figure_selection" si viajaba en cada dependencia, pero la
+// lista agregada no se hilo hacia "Build Coverage Dependency Artifact" ni
+// "Build Coverage Matcher Contract" al desplegar v12. Ningun check
+// anterior cubria este threading para NINGUNA de las listas de
+// visibilidad del guardrail (transversal_chapter_dependencies,
+// coverage_scope_dependencies...) -- todas se validaban solo dentro del
+// propio guardrail, nunca aguas abajo. Este check generico cubre las 8
+// listas conocidas de una vez, para que un descuido similar en una lista
+// futura se detecte aqui en vez de en produccion.
+function checkGuardrailListThreading(workflow) {
+  console.log("\n=== Check: threading de las listas del guardrail hacia el artefacto final ===");
+
+  const sideListKeys = [
+    "rejected_dependencies",
+    "ungrounded_dependencies",
+    "unverified_evidence_dependencies",
+    "transversal_chapter_dependencies",
+    "procedural_instruction_dependencies",
+    "person_field_mismatch_dependencies",
+    "coverage_scope_dependencies",
+    "figure_selection_dependencies"
+  ];
+
+  let failures = 0;
+
+  if (!findNode(workflow, "Build Coverage Dependency Artifact")) {
+    console.log("Nodo 'Build Coverage Dependency Artifact' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const fakeGuardrailOutput = {
+    semantic_unit_id: "su_fake",
+    coverage_context: {},
+    chunks: [],
+    output: { coverage_dependencies: [] }
+  };
+  for (const key of sideListKeys) fakeGuardrailOutput[key] = [{ marker: key }];
+
+  const [artifact] = runNode(workflow, "Build Coverage Dependency Artifact", [fakeGuardrailOutput]);
+
+  for (const key of sideListKeys) {
+    const ok = Array.isArray(artifact[key]) && artifact[key].length === 1 && artifact[key][0].marker === key;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} ${key} se propaga intacto a Build Coverage Dependency Artifact`);
+  }
+
+  if (findNode(workflow, "Build Coverage Matcher Contract")) {
+    const [contract] = runNode(workflow, "Build Coverage Matcher Contract", [
+      { ...artifact, has_dependencies: true }
+    ]);
+    for (const key of sideListKeys) {
+      const totalKey = "total_" + key.replace(/_dependencies$/, "") + "_dependencies";
+      const ok = contract[totalKey] === 1;
+      if (!ok) failures++;
+      console.log(`${ok ? "PASS" : "FAIL"} ${totalKey} = ${contract[totalKey]} (esperado 1) en Build Coverage Matcher Contract`);
+    }
+  } else {
+    console.log("Nodo 'Build Coverage Matcher Contract' no encontrado -- mitad del check omitida.");
+  }
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
+  return failures;
+}
+
 function checkHierarchyArticleDetection(workflow) {
   console.log("\n=== Check: deteccion de 'article' (nodos Hierarchy Builder / Semantic Assembler) ===");
 
@@ -1465,6 +1533,10 @@ function main() {
 
   if (runAll || args.includes("--figure-selection")) {
     exitCode += checkFigureSelectionVisibility(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--artifact-threading")) {
+    exitCode += checkGuardrailListThreading(workflow) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
