@@ -25,6 +25,7 @@
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
 //   node run_offline_eval.js --artifact-threading -> solo el check generico de que las 8 listas del guardrail (rejected/ungrounded/unverified_evidence/transversal_chapter/procedural_instruction/person_field_mismatch/coverage_scope/figure_selection) se propagan intactas a Build Coverage Dependency Artifact / Build Coverage Matcher Contract
+//   node run_offline_eval.js --figure-selection-rejections -> solo el check de rechazo duro de figure_keyword_mismatch y duplicate_figure_without_distinction (Guardrail v13)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -862,6 +863,69 @@ function checkGuardrailListThreading(workflow) {
   return failures;
 }
 
+// Guardrail v13 (31/08): dos rechazos duros para el patron 2, respaldo de
+// la REGLA DE SELECCION DE FIGURA del prompt (confirmada insuficiente sola
+// con 5 ejecuciones reales) -- figure_keyword_mismatch (vocabulario
+// español inequivoco en evidence contra una figura distinta) y
+// duplicate_figure_without_distinction (misma evidencia duplicada en
+// primaryDriver+secondaryDriver sin distincion textual). Mismo patron de
+// verificacion que checkRelativeDurationMisuse (v11): usa
+// expected_rejection_reason por caso porque ambas categorias comparten
+// mecanismo (rechazo duro via evidence lexico) pero razones distintas.
+function checkFigureSelectionRejections(workflow, golden) {
+  console.log("\n=== Check: figure_keyword_mismatch / duplicate_figure_without_distinction (nodo Coverage Dependency Risk Field Guardrail v13) ===");
+
+  const cases = golden.cases.filter(c =>
+    c.category === "figure_keyword_mismatch" || c.category === "duplicate_figure_without_distinction"
+  );
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (result.rejected_dependencies || [])
+      .filter(d => !c.expected_rejection_reason || d.rejection_reason === c.expected_rejection_reason)
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_risk_fields || [];
+    const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const expectedAccepted = c.actual_coverage_dependencies
+      .map(d => d.risk_field)
+      .filter(f => !expectedRejected.includes(f));
+    const acceptedOk = expectedAccepted.every(f => acceptedFields.includes(f)) &&
+      acceptedFields.every(f => expectedAccepted.includes(f));
+
+    let correctedOk = true;
+    let correctedAccepted = [];
+    if (c.corrected_coverage_dependencies) {
+      const [goodResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+        { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.corrected_coverage_dependencies } }
+      ]);
+      correctedAccepted = (goodResult.output?.coverage_dependencies || []).map(d => d.risk_field);
+      correctedOk = c.corrected_coverage_dependencies.every(d => correctedAccepted.includes(d.risk_field));
+    }
+
+    const ok = allExpectedRejected && acceptedOk && correctedOk;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}) | aceptados=${JSON.stringify(acceptedFields)} (esperado ${JSON.stringify(expectedAccepted)})` +
+        (c.corrected_coverage_dependencies ? ` | corregida_aceptada=${correctedOk} (${JSON.stringify(correctedAccepted)})` : "")
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
 function checkHierarchyArticleDetection(workflow) {
   console.log("\n=== Check: deteccion de 'article' (nodos Hierarchy Builder / Semantic Assembler) ===");
 
@@ -1537,6 +1601,10 @@ function main() {
 
   if (runAll || args.includes("--artifact-threading")) {
     exitCode += checkGuardrailListThreading(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--figure-selection-rejections")) {
+    exitCode += checkFigureSelectionRejections(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
