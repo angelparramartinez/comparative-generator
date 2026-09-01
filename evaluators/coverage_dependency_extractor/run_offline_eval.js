@@ -23,6 +23,7 @@
 //   node run_offline_eval.js --driving-license -> solo el check de rechazo de uso escalar de "drivingLicenses" (lista) y aceptacion de licenseYears/licenseType (Guardrail v9)
 //   node run_offline_eval.js --list-field-scalar -> solo el check de rechazo de uso escalar de cualquier risk_field data_type "list" (base7Options, nonBase7Options, economicActivities...) (Guardrail v10)
 //   node run_offline_eval.js --engine-field-value -> solo el check de rechazo de valores invalidos (no vocabulario real de motor/combustible) para base7Version.base7Engine.id (Guardrail v15, hallazgo A)
+//   node run_offline_eval.js --policy-admission-criteria -> solo el check de visibilidad de criterios de admision de persona en figura confundidos con condicion de cobertura (Guardrail v16, hallazgo C)
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
 //   node run_offline_eval.js --artifact-threading -> solo el check generico de que las 8 listas del guardrail (rejected/ungrounded/unverified_evidence/transversal_chapter/procedural_instruction/person_field_mismatch/coverage_scope/figure_selection) se propagan intactas a Build Coverage Dependency Artifact / Build Coverage Matcher Contract
@@ -747,6 +748,56 @@ function checkEngineFieldInvalidValue(workflow, golden) {
   return failures;
 }
 
+// Guardrail v16 (01/09): verifica que policy_admission_criteria_dependencies
+// marca (visibilidad, no bloqueo) las dependencias de una unidad cuyo
+// sourceText completo describe criterios de ADMISION de una persona en una
+// figura (p.ej. "se podran incluir conductores principales...que cumplan"),
+// no una condicion de aplicabilidad de garantia. Cierra el hallazgo C. Ver
+// golden_dataset_auto.json, schema_notes["policy_admission_criteria (01/09,
+// Guardrail v16 -- hallazgo C cerrado)"].
+function checkPolicyAdmissionCriteriaVisibility(workflow, golden) {
+  console.log("\n=== Check: policy_admission_criteria_dependencies (nodo Coverage Dependency Risk Field Guardrail v16) ===");
+
+  const cases = golden.cases.filter(c => c.expected_policy_admission_criteria_flagged !== undefined);
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      {
+        semantic_unit_id: c.semantic_unit_ref,
+        ontology_type: "auto",
+        coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
+        chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
+        output: { coverage_dependencies: c.actual_coverage_dependencies }
+      }
+    ]);
+
+    const flaggedFields = (result.policy_admission_criteria_dependencies || []).map(d => d.risk_field);
+    const isFlagged = flaggedFields.length > 0;
+    const flagOk = isFlagged === c.expected_policy_admission_criteria_flagged;
+
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const expectedAcceptedFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+
+    const ok = flagOk && nothingLost;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_policy_admission_criteria_flagged}) | sigue_aceptada=${nothingLost}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
 // Guardrail v11 (31/08): verifica que ningun risk_field de la categoria
 // person_vehicle_field_confusion se cuele en coverage_dependencies -- sea
 // cual sea la capa que lo rechace (v11 nueva, isImplausibleYearValue; o el
@@ -868,7 +919,8 @@ function checkGuardrailListThreading(workflow) {
     "procedural_instruction_dependencies",
     "person_field_mismatch_dependencies",
     "coverage_scope_dependencies",
-    "figure_selection_dependencies"
+    "figure_selection_dependencies",
+    "policy_admission_criteria_dependencies"
   ];
 
   let failures = 0;
@@ -1865,6 +1917,10 @@ function main() {
 
   if (runAll || args.includes("--engine-field-value")) {
     exitCode += checkEngineFieldInvalidValue(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--policy-admission-criteria")) {
+    exitCode += checkPolicyAdmissionCriteriaVisibility(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--relative-duration")) {

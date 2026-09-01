@@ -358,14 +358,14 @@ Estos textos no condicionan si la cobertura aplica o deja de aplicar -- describe
 
 REGLA DE CONDICIONES DE CONTRATACIÓN DE PÓLIZA (NO DE COBERTURA)
 
-Un texto puede condicionar si la PÓLIZA o una MODALIDAD concreta se puede contratar en absoluto -- un requisito de admisión/suscripción -- en vez de condicionar si una garantía ya contratada aplica o deja de aplicar.
+Un texto puede condicionar si la PÓLIZA o una MODALIDAD concreta se puede contratar en absoluto, o si una PERSONA concreta puede declararse/incluirse en una figura del riesgo (p.ej. como conductor principal) -- un requisito de admisión/suscripción -- en vez de condicionar si una garantía ya contratada aplica o deja de aplicar.
 
 Estas dos cosas son distintas:
 
-* Condición de CONTRATACIÓN: determina si el Tomador puede o no contratar esta póliza/modalidad. NO es una dependencia -- está fuera del alcance de este análisis (comparativa de coberturas de una póliza ya contratada).
-* Condición de APLICABILIDAD de una garantía: determina si, una vez contratada la póliza, una garantía concreta aplica o deja de aplicar. SÍ es una dependencia.
+* Condición de ADMISIÓN/CONTRATACIÓN: determina si el Tomador puede o no contratar esta póliza/modalidad, o si una persona concreta puede o no declararse/incluirse en una figura del riesgo (p.ej. requisitos para que alguien pueda darse de alta como conductor principal/habitual). NO es una dependencia -- está fuera del alcance de este análisis (comparativa de coberturas de una póliza ya contratada, con sus figuras ya declaradas).
+* Condición de APLICABILIDAD de una garantía: determina si, una vez contratada la póliza y declaradas sus figuras, una garantía concreta aplica o deja de aplicar. SÍ es una dependencia.
 
-Antes de generar una dependencia, pregúntate: "¿esto determina si se puede contratar la póliza, o si una garantía ya contratada aplica?" Si es lo primero, omite la dependencia.
+Antes de generar una dependencia, pregúntate: "¿esto determina si se puede contratar la póliza / declarar a esta persona en su figura, o si una garantía ya contratada aplica?" Si es lo primero, omite la dependencia -- aunque el texto use vocabulario (edad, antigüedad de carné...) que en otro contexto sí sería una condición de riesgo real.
 
 REGLA DE ANTIGÜEDAD RELATIVA (PERSONA)
 

@@ -68,6 +68,10 @@ Texto: "Pólizas para un segundo vehículo con el mismo conductor: ... siempre q
 
 → NO es una dependencia. Es un requisito para poder contratar esta modalidad de póliza (segundo vehículo), no una condición sobre si una garantía dentro de la póliza ya contratada aplica o no.
 
+Texto: "Se podrán incluir conductores principales de 23 a 25 años que cumplan: Ser tomador, propietario y conductor principal del vehículo asegurado. Más de 4 años de antigüedad del permiso de conducción. Al menos dos años de historial de antigüedad declarados en póliza y sin que la póliza haya tenido siniestros en ese período."
+
+→ NO es una dependencia (ninguna de las tres condiciones del listado). Todo el bloque define los REQUISITOS DE ADMISIÓN para que una persona de 23-25 años pueda darse de alta como conductor principal -- no condiciones sobre si una garantía ya contratada aplica. No generes "primaryDriver.age >= 23"/"<= 25" ni "primaryDriver.licenseYears > 4" a partir de este bloque, aunque "antigüedad del permiso de conducción" sea, en otro contexto, un campo real (licenseYears, ver REGLA DE CARNÉ DE CONDUCIR) -- aquí es un requisito de admisión de la persona en su figura, no una condición de riesgo sobre una garantía.
+
 REGLA DE ENTIDAD DEL CAMPO (PERSONA vs. VEHÍCULO/ANIMAL/OBJETO)
 
 Cada risk_field de ontology_matches pertenece a una entidad concreta: una PERSONA (rutas owner.*, primaryDriver.*, secondaryDriver.*, o sin prefijo cuando el campo pertenece al tomador/holder), o el VEHÍCULO asegurado/otro objeto o animal descrito en el texto (base7Version.*, registrationPlate...).
