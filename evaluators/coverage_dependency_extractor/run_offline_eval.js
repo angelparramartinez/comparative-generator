@@ -28,6 +28,7 @@
 //   node run_offline_eval.js --figure-selection-rejections -> solo el check de rechazo duro de figure_keyword_mismatch y duplicate_figure_without_distinction (Guardrail v13)
 //   node run_offline_eval.js --ontology-type-threading -> solo el check de hilado de "ontology_type" (home/auto) en Prepare Dependency Extractor Input v3
 //   node run_offline_eval.js --ontology-type-gating -> solo el check de que los chequeos especificos de Autos (v7/v8/v9/v12/v13) no disparan ni dejan de cazar nada segun ontology_type (Guardrail v14, separacion nucleo/ramo)
+//   node run_offline_eval.js --prompt-assembler -> solo el check estructural de la separacion nucleo/ramo del prompt (nodo Prompt Assembler) -- NO sustituye a una confirmacion real con el LLM
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -995,6 +996,70 @@ function checkOntologyTypeGating(workflow) {
   return failures;
 }
 
+// v1 (2026-09-01): verifica el nodo "Prompt Assembler" (separacion nucleo/ramo
+// del prompt del extractor, mismo motivo que Guardrail v14) -- que el bloque
+// especifico de cada ramo aparece SOLO en su propio ontology_type, que el
+// nucleo aparece en ambos, que la sustitucion del JSON del item funciona, y
+// que "Coverage Dependency Extractor" ya no lleva el prompt literal sino que
+// referencia $json.prompt_text. Chequeo estructural/mecanico -- NO sustituye
+// a una confirmacion real con el LLM (eso exige una ejecucion real, pedida al
+// usuario explicitamente, igual que cualquier otro cambio de prompt).
+function checkPromptAssembler(workflow) {
+  console.log("\n=== Check: separacion nucleo/ramo del prompt (nodo Prompt Assembler) ===");
+
+  const node = findNode(workflow, "Prompt Assembler");
+  if (!node) {
+    console.log("Nodo 'Prompt Assembler' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const fn = new Function("$json", "$getWorkflowStaticData", node.parameters.jsCode);
+  function run(ontologyType) {
+    const sample = { semantic_unit_id: "su_prompt_test", ontology_type: ontologyType, chunks: [] };
+    return fn(sample, () => ({})).json.prompt_text;
+  }
+
+  const autoPrompt = run("auto");
+  const homePrompt = run("home");
+
+  let failures = 0;
+  function expect(label, condition) {
+    const ok = !!condition;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} ${label}`);
+  }
+
+  const coreMarkers = ["REGLA FUNDAMENTAL", "REGLAS DE NORMALIZACIÓN", "REQUISITOS DE SALIDA"];
+  for (const m of coreMarkers) {
+    expect(`nucleo "${m}" presente en ambos ramos`, autoPrompt.includes(m) && homePrompt.includes(m));
+  }
+
+  const autosMarkers = ["REGLA DE SELECCIÓN DE FIGURA", "REGLA DE CARNÉ DE CONDUCIR", "REGLA DE ANTIGÜEDAD RELATIVA"];
+  for (const m of autosMarkers) {
+    expect(`"${m}" solo en auto`, autoPrompt.includes(m) && !homePrompt.includes(m));
+  }
+
+  const hogarMarkers = ["EJEMPLO CONTRASTADO", "EJEMPLO ILUSTRATIVO (Hogar)"];
+  for (const m of hogarMarkers) {
+    expect(`"${m}" solo en home`, homePrompt.includes(m) && !autoPrompt.includes(m));
+  }
+
+  expect("JSON del item sustituido en el prompt (auto)", autoPrompt.includes('"semantic_unit_id": "su_prompt_test"'));
+  expect("placeholder sin sustituir no queda en el prompt", !autoPrompt.includes("{{ JSON.stringify"));
+  expect("registrationYears (campo de Autos) no se filtra al nucleo de Hogar", !homePrompt.includes("registrationYears"));
+
+  const extractor = findNode(workflow, "Coverage Dependency Extractor");
+  if (extractor) {
+    expect(
+      "Coverage Dependency Extractor referencia $json.prompt_text (no lleva el prompt literal)",
+      extractor.parameters.text === "={{ $json.prompt_text }}"
+    );
+  }
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
+  return failures;
+}
+
 // Guardrail v13 (31/08): dos rechazos duros para el patron 2, respaldo de
 // la REGLA DE SELECCION DE FIGURA del prompt (confirmada insuficiente sola
 // con 5 ejecuciones reales) -- figure_keyword_mismatch (vocabulario
@@ -1745,6 +1810,10 @@ function main() {
 
   if (runAll || args.includes("--ontology-type-gating")) {
     exitCode += checkOntologyTypeGating(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--prompt-assembler")) {
+    exitCode += checkPromptAssembler(workflow) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
