@@ -22,6 +22,7 @@
 //   node run_offline_eval.js --coverage-scope -> solo el check de visibilidad de alcance de garantia confundido con condicion (Guardrail v8)
 //   node run_offline_eval.js --driving-license -> solo el check de rechazo de uso escalar de "drivingLicenses" (lista) y aceptacion de licenseYears/licenseType (Guardrail v9)
 //   node run_offline_eval.js --list-field-scalar -> solo el check de rechazo de uso escalar de cualquier risk_field data_type "list" (base7Options, nonBase7Options, economicActivities...) (Guardrail v10)
+//   node run_offline_eval.js --engine-field-value -> solo el check de rechazo de valores invalidos (no vocabulario real de motor/combustible) para base7Version.base7Engine.id (Guardrail v15, hallazgo A)
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
 //   node run_offline_eval.js --artifact-threading -> solo el check generico de que las 8 listas del guardrail (rejected/ungrounded/unverified_evidence/transversal_chapter/procedural_instruction/person_field_mismatch/coverage_scope/figure_selection) se propagan intactas a Build Coverage Dependency Artifact / Build Coverage Matcher Contract
@@ -686,6 +687,49 @@ function checkListFieldUsedAsScalar(workflow, golden) {
 
     const rejectedFields = (result.rejected_dependencies || [])
       .filter(d => d.rejection_reason === "list_field_used_as_scalar")
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_risk_fields || [];
+    const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
+    const nothingLeaked = (result.output?.coverage_dependencies || []).length === 0;
+
+    const ok = allExpectedRejected && nothingLeaked;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}) | nada_se_cuela=${nothingLeaked}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// Guardrail v15 (01/09): verifica que un value de "base7Version.base7Engine.id"
+// que no coincida con vocabulario real de tipo de motor/combustible (ni sea un
+// id numerico 1-13) se rechace -- rejection_reason "engine_field_invalid_value".
+// Cierra el hallazgo A (patron recurrente en 3 companias: Zurich/Axa/Pelayo,
+// "combustible equivocado"/"combustible" descrito como averia, no tipo de
+// motor real). Ver golden_dataset_auto.json,
+// schema_notes["engine_field_invalid_value (01/09, Guardrail v15 -- hallazgo A cerrado)"].
+function checkEngineFieldInvalidValue(workflow, golden) {
+  console.log("\n=== Check: engine_field_invalid_value (nodo Coverage Dependency Risk Field Guardrail v15) ===");
+
+  const cases = golden.cases.filter(c => c.category === "engine_field_invalid_value");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "engine_field_invalid_value")
       .map(d => d.risk_field);
     const expectedRejected = c.expected_rejected_risk_fields || [];
     const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
@@ -1817,6 +1861,10 @@ function main() {
 
   if (runAll || args.includes("--list-field-scalar")) {
     exitCode += checkListFieldUsedAsScalar(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--engine-field-value")) {
+    exitCode += checkEngineFieldInvalidValue(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--relative-duration")) {

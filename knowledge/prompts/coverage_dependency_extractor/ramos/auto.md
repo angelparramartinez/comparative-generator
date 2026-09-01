@@ -10,7 +10,7 @@ NO generes una dependencia cuando el texto:
 
 * Define quién cuenta como asegurado/conductor cubierto para esta garantía concreta (p.ej. "el conductor, titular o autorizado, del vehículo asegurado...", bajo un epígrafe tipo "¿Quién está asegurado?").
 * Describe un vehículo DISTINTO del vehículo asegurado (p.ej. el vehículo de sustitución/cortesía que proporciona la compañía), aunque use los mismos risk_field de tipo/motor que el vehículo asegurado.
-* Enumera los tipos de evento o avería que la propia garantía cubre (p.ej. "cobertura... incluyendo falta de combustible, baterías, pérdida de llaves o pinchazo") -- esa lista ES la cobertura, no una condición sobre ella.
+* Enumera los tipos de evento o avería que la propia garantía cubre (p.ej. "cobertura... incluyendo falta de combustible, baterías, pérdida de llaves o pinchazo") -- esa lista ES la cobertura, no una condición sobre ella. Presta especial atención cuando el texto mencione "combustible" o "error/falta de combustible": es una AVERÍA del catálogo de eventos cubiertos por una garantía de asistencia, nunca un valor de base7Version.base7Engine.id (ese campo representa el TIPO de motor/combustible real del vehículo -- eléctrico, diésel, gasolina... -- no un incidente relacionado con el combustible). No generes "base7Version.base7Engine.id" con un value tipo "combustible equivocado", "combustible" o cualquier otra descripción de avería -- ninguno de esos valores es un tipo de motor real.
 * Describe el propio evento asegurado que da derecho a la indemnización (p.ej. "para el caso de que le sea retirado el permiso de conducir" en una garantía de "retirada de carné") -- el evento cubierto no es una condición de riesgo, es lo que la garantía indemniza.
 * Define A QUIÉN beneficia una garantía o ampliación según un atributo del Tomador/Asegurado (p.ej. "si el Tomador es persona física, la cobertura se aplica a él y su cónyuge; si es persona jurídica, se aplica a quien se acredite como conductor habitual") -- el atributo (persona física/jurídica) no activa ni desactiva la garantía, solo determina SOBRE QUIÉN recae el beneficio ya reconocido. No generes una dependencia de identificationType (ni de ningún otro campo) a partir de este tipo de cláusula.
 
@@ -29,6 +29,10 @@ Texto: "Ponemos a tu disposición un turismo de alquiler... para sustituir tu ve
 Texto: "El Asegurador da cobertura al vehículo Asegurado en caso de avería o accidente, incluyendo falta de combustible, baterías, pérdida de llaves o pinchazo."
 
 → NO es una dependencia. Es el catálogo de eventos que cubre la garantía de asistencia, no una condición.
+
+Texto: "Si el vehículo quedara inmovilizado por error de combustible (entendiendo por tal que se haya repostado con un combustible no compatible con el vehículo)..." / "se garantiza reclamar a Estaciones de Servicio los daños sufridos por el vehículo asegurado al repostar con combustible equivocado" / "falta o error de combustible" (dentro de un catálogo de averías tipo "limpiaparabrisas, luces... batería descargada... pérdida o rotura de llaves").
+
+→ NO es una dependencia en ninguno de los tres casos. Los tres describen una AVERÍA relacionada con el combustible (repostar mal, quedarse sin combustible) dentro del catálogo de eventos que cubre una garantía de asistencia en viaje -- no el tipo de motor del vehículo. NUNCA generes "base7Version.base7Engine.id" con value "combustible equivocado", "combustible" ni ninguna otra descripción de avería a partir de este tipo de cláusula -- omite la dependencia.
 
 Texto: "Pago de una indemnización mensual para el caso de que al asegurado le sea retenido o retirado el Permiso de Conducir."
 
