@@ -15,7 +15,8 @@
     "figure_keyword_mismatch / duplicate_figure_without_distinction (31/08, Guardrail v13 -- patron 2 reforzado)": "Confirmado con 5 ejecuciones reales (31/08, Axa/Qualitas/Reale/Zurich/Generali) que la REGLA DE SELECCION DE FIGURA del prompt (desplegada el mismo dia) NO basto sola: 0/2 casos de vocabulario corregidos (Axa su_00070, Zurich su_00035 -- 'Tomador'/'titular de la poliza' seguian mapeandose a owner/primaryDriver en vez de holder) y la duplicacion arbitraria seguia reproduciendose (Qualitas su_00071). Guardrail v13 añade DOS rechazos duros (a diferencia de v12, que solo marca visibilidad): (a) figure_keyword_mismatch -- vocabulario español inequivoco en 'evidence' (Tomador/titular de la poliza -> holder; Propietario/titular del vehiculo -> owner; Conductor Habitual/principal -> primaryDriver; Conductor Ocasional/secundario -> secondaryDriver) contra una figura distinta de la esperada -- solo actua si evidence menciona EXACTAMENTE una figura (evita falsos positivos con frases que mencionan varias); (b) duplicate_figure_without_distinction -- misma evidencia normalizada duplicada en primaryDriver Y secondaryDriver sin que el texto distinga los roles explicitamente (sin FIGURE_INCLUSIVE_PATTERNS, p.ej. 'ya sea titular o autorizado' -- ese patron SI es correcto duplicar, caso ya resuelto por otra via en Axa su_00056). GD-AUTO-HALLUC-019/020 (antes solo v12/visibilidad) se recategorizaron a figure_keyword_mismatch tras confirmar que v13 los resuelve por completo (mismo patron ya visto con v9 sobre v8, GD-AUTO-HALLUC-007). GD-AUTO-HALLUC-021 (Qualitas su_00071, nuevo) cubre duplicate_figure_without_distinction con datos de la reejecucion real del 31/08.\n\nCORRECCION IMPORTANTE (31/08, mismo dia): los 2 casos reales que motivaron figure_keyword_mismatch (Axa su_00070, Zurich su_00035) fueron RECLASIFICADOS a patron 7 (coverage_scope_confused_with_condition, ver GD-AUTO-HALLUC-019/020 actualizados) tras confirmar leyendo el condicionado que ambos son en realidad secciones de definicion de 'a quien beneficia la garantia' (alcance), no condiciones de seleccion de figura -- ninguna figura habria sido correcta, la correccion real es OMITIR, no elegir holder. figure_keyword_mismatch queda desplegado como mecanismo (sigue siendo un diseño solido para un futuro caso genuino), pero SIN ningun caso real confirmado todavia -- ambas motivaciones originales resultaron ser el patron equivocado. duplicate_figure_without_distinction si mantiene su confirmacion real intacta (Qualitas su_00071/su_00030, genuina ambiguedad de rol de conductor, no de alcance de garantia).",
     "indemnification_multiplier / policy_contracting_condition (31/08, prompt-only, sin guardrail)": "2 categorias nuevas encontradas en la ronda de validacion Axa/Pelayo/Reale del 31/08 (tras confirmar patron 1/6/7-4subcaso en produccion). (1) indemnification_multiplier_confused_with_condition: el texto describe un escenario que MULTIPLICA/DUPLICA el capital indemnizado ('doble capital'), no si una garantia esta incluida -- 2 casos reales (GD-AUTO-HALLUC-022 Qualitas, GD-AUTO-HALLUC-023 Axa), mismo dia, ambos con la edad de HIJOS/beneficiarios mal asignada a un conductor. Diagnostico inicial erroneo del asistente (crey que era solo confusion de entidad) corregido por el usuario -- el problema real es que NINGUNA figura seria correcta, la clausula entera es un detalle de calculo de indemnizacion. (2) policy_contracting_condition_confused_with_coverage_condition: el texto condiciona si la POLIZA/MODALIDAD se puede contratar (admision/suscripcion), no si una garantia ya contratada aplica -- 1 caso real (GD-AUTO-HALLUC-024, Reale). Ambas corregidas con ejemplos/reglas nuevas en el prompt, sin guardrail de respaldo posible (el risk_field/operador/tipo son siempre validos en estos casos, el problema es puramente semantico -- mismo tipo de limitacion ya aceptada para otros sub-casos de alcance de garantia). Pendiente confirmar en produccion con una ejecucion real futura.",
     "engine_field_invalid_value (01/09, Guardrail v15 -- hallazgo A cerrado)": "Rechaza (mismo nivel que v9/v10/v11) cualquier value de \"base7Version.base7Engine.id\" que no coincida con vocabulario real de tipo de motor/combustible (ver shared/base7version.md, tabla real BASE7_ENGINE) ni sea un id numerico 1-13 real. Patron recurrente confirmado en 3 companias distintas (Zurich su_00051, Axa su_00070, Pelayo su_00105): \"combustible equivocado\"/\"combustible\" son AVERIAS del catalogo de eventos de una garantia de asistencia, no un tipo de motor -- el prompt ya tenia un ejemplo casi identico (\"falta de combustible, baterias... pinchazo\") y aun asi el LLM seguia generando la dependencia (confirmado por el usuario: ninguno de los 3 casos indica si la garantia esta incluida o no). Reforzado ademas el prompt (ramos/auto.md) con los 3 casos reales como ejemplo ilustrativo adicional. Gateado por ontology_type === \"auto\" (base7Engine no existe fuera de Autos).",
-    "policy_admission_criteria (01/09, Guardrail v16 -- hallazgo C cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6/v8) -- marca (policy_admission_criteria: true, lista agregada policy_admission_criteria_dependencies) cualquier dependencia de una unidad cuyo sourceText completo coincide con vocabulario de criterios de ADMISION de una persona en una figura del riesgo (p.ej. 'se podran incluir/declarar...conductor...que cumplan'). A diferencia de v6 (evalua evidence por dependencia), evalua sourceText de la UNIDAD completa (igual que v5/v8) porque la frase delatora suele vivir en la introduccion del bloque, no en el evidence acotado de cada dependencia individual. Basado en un unico caso real (Reale su_00038, hallazgo C) -- patrones deliberadamente conservadores, ampliar si aparecen mas casos con vocabulario distinto. Gateado por ontology_type === \"auto\"."
+    "policy_admission_criteria (01/09, Guardrail v16 -- hallazgo C cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6/v8) -- marca (policy_admission_criteria: true, lista agregada policy_admission_criteria_dependencies) cualquier dependencia de una unidad cuyo sourceText completo coincide con vocabulario de criterios de ADMISION de una persona en una figura del riesgo (p.ej. 'se podran incluir/declarar...conductor...que cumplan'). A diferencia de v6 (evalua evidence por dependencia), evalua sourceText de la UNIDAD completa (igual que v5/v8) porque la frase delatora suele vivir en la introduccion del bloque, no en el evidence acotado de cada dependencia individual. Basado en un unico caso real (Reale su_00038, hallazgo C) -- patrones deliberadamente conservadores, ampliar si aparecen mas casos con vocabulario distinto. Gateado por ontology_type === \"auto\".",
+    "percentage_indemnification (01/09, Guardrail v17 -- hallazgo D cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6), AGNOSTICO DE RAMO (a diferencia de v14-v16) -- marca (percentage_indemnification: true, lista agregada percentage_indemnification_dependencies) cualquier dependencia cuyo evidence contiene un porcentaje numerico (\"100 %\", \"80%\"...). Decision del usuario (01/09): las escalas de indemnizacion en porcentaje por antiguedad de vehiculo (Pelayo su_00058/su_00059) se excluyen SIEMPRE -- calculo de indemnizacion, no condicion de aplicabilidad -- a diferencia del patron 1 ya confirmado (Zurich su_00077, variantes NOMBRADAS sin ningun porcentaje, SI son dependencia real). Un unico patron deliberado (\\\\d+\\\\s*%) -- 'valor GANVAM'/'valor de mercado ampliado' NO se incluyen como patrones porque el segundo es precisamente el ejemplo de variante NOMBRADA valida que el prompt contrasta con este hallazgo."
   },
   "cases": [
     {
@@ -1015,6 +1016,58 @@
       "expected_policy_admission_criteria_flagged": true,
       "guardrail_catches": false,
       "notes": "Caso real (hallazgo C, 31/08, pagina 13 del PDF de Reale). Diagnostico inicial erroneo del asistente (campo equivocado, registrationYears en vez de licenseYears -- ver golden_dataset_auto.json historico anterior a esta correccion). El usuario corrigio (01/09): ninguna de las 3 condiciones del listado (edad 23-25, antiguedad de carne >4 anios, 2 anios de historial sin siniestros) es una condicion de riesgo -- todo el bloque define los REQUISITOS DE ADMISION para que una persona pueda darse de alta como conductor principal, no condiciones de aplicabilidad de ninguna garantia ya contratada. Mismo patron ya visto con el hallazgo B (Reale su_00043, contratacion de poliza) y con Axa su_00070/Zurich su_00035 (alcance de garantia) -- misma leccion repetida: preguntar primero si es una condicion de riesgo en absoluto antes de preguntar que campo es el correcto. Fix (01/09): extendida REGLA DE CONDICIONES DE CONTRATACION DE POLIZA (core.md) para cubrir tambien 'admision de una persona en una figura', mas Guardrail v16 (visibilidad, no bloqueo -- evalua sourceText de la unidad completa, no evidence por dependencia, porque la frase delatora ('Se podran incluir...que cumplan:') no siempre aparece en el evidence acotado de cada dependencia individual)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-029",
+      "category": "percentage_indemnification",
+      "source_company": "Pelayo (ggcc_outputs/coverage_matcher_contract_2026-08-31T11-29-31-280Z.json)",
+      "semantic_unit_ref": "su_00058",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "El 100 % del valor de nuevo del vehículo durante los dos primeros años desde la primera matriculación del vehículo, si eres el primer Propietario. Si eres el segundo o posterior Propietario, el 100 % del valor de adquisición en vez del valor de nuevo.\n\nEl 100 % del valor GANVAM del vehículo si han transcurrido dos años desde la primera matriculación.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<",
+          "value": 2,
+          "evidence": "El 100 % del valor de nuevo del vehículo durante los dos primeros años desde la primera matriculación del vehículo, si eres el primer Propietario."
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 2,
+          "evidence": "El 100 % del valor GANVAM del vehículo si han transcurrido dos años desde la primera matriculación."
+        }
+      ],
+      "expected_percentage_indemnification_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (hallazgo D, 31/08, pagina 42 del PDF de Pelayo). Decision del usuario (01/09): las escalas de indemnizacion en PORCENTAJE por antiguedad se excluyen SIEMPRE (calculo de indemnizacion, regla ya existente 'no estas extrayendo porcentajes') -- a diferencia del patron 1 ya confirmado (Zurich su_00077, 'valor a nuevo' vs 'valor de mercado ampliado', variantes NOMBRADAS sin ningun porcentaje, esas SI son dependencia real). Fix: reforzado el prompt (core.md, contraste explicito con el ejemplo de Zurich; ramos/auto.md, ejemplo concreto) + Guardrail v17 (visibilidad, agnostico de ramo -- un numero seguido de '%' en evidence)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-030",
+      "category": "percentage_indemnification",
+      "source_company": "Pelayo (ggcc_outputs/coverage_matcher_contract_2026-08-31T11-29-31-280Z.json)",
+      "semantic_unit_ref": "su_00059",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Sin sobrepasar la indemnización por robo o hurto, se cubre el 100 % del coste de dichos daños, tasados previamente por perito profesional, excepto los neumáticos, que se cubren según su antigüedad: 100 % en el primer año, 80 % en el segundo y tercero, y 50 % a partir del cuarto año.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "=",
+          "value": 1,
+          "evidence": "100 % en el primer año"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 4,
+          "evidence": "50 % a partir del cuarto año"
+        }
+      ],
+      "expected_percentage_indemnification_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (hallazgo D, 31/08, pagina 42 del PDF de Pelayo -- misma tabla/plantilla se repite en paginas 45/48/50 para otras garantias). Escala de indemnizacion de neumaticos por antiguedad -- mismo diagnostico y mismo fix que GD-AUTO-HALLUC-029. Nota: el mismo dataset original (31/08) tambien documentaba una franja intermedia ('80% en el segundo y tercero') que el guardrail existente rechazaba (operator_incompatible_with_data_type, IN [2,3]) perdiendo esa franja del todo en vez de partirla en 2 dependencias -- no se persigue arreglar ese bug de formato por separado: al excluirse toda la unidad como calculo de indemnizacion, deja de ser relevante."
     }
   ]
 }

@@ -157,6 +157,10 @@ Texto: "Desde la fecha de primera matriculación hasta el segundo año de antig�
 
 Error a evitar: generar "owner.birthDate >= 2" o cualquier variante con birthDate -- confunde la antigüedad del VEHÍCULO con la fecha de nacimiento de una PERSONA, y además usa un entero pequeño (una duración) contra un campo de fecha absoluta.
 
+Texto: "El 100 % del valor de nuevo del vehículo durante los dos primeros años desde la primera matriculación... Si eres el segundo o posterior Propietario, el 100 % del valor de adquisición... El 100 % del valor GANVAM del vehículo si han transcurrido dos años..." / "se cubren según su antigüedad: 100 % en el primer año, 80 % en el segundo y tercero, y 50 % a partir del cuarto año."
+
+→ NO es una dependencia en ninguno de los dos casos. A diferencia del ejemplo anterior ("valor a nuevo" vs. "valor de mercado ampliado", dos bases de cálculo con nombre propio), aquí TODO son porcentajes numéricos (100%/80%/50%) de una escala de indemnización -- no generes "registrationYears < 2"/">= 2" ni ninguna otra variante a partir de este tipo de tabla. Omite la dependencia por completo.
+
 REGLA DE CATEGORÍA DE VEHÍCULO IMPLÍCITA POR EL PROPIO CAPÍTULO
 
 Cuando coverage_context.article o algún nivel de coverage_path declara explícitamente una categoría de vehículo concreta (p.ej. "ANEXO 1. VEHÍCULOS DE SEGUNDA CATEGORÍA", "ANEXO 2. VEHÍCULOS TERCERA CATEGORÍA"), esa categoría es la condición REAL que aplica a TODO el texto de esa unidad -- aunque el propio texto solo mencione OTRA categoría de forma comparativa o referencial (p.ej. "Además de los indicados para los vehículos de primera categoría, quedan excluidos de la presente garantía...").

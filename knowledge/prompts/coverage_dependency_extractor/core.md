@@ -103,6 +103,10 @@ Ejemplos:
 
 → NO es una dependencia
 
+“El 100% de indemnización durante los dos primeros años, el 80% el tercer año, el 50% a partir del cuarto”
+
+→ NO es una dependencia. La presencia de un PORCENTAJE (%) numérico que varía según un campo de riesgo real (antigüedad, edad...) es la señal misma de que es un cálculo de indemnización (ver IMPORTANTE, "no estás extrayendo porcentajes"), no una condición de aplicabilidad -- aunque el texto mencione ese campo. Distíngelo de una condición real de selección entre VARIANTES NOMBRADAS de cobertura por ese mismo campo (p.ej. "valor a nuevo" vs. "valor de mercado ampliado" según la antigüedad, ver REGLA DE ANTIGÜEDAD RELATIVA): ahí no hay ningún porcentaje -- son dos bases de cálculo con nombre propio, tratadas como categorías (enum), no como una escala numérica continua.
+
 “Cuando no se haya contratado X”
 
 → SÍ es una dependencia
