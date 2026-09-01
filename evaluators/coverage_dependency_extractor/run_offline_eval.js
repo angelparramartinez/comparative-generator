@@ -1053,12 +1053,12 @@ function checkPromptAssembler(workflow) {
   const autoPrompt = run("auto");
   const homePrompt = run("home");
 
-  const coreMarkers = ["REGLA FUNDAMENTAL", "REGLAS DE NORMALIZACIÓN", "REQUISITOS DE SALIDA"];
+  const coreMarkers = ["REGLA FUNDAMENTAL", "REGLAS DE NORMALIZACIÓN", "REQUISITOS DE SALIDA", "REGLA DE ANTIGÜEDAD RELATIVA (PERSONA)"];
   for (const m of coreMarkers) {
     expect(`nucleo "${m}" presente en ambos ramos`, autoPrompt.includes(m) && homePrompt.includes(m));
   }
 
-  const autosMarkers = ["REGLA DE SELECCIÓN DE FIGURA", "REGLA DE CARNÉ DE CONDUCIR", "REGLA DE ANTIGÜEDAD RELATIVA"];
+  const autosMarkers = ["REGLA DE SELECCIÓN DE FIGURA", "REGLA DE CARNÉ DE CONDUCIR", "REGLA DE ANTIGÜEDAD RELATIVA (VEHÍCULO)"];
   for (const m of autosMarkers) {
     expect(`"${m}" solo en auto`, autoPrompt.includes(m) && !homePrompt.includes(m));
   }

@@ -131,16 +131,15 @@ Texto: "Los daños sufridos por el vehículo asegurado cuando éste sea conducid
 
 Error a evitar: generar "primaryDriver.drivingLicenses != null", "primaryDriver.drivingLicenses >= 2" o cualquier variante con risk_field terminado en "drivingLicenses" -- es una lista, no puede compararse directamente con un operador escalar.
 
-REGLA DE ANTIGÜEDAD RELATIVA (VEHÍCULO Y PERSONA)
+REGLA DE ANTIGÜEDAD RELATIVA (VEHÍCULO)
 
-Los campos birthDate (edad de una persona) y registrationDate (matriculación del vehículo) son fechas ABSOLUTAS. Una condición de antigüedad o edad expresada en AÑOS ("con menos de 5 años de antigüedad", "mayor de 25 años", "matriculado hace más de 3 años") es siempre una duración RELATIVA a la fecha de evaluación, no una fecha fija -- NUNCA generes un entero de años directamente contra birthDate o registrationDate (p.ej. "birthDate >= 25", "registrationDate < 5"): esa comparación no tiene sentido contra una fecha absoluta.
+El campo registrationDate (fecha de matriculación del vehículo) es una fecha ABSOLUTA. Una condición de antigüedad expresada en AÑOS ("con menos de 5 años de antigüedad", "matriculado hace más de 3 años") es siempre una duración RELATIVA a la fecha de evaluación, no una fecha fija -- NUNCA generes un entero de años directamente contra registrationDate (p.ej. "registrationDate < 5"): esa comparación no tiene sentido contra una fecha absoluta.
 
-En su lugar, usa el campo derivado correspondiente:
+En su lugar, usa el campo derivado registrationYears, con operator de comparación numérica ("<", "<=", ">", ">=") y value = número de años.
 
-* Para la EDAD de una persona: age (mismo prefijo de figura que birthDate: age, owner.age, primaryDriver.age, secondaryDriver.age), con operator de comparación numérica ("<", "<=", ">", ">=") y value = número de años.
-* Para la ANTIGÜEDAD del vehículo desde su matriculación: registrationYears, mismas reglas de operator/value.
+registrationDate sigue siendo el campo correcto únicamente para una condición de fecha de calendario genuinamente fija y no relativa a la fecha de evaluación (p.ej. "vehículos matriculados a partir del 1 de enero de 2020") -- en ese caso sí es correcto un value de fecha ISO o un año de 4 cifras real, nunca un entero pequeño que en realidad representa una duración.
 
-birthDate y registrationDate siguen siendo los campos correctos únicamente para una condición de fecha de calendario genuinamente fija y no relativa a la fecha de evaluación (p.ej. "vehículos matriculados a partir del 1 de enero de 2020") -- en ese caso sí es correcto un value de fecha ISO o un año de 4 cifras real, nunca un entero pequeño que en realidad representa una duración.
+Para la EDAD de una persona (no la antigüedad del vehículo), ver la REGLA DE ANTIGÜEDAD RELATIVA (PERSONA) del núcleo -- misma lógica, campo derivado age.
 
 EJEMPLO ILUSTRATIVO (Autos)
 

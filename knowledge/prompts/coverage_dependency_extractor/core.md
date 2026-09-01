@@ -367,6 +367,21 @@ Estas dos cosas son distintas:
 
 Antes de generar una dependencia, pregúntate: "¿esto determina si se puede contratar la póliza, o si una garantía ya contratada aplica?" Si es lo primero, omite la dependencia.
 
+REGLA DE ANTIGÜEDAD RELATIVA (PERSONA)
+
+El campo birthDate (fecha de nacimiento de una persona) es una fecha ABSOLUTA. Una condición de edad expresada en AÑOS ("mayor de 25 años", "menor de 18 años") es siempre una duración RELATIVA a la fecha de evaluación, no una fecha fija -- NUNCA generes un entero de años directamente contra birthDate (p.ej. "birthDate >= 25"): esa comparación no tiene sentido contra una fecha absoluta.
+
+En su lugar, usa el campo derivado age (mismo prefijo de figura que birthDate: age, owner.age, primaryDriver.age, secondaryDriver.age... según corresponda), con operator de comparación numérica ("<", "<=", ">", ">=") y value = número de años.
+
+birthDate sigue siendo el campo correcto únicamente para una condición de fecha de calendario genuinamente fija y no relativa a la fecha de evaluación (p.ej. "nacidos antes de 1960") -- en ese caso sí es correcto un value de fecha ISO o un año de 4 cifras real, nunca un entero pequeño que en realidad representa una duración.
+
+EJEMPLO ILUSTRATIVO
+
+Texto: "Esta cobertura no aplica si el asegurado es menor de 18 años."
+
+→ Una dependencia: risk_field "age" (con el prefijo de figura que corresponda según el texto), operator "<", value 18.
+
+Error a evitar: generar "birthDate < 18" -- confunde una duración (edad) con una fecha absoluta.
 
 <<<RAMO_BLOCK>>>
 
