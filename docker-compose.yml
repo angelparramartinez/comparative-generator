@@ -11,7 +11,7 @@ services:
       - TZ=Europe/Madrid
       - N8N_ENCRYPTION_KEY=jz1ysYPflUCv6lb7qaECy0NzjL351F5k
       - N8N_DEFAULT_BINARY_DATA_MODE=filesystem
-      - N8N_RESTRICT_FILE_ACCESS_TO=/home/node/ggcc_outputs;/home/node/coverage_insert_outputs;/home/node/ontologies
+      - N8N_RESTRICT_FILE_ACCESS_TO=/home/node/ggcc_outputs;/home/node/coverage_insert_outputs;/home/node/ontologies;/home/node/prompts
       - NODE_FUNCTION_ALLOW_EXTERNAL=exceljs,jszip
 
     volumes:
@@ -19,6 +19,7 @@ services:
       - ./ggcc_outputs:/home/node/ggcc_outputs
       - ./coverage_insert_outputs:/home/node/coverage_insert_outputs
       - ./knowledge/ontologies:/home/node/ontologies:ro
+      - ./knowledge/prompts:/home/node/prompts:ro
 
     depends_on:
       - docling

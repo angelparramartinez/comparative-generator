@@ -996,14 +996,21 @@ function checkOntologyTypeGating(workflow) {
   return failures;
 }
 
-// v1 (2026-09-01): verifica el nodo "Prompt Assembler" (separacion nucleo/ramo
+// v2 (2026-09-01): verifica el nodo "Prompt Assembler" (separacion nucleo/ramo
 // del prompt del extractor, mismo motivo que Guardrail v14) -- que el bloque
 // especifico de cada ramo aparece SOLO en su propio ontology_type, que el
 // nucleo aparece en ambos, que la sustitucion del JSON del item funciona, y
 // que "Coverage Dependency Extractor" ya no lleva el prompt literal sino que
-// referencia $json.prompt_text. Chequeo estructural/mecanico -- NO sustituye
-// a una confirmacion real con el LLM (eso exige una ejecucion real, pedida al
-// usuario explicitamente, igual que cualquier otro cambio de prompt).
+// referencia $json.prompt_text. Desde v2, core.md/ramos/*.md viven en disco
+// (knowledge/prompts/coverage_dependency_extractor/, montados read-only en
+// /home/node/prompts -- ver docker-compose.yml) y "Read Core/Ramo Prompt
+// File" -> "Extract Core/Ramo Prompt Text" los leen en cada ejecucion real;
+// este check lee los MISMOS ficheros del repo con fs (misma ruta relativa,
+// sin necesidad de Docker) y mockea $() para simular exactamente lo que esos
+// nodos entregarian a "Prompt Assembler". Chequeo estructural/mecanico -- NO
+// sustituye a una confirmacion real con el LLM (eso exige una ejecucion real,
+// pedida al usuario explicitamente, igual que cualquier otro cambio de
+// prompt).
 function checkPromptAssembler(workflow) {
   console.log("\n=== Check: separacion nucleo/ramo del prompt (nodo Prompt Assembler) ===");
 
@@ -1013,21 +1020,38 @@ function checkPromptAssembler(workflow) {
     return 0;
   }
 
-  const fn = new Function("$json", "$getWorkflowStaticData", node.parameters.jsCode);
-  function run(ontologyType) {
-    const sample = { semantic_unit_id: "su_prompt_test", ontology_type: ontologyType, chunks: [] };
-    return fn(sample, () => ({})).json.prompt_text;
-  }
-
-  const autoPrompt = run("auto");
-  const homePrompt = run("home");
-
   let failures = 0;
   function expect(label, condition) {
     const ok = !!condition;
     if (!ok) failures++;
     console.log(`${ok ? "PASS" : "FAIL"} ${label}`);
   }
+
+  const promptsBase = path.join(REPO_ROOT, "knowledge", "prompts", "coverage_dependency_extractor");
+  const coreMdPath = path.join(promptsBase, "core.md");
+  if (!fs.existsSync(coreMdPath)) {
+    console.log(`'${coreMdPath}' no encontrado -- check omitido.`);
+    return 0;
+  }
+  const coreText = fs.readFileSync(coreMdPath, "utf8");
+  const ramoTexts = {
+    auto: fs.readFileSync(path.join(promptsBase, "ramos", "auto.md"), "utf8"),
+    home: fs.readFileSync(path.join(promptsBase, "ramos", "home.md"), "utf8")
+  };
+
+  const fn = new Function("$json", "$getWorkflowStaticData", "$", node.parameters.jsCode);
+  function run(ontologyType) {
+    const registry = {
+      "Extract Core Prompt Text": { first: () => ({ json: { core_prompt_text: coreText } }) },
+      "Extract Ramo Prompt Text": { first: () => ({ json: { ramo_prompt_text: ramoTexts[ontologyType] } }) }
+    };
+    const $ = name => registry[name];
+    const sample = { semantic_unit_id: "su_prompt_test", ontology_type: ontologyType, chunks: [] };
+    return fn(sample, () => ({}), $).json.prompt_text;
+  }
+
+  const autoPrompt = run("auto");
+  const homePrompt = run("home");
 
   const coreMarkers = ["REGLA FUNDAMENTAL", "REGLAS DE NORMALIZACIÓN", "REQUISITOS DE SALIDA"];
   for (const m of coreMarkers) {
@@ -1045,8 +1069,15 @@ function checkPromptAssembler(workflow) {
   }
 
   expect("JSON del item sustituido en el prompt (auto)", autoPrompt.includes('"semantic_unit_id": "su_prompt_test"'));
-  expect("placeholder sin sustituir no queda en el prompt", !autoPrompt.includes("{{ JSON.stringify"));
+  expect("marcador <<<INPUT_JSON>>> no queda sin sustituir", !autoPrompt.includes("<<<INPUT_JSON>>>") && !homePrompt.includes("<<<INPUT_JSON>>>"));
+  expect("marcador <<<RAMO_BLOCK>>> no queda sin sustituir", !autoPrompt.includes("<<<RAMO_BLOCK>>>") && !homePrompt.includes("<<<RAMO_BLOCK>>>"));
   expect("registrationYears (campo de Autos) no se filtra al nucleo de Hogar", !homePrompt.includes("registrationYears"));
+
+  const readCore = findNode(workflow, "Read Core Prompt File");
+  expect("'Read Core Prompt File' apunta a core.md", !!readCore && readCore.parameters.fileSelector === "/home/node/prompts/coverage_dependency_extractor/core.md");
+
+  const readRamo = findNode(workflow, "Read Ramo Prompt File");
+  expect("'Read Ramo Prompt File' selecciona el fichero por ontology_type", !!readRamo && /ramos\/\$\{ontologyType\}\.md/.test(readRamo.parameters.fileSelector));
 
   const extractor = findNode(workflow, "Coverage Dependency Extractor");
   if (extractor) {
