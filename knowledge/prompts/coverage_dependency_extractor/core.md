@@ -245,7 +245,9 @@ operator “NOT_IN”
 
 IMPORTANTE — ÁMBITO DE LOS PATRONES DE EXISTENCIA/AUSENCIA
 
-Los patrones de existencia/ausencia anteriores (operator “>”/“=”, value 0) SÓLO aplican cuando el risk_field tiene data_type “integer” (representan un capital, cantidad o año).
+Los patrones de existencia/ausencia anteriores (operator “>”/“=”, value 0) SÓLO aplican cuando el risk_field tiene data_type “integer” Y ADEMÁS representa un capital o una cantidad contratada (donde 0 significa de verdad “no contratado”): p.ej. content, continent, specialValueObjects.
+
+NUNCA los apliques a un campo DERIVADO DE DURACIÓN/ANTIGÜEDAD (age, y cualquier otro campo de años transcurridos que exista en el ramo): también son “integer”, pero representan AÑOS TRANSCURRIDOS, no un capital — “age > 0” es siempre cierto para cualquier persona y “age = 0” es siempre falso, así que ninguna de las dos puede condicionar nada. Si el texto no da un umbral de años concreto y explícito, omite la dependencia: no uses un campo de duración para expresar que alguien “figura declarado”, “está asegurado” o “existe”.
 
 Si el risk_field tiene data_type “enum” o “boolean”, NUNCA generes un valor numérico de existencia. Ejemplo de error a evitar: “alarm = 1” o “alarm > 0” — alarm es enum, no integer, aunque el texto diga simplemente “siempre que exista alarma”.
 

@@ -16,7 +16,8 @@
     "indemnification_multiplier / policy_contracting_condition (31/08, prompt-only, sin guardrail)": "2 categorias nuevas encontradas en la ronda de validacion Axa/Pelayo/Reale del 31/08 (tras confirmar patron 1/6/7-4subcaso en produccion). (1) indemnification_multiplier_confused_with_condition: el texto describe un escenario que MULTIPLICA/DUPLICA el capital indemnizado ('doble capital'), no si una garantia esta incluida -- 2 casos reales (GD-AUTO-HALLUC-022 Qualitas, GD-AUTO-HALLUC-023 Axa), mismo dia, ambos con la edad de HIJOS/beneficiarios mal asignada a un conductor. Diagnostico inicial erroneo del asistente (crey que era solo confusion de entidad) corregido por el usuario -- el problema real es que NINGUNA figura seria correcta, la clausula entera es un detalle de calculo de indemnizacion. (2) policy_contracting_condition_confused_with_coverage_condition: el texto condiciona si la POLIZA/MODALIDAD se puede contratar (admision/suscripcion), no si una garantia ya contratada aplica -- 1 caso real (GD-AUTO-HALLUC-024, Reale). Ambas corregidas con ejemplos/reglas nuevas en el prompt, sin guardrail de respaldo posible (el risk_field/operador/tipo son siempre validos en estos casos, el problema es puramente semantico -- mismo tipo de limitacion ya aceptada para otros sub-casos de alcance de garantia). Pendiente confirmar en produccion con una ejecucion real futura.",
     "engine_field_invalid_value (01/09, Guardrail v15 -- hallazgo A cerrado)": "Rechaza (mismo nivel que v9/v10/v11) cualquier value de \"base7Version.base7Engine.id\" que no coincida con vocabulario real de tipo de motor/combustible (ver shared/base7version.md, tabla real BASE7_ENGINE) ni sea un id numerico 1-13 real. Patron recurrente confirmado en 3 companias distintas (Zurich su_00051, Axa su_00070, Pelayo su_00105): \"combustible equivocado\"/\"combustible\" son AVERIAS del catalogo de eventos de una garantia de asistencia, no un tipo de motor -- el prompt ya tenia un ejemplo casi identico (\"falta de combustible, baterias... pinchazo\") y aun asi el LLM seguia generando la dependencia (confirmado por el usuario: ninguno de los 3 casos indica si la garantia esta incluida o no). Reforzado ademas el prompt (ramos/auto.md) con los 3 casos reales como ejemplo ilustrativo adicional. Gateado por ontology_type === \"auto\" (base7Engine no existe fuera de Autos).",
     "policy_admission_criteria (01/09, Guardrail v16 -- hallazgo C cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6/v8) -- marca (policy_admission_criteria: true, lista agregada policy_admission_criteria_dependencies) cualquier dependencia de una unidad cuyo sourceText completo coincide con vocabulario de criterios de ADMISION de una persona en una figura del riesgo (p.ej. 'se podran incluir/declarar...conductor...que cumplan'). A diferencia de v6 (evalua evidence por dependencia), evalua sourceText de la UNIDAD completa (igual que v5/v8) porque la frase delatora suele vivir en la introduccion del bloque, no en el evidence acotado de cada dependencia individual. Basado en un unico caso real (Reale su_00038, hallazgo C) -- patrones deliberadamente conservadores, ampliar si aparecen mas casos con vocabulario distinto. Gateado por ontology_type === \"auto\".",
-    "percentage_indemnification (01/09, Guardrail v17 -- hallazgo D cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6), AGNOSTICO DE RAMO (a diferencia de v14-v16) -- marca (percentage_indemnification: true, lista agregada percentage_indemnification_dependencies) cualquier dependencia cuyo evidence contiene un porcentaje numerico (\"100 %\", \"80%\"...). Decision del usuario (01/09): las escalas de indemnizacion en porcentaje por antiguedad de vehiculo (Pelayo su_00058/su_00059) se excluyen SIEMPRE -- calculo de indemnizacion, no condicion de aplicabilidad -- a diferencia del patron 1 ya confirmado (Zurich su_00077, variantes NOMBRADAS sin ningun porcentaje, SI son dependencia real). Un unico patron deliberado (\\\\d+\\\\s*%) -- 'valor GANVAM'/'valor de mercado ampliado' NO se incluyen como patrones porque el segundo es precisamente el ejemplo de variante NOMBRADA valida que el prompt contrasta con este hallazgo."
+    "percentage_indemnification (01/09, Guardrail v17 -- hallazgo D cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6), AGNOSTICO DE RAMO (a diferencia de v14-v16) -- marca (percentage_indemnification: true, lista agregada percentage_indemnification_dependencies) cualquier dependencia cuyo evidence contiene un porcentaje numerico (\"100 %\", \"80%\"...). Decision del usuario (01/09): las escalas de indemnizacion en porcentaje por antiguedad de vehiculo (Pelayo su_00058/su_00059) se excluyen SIEMPRE -- calculo de indemnizacion, no condicion de aplicabilidad -- a diferencia del patron 1 ya confirmado (Zurich su_00077, variantes NOMBRADAS sin ningun porcentaje, SI son dependencia real). Un unico patron deliberado (\\\\d+\\\\s*%) -- 'valor GANVAM'/'valor de mercado ampliado' NO se incluyen como patrones porque el segundo es precisamente el ejemplo de variante NOMBRADA valida que el prompt contrasta con este hallazgo.",
+    "duration_field_used_as_existence_check / age_threshold_implausible_for_figure (01/09, Guardrail v18/v19 -- patron 3 cerrado)": "Dos rechazos duros nuevos, del analisis de causa raiz del patron 3 ('age inventado', revision manual del usuario sobre las 7 ejecuciones del 01/09). v18 (AGNOSTICO DE RAMO): cualquier campo sintetico de DURACION (age/licenseYears/registrationYears, con o sin prefijo) con value 0 -- son integer pero representan anios transcurridos, no capital, asi que '>0' es siempre cierto y '=0' siempre falso. Alcance deliberadamente acotado: los capitales (content/continent/specialValueObjects) SI admiten existencia con value 0, esa es la razon de ser de la regla de existencia del prompt. v19 (GATEADO A AUTOS): umbral de edad que implica minoria de edad ('<' con N<=18, '<=' o '=' con N<=17) sobre cualquier figura de Person -- en Autos ninguna figura declarada puede ser menor, luego siempre es un tercero (hijos/beneficiarios/ocupantes). NO cubre '<=18' ni '=18' a proposito (un conductor de 18 recien carnetizado es legal). Gateado a Autos porque en Motos si hay conductores de 15-16 (AM/A1). Barrido de falsos positivos sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09: exactamente 5 pasarian a rechazarse, y las 5 son casos que el usuario habia marcado como erroneos -- 0 falsos positivos."
   },
   "cases": [
     {
@@ -867,8 +868,12 @@
         }
       ],
       "expected_coverage_dependencies": [],
-      "guardrail_catches": false,
-      "notes": "Caso real (31/08, pagina 46 del PDF de Qualitas). Diagnostico inicial erroneo: se penso que era 'hijos confundidos con conductor' (entidad equivocada). El usuario corrigio: no es una condicion de aplicabilidad en absoluto -- describe EN QUE ESCENARIO el capital indemnizado se duplica ('doble capital'), un detalle de calculo de indemnizacion, no si la garantia de accidentes del conductor esta incluida o no. Mismo patron real que GD-AUTO-HALLUC-023 (Axa su_00063). Fix (31/08): ejemplo ilustrativo añadido a la regla ya existente de 'NO extraigas dependencias cuando el campo aparece solo para calcular una indemnizacion' -- puramente prompt-only, sin guardrail de respaldo posible (el risk_field/operador/tipo son validos, el problema es puramente semantico)."
+      "guardrail_catches": true,
+      "notes": "Caso real (31/08, pagina 46 del PDF de Qualitas). Diagnostico inicial erroneo: se penso que era 'hijos confundidos con conductor' (entidad equivocada). El usuario corrigio: no es una condicion de aplicabilidad en absoluto -- describe EN QUE ESCENARIO el capital indemnizado se duplica ('doble capital'), un detalle de calculo de indemnizacion, no si la garantia de accidentes del conductor esta incluida o no. Mismo patron real que GD-AUTO-HALLUC-023 (Axa su_00063). Fix (31/08): ejemplo ilustrativo añadido a la regla ya existente de 'NO extraigas dependencias cuando el campo aparece solo para calcular una indemnizacion' -- puramente prompt-only, sin guardrail de respaldo posible (el risk_field/operador/tipo son validos, el problema es puramente semantico). ACTUALIZACION (01/09, Guardrail v18/v19): este caso pasa de 'puramente prompt-only, sin guardrail de respaldo posible' a estar CUBIERTO -- lo rechaza ahora 'duration_field_used_as_existence_check'. Efecto colateral buscado de los chequeos del patron 3 (age inventado): los 3 casos del hallazgo B caen dentro de su alcance (value 0 en campo de duracion, o umbral de edad de menor).",
+      "expected_rejected_risk_fields": [
+        "primaryDriver.age"
+      ],
+      "expected_rejection_reason": "duration_field_used_as_existence_check"
     },
     {
       "id": "GD-AUTO-HALLUC-023",
@@ -891,8 +896,12 @@
         }
       ],
       "expected_coverage_dependencies": [],
-      "guardrail_catches": false,
-      "notes": "Caso real (27/08, pagina 15 del PDF de Axa). Mismo patron y misma correccion que GD-AUTO-HALLUC-022 (Qualitas su_00068) -- describe cuando el capital se duplica, no si la garantia aplica. La edad (18 años) es de los HIJOS BENEFICIARIOS, no de ningun conductor -- asignada aqui a secondaryDriver.age, doblemente incorrecto (entidad Y naturaleza de la clausula). Mismo fix de prompt que GD-AUTO-HALLUC-022."
+      "guardrail_catches": true,
+      "notes": "Caso real (27/08, pagina 15 del PDF de Axa). Mismo patron y misma correccion que GD-AUTO-HALLUC-022 (Qualitas su_00068) -- describe cuando el capital se duplica, no si la garantia aplica. La edad (18 años) es de los HIJOS BENEFICIARIOS, no de ningun conductor -- asignada aqui a secondaryDriver.age, doblemente incorrecto (entidad Y naturaleza de la clausula). Mismo fix de prompt que GD-AUTO-HALLUC-022. ACTUALIZACION (01/09, Guardrail v18/v19): este caso pasa de 'puramente prompt-only, sin guardrail de respaldo posible' a estar CUBIERTO -- lo rechaza ahora 'age_threshold_implausible_for_figure'. Efecto colateral buscado de los chequeos del patron 3 (age inventado): los 3 casos del hallazgo B caen dentro de su alcance (value 0 en campo de duracion, o umbral de edad de menor).",
+      "expected_rejected_risk_fields": [
+        "secondaryDriver.age"
+      ],
+      "expected_rejection_reason": "age_threshold_implausible_for_figure"
     },
     {
       "id": "GD-AUTO-HALLUC-024",
@@ -914,8 +923,12 @@
         }
       ],
       "expected_coverage_dependencies": [],
-      "guardrail_catches": false,
-      "notes": "Caso real (31/08, pagina 14 del PDF de Reale). Diagnostico inicial erroneo: se penso que era 'hijos confundidos con conductor' (entidad equivocada). El usuario corrigio: es una restriccion sobre si la POLIZA/MODALIDAD (segundo vehiculo con el mismo conductor) se puede CONTRATAR en absoluto -- requisito de admision/suscripcion -- no una condicion de aplicabilidad de ninguna garantia dentro de una poliza ya contratada. Categoria nueva, distinta de las anteriores (no es limite/capital, no es alcance de garantia -- es alcance de CONTRATACION). Fix (31/08): nueva 'REGLA DE CONDICIONES DE CONTRATACION DE POLIZA (NO DE COBERTURA)' en el prompt, distinguiendo condicion de contratacion (fuera de alcance) de condicion de aplicabilidad de garantia (dentro de alcance). Ademas el valor generado (=0) tampoco tenia sentido para expresar 'ausencia de hijos en un rango' -- doble fallo, pero ya no relevante tras omitir la dependencia por completo. Puramente prompt-only, sin guardrail de respaldo posible."
+      "guardrail_catches": true,
+      "notes": "Caso real (31/08, pagina 14 del PDF de Reale). Diagnostico inicial erroneo: se penso que era 'hijos confundidos con conductor' (entidad equivocada). El usuario corrigio: es una restriccion sobre si la POLIZA/MODALIDAD (segundo vehiculo con el mismo conductor) se puede CONTRATAR en absoluto -- requisito de admision/suscripcion -- no una condicion de aplicabilidad de ninguna garantia dentro de una poliza ya contratada. Categoria nueva, distinta de las anteriores (no es limite/capital, no es alcance de garantia -- es alcance de CONTRATACION). Fix (31/08): nueva 'REGLA DE CONDICIONES DE CONTRATACION DE POLIZA (NO DE COBERTURA)' en el prompt, distinguiendo condicion de contratacion (fuera de alcance) de condicion de aplicabilidad de garantia (dentro de alcance). Ademas el valor generado (=0) tampoco tenia sentido para expresar 'ausencia de hijos en un rango' -- doble fallo, pero ya no relevante tras omitir la dependencia por completo. Puramente prompt-only, sin guardrail de respaldo posible. ACTUALIZACION (01/09, Guardrail v18/v19): este caso pasa de 'puramente prompt-only, sin guardrail de respaldo posible' a estar CUBIERTO -- lo rechaza ahora 'duration_field_used_as_existence_check'. Efecto colateral buscado de los chequeos del patron 3 (age inventado): los 3 casos del hallazgo B caen dentro de su alcance (value 0 en campo de duracion, o umbral de edad de menor).",
+      "expected_rejected_risk_fields": [
+        "secondaryDriver.age"
+      ],
+      "expected_rejection_reason": "duration_field_used_as_existence_check"
     },
     {
       "id": "GD-AUTO-HALLUC-025",
@@ -1068,6 +1081,84 @@
       "expected_percentage_indemnification_flagged": true,
       "guardrail_catches": false,
       "notes": "Caso real (hallazgo D, 31/08, pagina 42 del PDF de Pelayo -- misma tabla/plantilla se repite en paginas 45/48/50 para otras garantias). Escala de indemnizacion de neumaticos por antiguedad -- mismo diagnostico y mismo fix que GD-AUTO-HALLUC-029. Nota: el mismo dataset original (31/08) tambien documentaba una franja intermedia ('80% en el segundo y tercero') que el guardrail existente rechazaba (operator_incompatible_with_data_type, IN [2,3]) perdiendo esa franja del todo en vez de partirla en 2 dependencias -- no se persigue arreglar ese bug de formato por separado: al excluirse toda la unidad como calculo de indemnizacion, deja de ser relevante."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-031",
+      "category": "duration_field_used_as_existence_check",
+      "source_company": "Qualitas (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-23-30-291Z.json)",
+      "semantic_unit_ref": "su_00068",
+      "article": "1. 5. Sección 5: Seguro accidentes del conductor",
+      "coverage_path": [
+        "1. 5. Sección 5: Seguro accidentes del conductor",
+        "Alcance del seguro"
+      ],
+      "source_text": "Se considera asegurado exclusivamente a la persona que figura declarada en póliza en condiciones particulares como conductor habitual del vehículo asegurado, siempre que en el momento del siniestro se encuentre dentro del vehículo como conductor del mismo.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": ">",
+          "value": 0,
+          "evidence": "Se considera asegurado exclusivamente a la persona que figura declarada en póliza en condiciones particulares como conductor habitual del vehículo asegurado, siempre que en el momento del siniestro se encuentre dentro del vehículo como conductor del mismo."
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "primaryDriver.age"
+      ],
+      "expected_rejection_reason": "duration_field_used_as_existence_check",
+      "corrected_coverage_dependencies": null,
+      "notes": "Caso real (01/09, revision manual del usuario sobre la ejecucion 364). ALUCINACION PURA: el texto NO menciona ninguna edad -- describe quien cuenta como asegurado para la garantia de renta diaria (alcance). Causa raiz identificada: las REGLAS DE NORMALIZACION del prompt convierten vocabulario de existencia ('figura declarada', 'asegurado') en operator '>' / value 0, y la regla que acota eso solo excluia enum/boolean, dejando pasar integer -- pero age es integer Y una duracion derivada, donde 'age > 0' es siempre cierto. Fix (01/09): Guardrail v18 (rechazo duro, agnostico de ramo) + aclaracion en la regla de ambito de existencia del nucleo."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-032",
+      "category": "duration_field_used_as_existence_check",
+      "source_company": "Generali (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-25-56-984Z.json)",
+      "semantic_unit_ref": "su_00048",
+      "article": "3.1.2. ¿Qué no se cubre?",
+      "coverage_path": [
+        "3.1.2. ¿Qué no se cubre?",
+        "Selección de Expertos y Centros Hospitalarios",
+        "Asesoramiento en caso de traslado del paciente"
+      ],
+      "source_text": "Obtención de presupuestos, costes estimados de hospitalización y posibles descuentos El Asegurador atenderá a cualquier consulta de Segunda Opinión en el ámbito de enfermedades graves... y siempre que el usuario aporte el historial médico y el correspondiente primer diagnóstico efectuado por los médicos que le hayan atendido.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "age",
+          "operator": "=",
+          "value": 0,
+          "evidence": "El Asegurador atenderá a cualquier consulta de Segunda Opinión en el ámbito de enfermedades graves... siempre que el usuario aporte el historial médico y el correspondiente primer diagnóstico efectuado por los médicos que le hayan atendido."
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "age"
+      ],
+      "expected_rejection_reason": "duration_field_used_as_existence_check",
+      "corrected_coverage_dependencies": null,
+      "notes": "Caso real (01/09, ejecucion 365). Misma alucinacion que GD-AUTO-HALLUC-031 pero en otra compania y con el operador inverso ('age = 0'): el texto habla de un servicio de segunda opinion medica y NO menciona ninguna edad. Ya venia marcado unverified_evidence:true (la evidence es una union de fragmentos no contiguos con '...'), pero eso no impedia que la dependencia sobreviviera. Cubierto ahora por Guardrail v18."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-033",
+      "category": "age_threshold_implausible_for_figure",
+      "source_company": "Generali (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-25-56-984Z.json)",
+      "semantic_unit_ref": "su_00137",
+      "article": "Artículo 9º. Riesgos cubiertos por el Consorcio de Compensación de Seguros",
+      "coverage_path": [
+        "Acompañamiento de menores o minusválidos"
+      ],
+      "source_text": "Si los Beneficiarios que viajen con hijos minusválidos o hijos menores de 15 años, también Beneficiarios, se encuentran en la imposibilidad de ocuparse de ellos por causa de enfermedad o accidente, cubierto por este Contrato, el Asegurador organizará y tomará a su cargo el desplazamiento ida y vuelta, de una persona residente en España designada por el Beneficiario o su familia, o de una azafata del Asegurador, al objeto de acompañar a los niños en su regreso a su domicilio habitual en España.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "age",
+          "operator": "<",
+          "value": 15,
+          "evidence": "Si los Beneficiarios que viajen con hijos minusválidos o hijos menores de 15 años, también Beneficiarios, se encuentran en la imposibilidad de ocuparse de ellos por causa de enfermedad o accidente, cubierto por este Contrato, el Asegurador organizará y tomará a su cargo el desplazamiento ida y vuelta"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "age"
+      ],
+      "expected_rejection_reason": "age_threshold_implausible_for_figure",
+      "corrected_coverage_dependencies": null,
+      "notes": "Caso real (01/09, ejecucion 365). Aqui SI hay una edad real en el texto (15 anios), pero es la de los HIJOS de los Beneficiarios -- un tercero que no es ninguna de las 4 figuras declaradas del riesgo. Al generarse sin prefijo, 'age' cae en holder por defecto: el output afirma literalmente que el tomador tiene menos de 15 anios. Fix (01/09): Guardrail v19 (rechazo duro, gateado a Autos -- en Motos si hay conductores legales de 15-16 anios con carne AM/A1) + nueva REGLA DE PERSONAS QUE NO SON FIGURAS DEL RIESGO (TERCEROS) en ramos/auto.md."
     }
   ]
 }

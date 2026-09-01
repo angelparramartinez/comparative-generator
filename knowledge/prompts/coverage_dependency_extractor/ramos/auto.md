@@ -119,6 +119,28 @@ Texto: "Los producidos cuando el conductor carezca del correspondiente permiso d
 
 → No hay forma de saber a qué figura se refiere "el conductor". Omite la dependencia -- no generes "secondaryDriver.drivingLicenses" ni "primaryDriver.drivingLicenses" por elección arbitraria.
 
+CAMPOS DE DURACIÓN DE ESTE RAMO (ÁMBITO DE LA REGLA DE EXISTENCIA DEL NÚCLEO)
+
+Los campos derivados de duración/antigüedad de Autos son licenseYears (antigüedad del carné) y registrationYears (antigüedad del vehículo desde su matriculación), además de age (edad de una persona, común a todos los ramos). A los tres les aplica la prohibición del núcleo: aunque sean "integer", NUNCA generes sobre ellos un valor de existencia ("> 0", "= 0") -- "licenseYears > 0" o "registrationYears > 0" no condicionan nada, todo carné tiene una antigüedad y todo vehículo matriculado también. Si el texto no da un umbral de años concreto, omite la dependencia.
+
+REGLA DE PERSONAS QUE NO SON FIGURAS DEL RIESGO (TERCEROS)
+
+Las ÚNICAS personas que son datos del riesgo son las cuatro figuras declaradas: el Tomador (sin prefijo), el Propietario (owner), el Conductor Habitual (primaryDriver) y el Conductor Ocasional (secondaryDriver).
+
+Cualquier otra persona que aparezca en el texto -- hijos, cónyuge, beneficiarios, ocupantes, pasajeros, familiares, terceros perjudicados, peatones... -- NO es un dato del riesgo: no existe ningún risk_field que la represente. Si una condición depende de un atributo SUYO (su edad, su parentesco, su situación), NO la fuerces sobre ninguna figura declarada: omite la dependencia por completo. Ninguna figura sería la correcta.
+
+Presta especial atención a las condiciones de EDAD: una edad que en el texto pertenece a un hijo, un beneficiario o un ocupante nunca debe convertirse en "age", "primaryDriver.age" ni ninguna otra variante -- el resultado afirmaría algo falso sobre el tomador o el conductor. Además, ten en cuenta que en Autos ninguna figura declarada puede ser menor de edad: si el umbral de edad que estás a punto de generar implica una persona menor de 18 años, casi con total seguridad el texto está hablando de un tercero, no de una figura del riesgo.
+
+EJEMPLO ILUSTRATIVO (Autos)
+
+Texto: "Si los Beneficiarios que viajen con hijos minusválidos o hijos menores de 15 años, también Beneficiarios, se encuentran en la imposibilidad de ocuparse de ellos... el Asegurador organizará y tomará a su cargo el desplazamiento ida y vuelta de una persona... al objeto de acompañar a los niños en su regreso."
+
+→ NO es una dependencia. Los 15 años son la edad de los HIJOS de los Beneficiarios (terceros acompañantes), no de ninguna figura declarada del riesgo. No generes "age < 15" ni ninguna variante con prefijo de figura -- omite la dependencia.
+
+Texto: "Si debido a un mismo accidente fallecieran el conductor y su cónyuge, dejando como beneficiarios hijos de ambos menores de 18 años, se duplicará el capital contratado."
+
+→ NO es una dependencia, por dos motivos acumulados: los 18 años son de los hijos beneficiarios (terceros), y además el texto describe cuándo se DUPLICA el capital indemnizado, no si la garantía aplica (ver la regla de "no extraigas para calcular una indemnización" del núcleo).
+
 REGLA DE CARNÉ DE CONDUCIR (CAMPO DE LISTA)
 
 El campo drivingLicenses (con o sin prefijo de figura: drivingLicenses, owner.drivingLicenses, primaryDriver.drivingLicenses, secondaryDriver.drivingLicenses) es una LISTA de carnés, no un campo escalar. NUNCA generes una dependencia con risk_field terminado en "drivingLicenses" directamente -- ni "!= null", ni ">= N", ni ningún otro operador. Ese risk_field existe en ontology_matches solo para que reconozcas el concepto, no para que lo uses tal cual en una dependencia.

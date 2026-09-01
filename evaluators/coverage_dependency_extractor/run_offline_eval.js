@@ -25,6 +25,7 @@
 //   node run_offline_eval.js --engine-field-value -> solo el check de rechazo de valores invalidos (no vocabulario real de motor/combustible) para base7Version.base7Engine.id (Guardrail v15, hallazgo A)
 //   node run_offline_eval.js --policy-admission-criteria -> solo el check de visibilidad de criterios de admision de persona en figura confundidos con condicion de cobertura (Guardrail v16, hallazgo C)
 //   node run_offline_eval.js --percentage-indemnification -> solo el check de visibilidad de escalas de indemnizacion en porcentaje confundidas con condicion de cobertura (Guardrail v17, hallazgo D, agnostico de ramo)
+//   node run_offline_eval.js --invented-age -> solo los checks de "age inventado" (Guardrail v18: campo de duracion con value 0, agnostico de ramo; Guardrail v19: umbral de edad de menor sobre una figura declarada, gateado a Autos) + su contra-prueba de falsos positivos
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
 //   node run_offline_eval.js --artifact-threading -> solo el check generico de que las 8 listas del guardrail (rejected/ungrounded/unverified_evidence/transversal_chapter/procedural_instruction/person_field_mismatch/coverage_scope/figure_selection) se propagan intactas a Build Coverage Dependency Artifact / Build Coverage Matcher Contract
@@ -746,6 +747,96 @@ function checkEngineFieldInvalidValue(workflow, golden) {
   }
 
   console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// Guardrail v18/v19 (01/09): dos rechazos duros del patron 3 ("age inventado").
+// v18 (agnostico de ramo): campo sintetico de duracion (age/licenseYears/
+// registrationYears) con value 0 -- vacio semanticamente ("age > 0" siempre
+// cierto, "age = 0" siempre falso). v19 (gateado a Autos): umbral de edad que
+// implica minoria de edad -- siempre es un tercero (hijos/beneficiarios), no
+// una figura declarada. Cada caso declara "expected_rejection_reason" porque
+// ambas categorias comparten mecanismo (rechazo duro) pero razones distintas.
+// Cubren ademas los 3 casos del hallazgo B (GD-AUTO-HALLUC-022/023/024), que
+// estaban documentados como "sin guardrail de respaldo posible".
+function checkInventedAgeRejections(workflow, golden) {
+  console.log("\n=== Check: duration_field_used_as_existence_check / age_threshold_implausible_for_figure (Guardrail v18/v19) ===");
+
+  const cases = golden.cases.filter(c =>
+    c.expected_rejection_reason === "duration_field_used_as_existence_check" ||
+    c.expected_rejection_reason === "age_threshold_implausible_for_figure"
+  );
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedFields = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === c.expected_rejection_reason)
+      .map(d => d.risk_field);
+    const expectedRejected = c.expected_rejected_risk_fields || [];
+    const allExpectedRejected = expectedRejected.every(f => rejectedFields.includes(f));
+    const nothingLeaked = (result.output?.coverage_dependencies || []).length === 0;
+
+    const ok = allExpectedRejected && nothingLeaked;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejectedFields)} (esperado ${JSON.stringify(expectedRejected)}, razon ${c.expected_rejection_reason}) | nada_se_cuela=${nothingLeaked}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// v18/v19 (01/09): contra-prueba de falsos positivos -- los umbrales y campos
+// que SI son legitimos deben seguir aceptandose. Sin esto, un endurecimiento
+// futuro de v18/v19 podria cargarse condiciones reales sin que nadie lo note
+// (p.ej. "content > 0" de Hogar, o "age < 25" de conductor joven).
+function checkInventedAgeNoFalsePositives(workflow) {
+  console.log("\n=== Check: v18/v19 no tocan condiciones legitimas (contra-prueba) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const mustSurvive = [
+    // Capitales de Hogar con value 0: la regla de existencia SIGUE siendo valida
+    ["home", { risk_field: "content", operator: ">", value: 0, evidence: "cuando se contrate capital de Mobiliario" }],
+    ["home", { risk_field: "continent", operator: ">", value: 0, evidence: "cuando se asegure el continente" }],
+    // Edades plausibles de una figura declarada en Autos
+    ["auto", { risk_field: "primaryDriver.age", operator: "<", value: 25, evidence: "menor de 25 años" }],
+    ["auto", { risk_field: "secondaryDriver.age", operator: "<=", value: 25, evidence: "edad <= 25 años" }],
+    ["auto", { risk_field: "primaryDriver.age", operator: ">=", value: 25, evidence: "igual o superior a 25 años" }],
+    ["auto", { risk_field: "primaryDriver.age", operator: "<", value: 76, evidence: "inferior a 76 años" }],
+    ["auto", { risk_field: "primaryDriver.age", operator: "<=", value: 18, evidence: "18 años o menos" }],
+    ["auto", { risk_field: "primaryDriver.age", operator: "=", value: 18, evidence: "de 18 años" }],
+    // Duraciones con umbral real (no 0)
+    ["auto", { risk_field: "primaryDriver.licenseYears", operator: ">", value: 1, evidence: "antigüedad del carné superior a 1 año" }],
+    ["auto", { risk_field: "registrationYears", operator: "<", value: 2, evidence: "durante los dos primeros años" }]
+  ];
+
+  let failures = 0;
+  for (const [ramo, dep] of mustSurvive) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: "fp_test", ontology_type: ramo, output: { coverage_dependencies: [dep] } }
+    ]);
+    const survived = (result.output?.coverage_dependencies || []).length === 1;
+    if (!survived) failures++;
+    console.log(`${survived ? "PASS" : "FAIL"} [${ramo}] ${dep.risk_field} ${dep.operator} ${dep.value} sigue aceptada`);
+  }
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
   return failures;
 }
 
@@ -1970,6 +2061,11 @@ function main() {
 
   if (runAll || args.includes("--percentage-indemnification")) {
     exitCode += checkPercentageIndemnificationVisibility(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--invented-age")) {
+    exitCode += checkInventedAgeRejections(workflow, golden) > 0 ? 1 : 0;
+    exitCode += checkInventedAgeNoFalsePositives(workflow) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--relative-duration")) {
