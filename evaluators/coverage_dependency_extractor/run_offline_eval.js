@@ -26,6 +26,8 @@
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
 //   node run_offline_eval.js --artifact-threading -> solo el check generico de que las 8 listas del guardrail (rejected/ungrounded/unverified_evidence/transversal_chapter/procedural_instruction/person_field_mismatch/coverage_scope/figure_selection) se propagan intactas a Build Coverage Dependency Artifact / Build Coverage Matcher Contract
 //   node run_offline_eval.js --figure-selection-rejections -> solo el check de rechazo duro de figure_keyword_mismatch y duplicate_figure_without_distinction (Guardrail v13)
+//   node run_offline_eval.js --ontology-type-threading -> solo el check de hilado de "ontology_type" (home/auto) en Prepare Dependency Extractor Input v3
+//   node run_offline_eval.js --ontology-type-gating -> solo el check de que los chequeos especificos de Autos (v7/v8/v9/v12/v13) no disparan ni dejan de cazar nada segun ontology_type (Guardrail v14, separacion nucleo/ramo)
 //   node run_offline_eval.js --figure-aliases -> solo el check de contaminacion de alias de figura (Merge Shared Texts Into Ramo) -- --ramo=auto unicamente
 //   node run_offline_eval.js --vocab-gaps -> solo el check de gaps de vocabulario ya corregidos en las ontologias (alias literales que faltaban)
 //
@@ -499,6 +501,7 @@ function checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) {
     const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
       {
         semantic_unit_id: c.semantic_unit_ref,
+        ontology_type: "auto",
         coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
         chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
         output: { coverage_dependencies: c.actual_coverage_dependencies },
@@ -558,6 +561,7 @@ function checkCoverageScopeVisibility(workflow, golden, validRiskFields) {
     const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
       {
         semantic_unit_id: c.semantic_unit_ref,
+        ontology_type: "auto",
         coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
         chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
         output: { coverage_dependencies: c.actual_coverage_dependencies },
@@ -622,7 +626,7 @@ function checkDrivingLicenseListMisuse(workflow, golden) {
 
   for (const c of cases) {
     const [badResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
-      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
     ]);
 
     const rejectedFields = (badResult.rejected_dependencies || [])
@@ -637,7 +641,7 @@ function checkDrivingLicenseListMisuse(workflow, golden) {
     let correctedAccepted = [];
     if (c.corrected_coverage_dependencies) {
       const [goodResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
-        { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.corrected_coverage_dependencies } }
+        { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.corrected_coverage_dependencies } }
       ]);
       correctedAccepted = (goodResult.output?.coverage_dependencies || []).map(d => d.risk_field);
       correctedOk = c.corrected_coverage_dependencies.every(d => correctedAccepted.includes(d.risk_field));
@@ -773,7 +777,7 @@ function checkFigureSelectionVisibility(workflow, golden) {
 
   for (const c of cases) {
     const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
-      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
     ]);
 
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
@@ -863,6 +867,134 @@ function checkGuardrailListThreading(workflow) {
   return failures;
 }
 
+// v14 (2026-09-01): verifica que "Prepare Dependency Extractor Input" hila
+// "ontology_type" ("home"/"auto") leyendo el campo "Ramo" del form trigger,
+// con el mismo mapeo que ya usa "Qdrant Search" para elegir la coleccion.
+// Primer paso de la separacion nucleo/ramo del prompt y el guardrail --
+// ver checkOntologyTypeGating mas abajo para la propiedad que este campo
+// habilita.
+function checkOntologyTypeThreading(workflow) {
+  console.log("\n=== Check: threading de ontology_type (nodo Prepare Dependency Extractor Input v3) ===");
+
+  const node = findNode(workflow, "Prepare Dependency Extractor Input");
+  if (!node) {
+    console.log("Nodo 'Prepare Dependency Extractor Input' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const fn = new Function("items", "$json", "$input", "$getWorkflowStaticData", "$", node.parameters.jsCode);
+
+  function run(ramo) {
+    const nodeRegistry = { "On form submission": { first: () => ({ json: { Ramo: ramo } }) } };
+    const $ = name => nodeRegistry[name];
+    const items = [{ json: { semantic_unit_id: "su_fake", chunks: [], unit_ontology_matches: [] } }];
+    const $input = { first: () => items[0], all: () => items };
+    return fn(items, items[0].json, $input, () => ({}), $)[0].json;
+  }
+
+  let failures = 0;
+  const cases = [["Autos", "auto"], ["Hogar", "home"]];
+  for (const [ramo, expected] of cases) {
+    const actual = run(ramo).ontology_type;
+    const ok = actual === expected;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} Ramo="${ramo}" -> ontology_type="${actual}" (esperado "${expected}")`);
+  }
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
+  return failures;
+}
+
+// v14 (2026-09-01): verifica la propiedad de fondo del gating por ramo --
+// una dependencia con vocabulario/campos exclusivos de Autos (drivingLicenses
+// escalar, evidencia con keyword de figura inequivoco, duplicado
+// primaryDriver+secondaryDriver sin distincion, articulo de alcance de
+// garantia) NUNCA debe disparar los chequeos v7/v8/v9/v12/v13 cuando
+// ontology_type !== "auto" -- ni de forma incorrecta (aceptando lo que
+// deberia rechazarse) ni de forma silenciosa (los checks CORE, p.ej. v10
+// generico de "list", deben seguir cazando lo que sea real independientemente
+// del ramo). Sin esta garantia, la separacion nucleo/ramo del guardrail
+// podria "perder" cobertura real en vez de solo dejar de disparar en falso.
+function checkOntologyTypeGating(workflow) {
+  console.log("\n=== Check: gating por ontology_type de los chequeos especificos de Autos (v7/v8/v9/v12/v13) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+  function expect(label, condition) {
+    const ok = !!condition;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} ${label}`);
+  }
+
+  // v9: drivingLicenses escalar -- rechazado en Autos (razon especifica),
+  // pero NO se cuela en Hogar: el chequeo CORE v10 (list generico) lo caza igual.
+  const dlDep = { risk_field: "primaryDriver.drivingLicenses", operator: "!=", value: null, evidence: "carezca del permiso" };
+  const [dlAuto] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t1", ontology_type: "auto", output: { coverage_dependencies: [dlDep] } }
+  ]);
+  const [dlHome] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t1", ontology_type: "home", output: { coverage_dependencies: [dlDep] } }
+  ]);
+  expect("v9 (auto): drivingLicenses escalar rechazado con razon especifica",
+    (dlAuto.rejected_dependencies || []).some(d => d.rejection_reason === "driving_licenses_used_as_scalar"));
+  expect("v9 (home): gate desactivado (no dispara la razon especifica de v9)",
+    !(dlHome.rejected_dependencies || []).some(d => d.rejection_reason === "driving_licenses_used_as_scalar"));
+  expect("v10 CORE (home): sigue rechazando por ser data_type list, nada se cuela",
+    (dlHome.output?.coverage_dependencies || []).length === 0 &&
+    (dlHome.rejected_dependencies || []).some(d => d.rejection_reason === "list_field_used_as_scalar"));
+
+  // v13a: vocabulario inequivoco de figura ("Tomador") contra risk_field de otra figura.
+  const figDep = { risk_field: "owner.identificationType", operator: "=", value: "persona física", evidence: "el Tomador, persona física" };
+  const [figAuto] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t2", ontology_type: "auto", output: { coverage_dependencies: [figDep] } }
+  ]);
+  const [figHome] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t2", ontology_type: "home", output: { coverage_dependencies: [figDep] } }
+  ]);
+  expect("v13a (auto): figure_keyword_mismatch rechaza el campo equivocado",
+    (figAuto.rejected_dependencies || []).some(d => d.rejection_reason === "figure_keyword_mismatch"));
+  expect("v13a (home): gate desactivado, la dependencia se acepta tal cual",
+    (figHome.output?.coverage_dependencies || []).map(d => d.risk_field).includes("owner.identificationType"));
+
+  // v13b/v12: duplicado primaryDriver+secondaryDriver sobre la misma evidencia, sin distincion textual.
+  const dupDeps = [
+    { risk_field: "primaryDriver.age", operator: "<", value: 25, evidence: "el conductor sea menor de 25 años" },
+    { risk_field: "secondaryDriver.age", operator: "<", value: 25, evidence: "el conductor sea menor de 25 años" }
+  ];
+  const [dupAuto] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t3", ontology_type: "auto", output: { coverage_dependencies: dupDeps } }
+  ]);
+  const [dupHome] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t3", ontology_type: "home", output: { coverage_dependencies: dupDeps } }
+  ]);
+  expect("v13b (auto): ambas duplicadas se rechazan",
+    (dupAuto.output?.coverage_dependencies || []).length === 0);
+  expect("v13b (home): gate desactivado, ambas se aceptan sin deduplicar",
+    (dupHome.output?.coverage_dependencies || []).length === 2);
+  expect("v12 (home): gate desactivado, figure_selection_dependencies vacio",
+    (dupHome.figure_selection_dependencies || []).length === 0);
+
+  // v8: articulo de alcance de garantia ("¿Quien esta asegurado?").
+  const scopeDep = { risk_field: "primaryDriver.identificationType", operator: "=", value: "persona física", evidence: "el conductor titular" };
+  const [scopeAuto] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t4", ontology_type: "auto", coverage_context: { article: "¿Quién está asegurado?", coverage_path: [] }, output: { coverage_dependencies: [scopeDep] } }
+  ]);
+  const [scopeHome] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    { semantic_unit_id: "t4", ontology_type: "home", coverage_context: { article: "¿Quién está asegurado?", coverage_path: [] }, output: { coverage_dependencies: [scopeDep] } }
+  ]);
+  expect("v8 (auto): coverage_scope_dependencies marca la dependencia",
+    (scopeAuto.coverage_scope_dependencies || []).length === 1);
+  expect("v8 (home): gate desactivado, coverage_scope_dependencies vacio",
+    (scopeHome.coverage_scope_dependencies || []).length === 0);
+
+  console.log(`Resultado: ${failures === 0 ? "0 fallos" : failures + " fallos"}.`);
+  return failures;
+}
+
 // Guardrail v13 (31/08): dos rechazos duros para el patron 2, respaldo de
 // la REGLA DE SELECCION DE FIGURA del prompt (confirmada insuficiente sola
 // con 5 ejecuciones reales) -- figure_keyword_mismatch (vocabulario
@@ -888,7 +1020,7 @@ function checkFigureSelectionRejections(workflow, golden) {
 
   for (const c of cases) {
     const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
-      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
     ]);
 
     const rejectedFields = (result.rejected_dependencies || [])
@@ -907,7 +1039,7 @@ function checkFigureSelectionRejections(workflow, golden) {
     let correctedAccepted = [];
     if (c.corrected_coverage_dependencies) {
       const [goodResult] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
-        { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.corrected_coverage_dependencies } }
+        { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.corrected_coverage_dependencies } }
       ]);
       correctedAccepted = (goodResult.output?.coverage_dependencies || []).map(d => d.risk_field);
       correctedOk = c.corrected_coverage_dependencies.every(d => correctedAccepted.includes(d.risk_field));
@@ -1605,6 +1737,14 @@ function main() {
 
   if (runAll || args.includes("--figure-selection-rejections")) {
     exitCode += checkFigureSelectionRejections(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--ontology-type-threading")) {
+    exitCode += checkOntologyTypeThreading(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--ontology-type-gating")) {
+    exitCode += checkOntologyTypeGating(workflow) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--hierarchy")) {
