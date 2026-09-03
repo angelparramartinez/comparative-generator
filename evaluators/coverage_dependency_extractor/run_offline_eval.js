@@ -983,8 +983,20 @@ function checkPercentageIndemnificationVisibility(workflow, golden) {
   let failures = 0;
 
   for (const c of cases) {
+    // 03/09: desde v24 este chequeo ya no depende solo del "evidence" -- dos de
+    // sus tres anclas miran el TITULO del capitulo y el TEXTO de la unidad, asi
+    // que hay que pasarle el contexto completo (como hacen los checks de
+    // v5/v6/v7/v16). Con la llamada anterior, que solo pasaba las
+    // dependencias, el caso de Axa su_00169 (que se detecta por el titulo
+    // "6. Valor a nuevo a 3 anios") no podia dispararse.
     const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
-      { semantic_unit_id: c.semantic_unit_ref, output: { coverage_dependencies: c.actual_coverage_dependencies } }
+      {
+        semantic_unit_id: c.semantic_unit_ref,
+        ontology_type: c.ontology_type || "auto",
+        coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
+        chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
+        output: { coverage_dependencies: c.actual_coverage_dependencies }
+      }
     ]);
 
     const flaggedFields = (result.percentage_indemnification_dependencies || []).map(d => d.risk_field);

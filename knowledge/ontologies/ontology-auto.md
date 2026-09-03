@@ -119,12 +119,23 @@ aliases:
 - matriculado hace más de
 - matriculado hace menos de
 - desde la fecha de primera matriculación
+- primera matriculación
 contractual_examples:
 - "desde la fecha de primera matriculación hasta el segundo año de
   antigüedad del vehículo, se indemnizará por el valor a nuevo"
 - "durante el tercero, cuarto y quinto año de antigüedad del vehículo se
   indemnizará por el valor de mercado ampliado"
 interpretation:
+**Alias "primera matriculación" añadido (03/09)**: el alias que había,
+"desde la fecha de primera matriculación", falla por una palabra en cuanto
+el condicionado escribe "desde la fecha de **la** primera matriculación"
+(caso real: Axa `su_00169`, donde ninguno de los cinco alias matcheaba y la
+dependencia acababa marcada `ungrounded` sin que hubiera nada malo en
+ella). Se añade la forma corta, que cubre las dos variantes. NO se añade
+"antigüedad" a secas a propósito: colisionaría con `licenseYears`
+("antigüedad del carné"), que es un falso amigo que ya ha costado dos
+hallazgos.
+
 **Sintético, añadido 31/08** — no es un getter Java real, deriva de
 `registrationDate` (ver arriba). Mismo mecanismo ya validado con
 `licenseYears` (`shared/person.md`, patrón 3): decisión explícita del

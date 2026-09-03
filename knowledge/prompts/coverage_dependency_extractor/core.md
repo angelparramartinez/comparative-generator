@@ -105,7 +105,13 @@ Ejemplos:
 
 “El 100% de indemnización durante los dos primeros años, el 80% el tercer año, el 50% a partir del cuarto”
 
-→ NO es una dependencia. La presencia de un PORCENTAJE (%) numérico que varía según un campo de riesgo real (antigüedad, edad...) es la señal misma de que es un cálculo de indemnización (ver IMPORTANTE, "no estás extrayendo porcentajes"), no una condición de aplicabilidad -- aunque el texto mencione ese campo. Distíngelo de una condición real de selección entre VARIANTES NOMBRADAS de cobertura por ese mismo campo (p.ej. "valor a nuevo" vs. "valor de mercado ampliado" según la antigüedad, ver REGLA DE ANTIGÜEDAD RELATIVA): ahí no hay ningún porcentaje -- son dos bases de cálculo con nombre propio, tratadas como categorías (enum), no como una escala numérica continua.
+→ NO es una dependencia. La presencia de un PORCENTAJE (%) numérico que varía según un campo de riesgo real (antigüedad, edad...) es la señal misma de que es un cálculo de indemnización (ver IMPORTANTE, "no estás extrayendo porcentajes"), no una condición de aplicabilidad -- aunque el texto mencione ese campo.
+
+Y esto vale IGUALMENTE cuando la tabla no usa porcentajes sino BASES DE VALORACIÓN con nombre propio ("valor a nuevo", "valor de nuevo", "valor de mercado ampliado", "valor venal", "valor de adquisición", "valor GANVAM"). Un texto que dice CON QUÉ BASE se indemniza según la antigüedad del objeto asegurado sigue siendo un cálculo de indemnización: la cobertura aplica en los dos tramos, lo único que cambia es cuánto se paga.
+
+“Desde la primera matriculación hasta el segundo año se indemnizará por el valor a nuevo. Durante el tercero, cuarto y quinto año se indemnizará por el valor de mercado ampliado.”
+
+→ NO es una dependencia (ninguno de los dos tramos). Es la tabla de valoración de la garantía, no una condición sobre si la garantía aplica. No generes ninguna dependencia de antigüedad a partir de una tabla así. Señales de que estás ante una de ellas: la frase contiene un verbo de indemnización ("se indemnizará", "se indemniza", "el importe de la indemnización será"), o el epígrafe del capítulo habla de criterios de valoración, o el propio epígrafe es una base de valoración ("Valor a nuevo a 3 años").
 
 “Cuando no se haya contratado X”
 

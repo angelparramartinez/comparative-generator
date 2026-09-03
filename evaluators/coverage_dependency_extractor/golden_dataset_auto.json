@@ -21,7 +21,8 @@
     "policy_admission_criteria vocabulario ampliado (03/09, Guardrail v20 -- patron 1 cerrado)": "v16 (01/09) se diseño sobre un unico caso real (GD-AUTO-HALLUC-028, Reale su_00038) y se documento explicitamente como conservador. La revision manual global del 01/09 encontro 3 unidades reales mas del MISMO patron que su vocabulario no capturaba (GD-AUTO-HALLUC-034/035/036 = Reale su_00036/su_00040/su_00044): v16 solo cubria VERBOS DE INCLUSION ('se podran incluir/declarar'), no las formulas con las que un condicionado presenta una LISTA DE REQUISITOS de admision ('que cumplan los siguientes requisitos', 'se deben cumplir los siguientes requisitos', 'son asegurables las personas fisicas que...'). v20 añade 4 patrones nuevos y relaja el 'se' obligatorio del primero. Decision deliberada: NO se añade 'siempre que se cumpla' a secas (lenguaje legal demasiado generico, alto riesgo de falso positivo) -- su_00040 queda cubierta igual por 'podra declarar' y por 'normas de contratacion'. Sigue siendo visibilidad, no bloqueo, y sigue gateado a ontology_type 'auto'. Validacion: barrido sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09 (Divina/Axa/Zurich/Reale/Pelayo/Qualitas/Generali) -> se marcan exactamente las 3 unidades objetivo (7 dependencias), 0 unidades colaterales, 0 regresiones (su_00038/su_00039 siguen marcadas). Alternativa descartada: marcar por CAPITULO (todo 1.3.x/1.4.x de Reale son normas de contratacion) -- solo Reale tiene capitulos de ese tipo en las 7 ejecuciones y es la unica compania con article=null, asi que habria sido una regla a medida de una sola compania.",
     "premium_calculation_rule (03/09, Guardrail v21 -- patron 2 cerrado)": "Patron 2 de la revision manual del 01/09: reglas de BONIFICACION/PRIMA (bonus-malus) confundidas con condicion de cobertura. Concepto que el prompt no cubria en absoluto y distinto de todo lo que habia: v17 es el calculo de la INDEMNIZACION de un siniestro, v16/v20 son la ADMISION de una persona o poliza, v6 es el procedimiento para ejercer un derecho ya reconocido; esto es el PRECIO de la poliza. Casos: GD-AUTO-HALLUC-037/038/039 (Reale su_00063/su_00064/su_00069, capitulo 1.4.x = normas de suscripcion economica). Fix en tres piezas: (1) nueva REGLA DE BONIFICACION/PRIMA (NO DE COBERTURA) en core.md, agnostica de ramo, mas 3 ejemplos reales en ramos/auto.md; (2) Guardrail v21 -- vocabulario bonificacion/bonus/malus/recargo/descuento sobre la UNIDAD completa (no sobre evidence: en su_00064 el '20%' esta fuera del evidence), visibilidad no bloqueo, AGNOSTICO de ramo por decision explicita del usuario; (3) v21b -- ampliacion de v6 con los NOMBRES de los documentos de suscripcion (ficha tecnica, permiso de circulacion, informe de verificacion, certificado de siniestralidad, justificantes), a nivel de evidence, porque los patrones originales de v6 son todos verbos de aportacion. Vocabulario descartado con datos: 'prima' (9 unidades, 26 dependencias limpias arrasadas -- es boilerplate legal) y extender v17 a nivel de unidad (21 unidades, 40 dependencias limpias arrasadas). Tambien se descarto anclar en el titulo del capitulo: de los 3 titulos reales solo uno menciona bonus. Validacion: barrido antes/despues con el guardrail real sobre las 116 dependencias de las 7 ejecuciones del 01/09 -> 6 cambios en las 3 unidades objetivo (las 4 dependencias que estaban SIN NINGUNA MARCA pasan a estar marcadas) y 5 colaterales, todos ellos dependencias que YA estaban marcadas por otro chequeo (transversal_chapter en Divina su_00008, policy_admission_criteria en Reale su_00044) -- ninguna dependencia pasa de limpia a marcada fuera de las 3 unidades objetivo, y 0 cambios en rechazos duros.",
     "person_weight_field_for_non_person_evidence (03/09, Guardrail v22 -- patron 4 cerrado)": "Patron 4 de la revision manual del 01/09: un umbral numerico que describe el LIMITE del objeto cubierto (peso de un animal transportado, de un remolque arrastrado, del propio vehiculo) rendido como condicion de riesgo sobre el campo 'weight', que es el peso de una PERSONA. v7 (27/08) ya lo detectaba pero solo como VISIBILIDAD. Se sube a RECHAZO DURO (v22) por tres motivos medidos: (1) el prompt ya tenia la regla Y los dos ejemplos literales desde el 27/08 y el LLM los seguia generando -- el propio comentario de v7 daba su_00125 por resuelto y la ejecucion del 01/09 lo desmiente; (2) los 4 usos reales de weight en las 7 ejecuciones son errores, los 4, y ninguna dependencia legitima usa un peso de persona; (3) no existe ningun campo de peso de VEHICULO accesible (comprobado en el backend real: Base7Version no tiene peso ni MMA). Ampliado tambien el vocabulario de evidencia no-persona con PMA / masa maxima autorizada / peso total. En paralelo: negative_aliases en el campo weight de shared/person.md (para que ni llegue a ofrecerse como candidato) + alias reales nuevos en lightTrailer (para que el campo CORRECTO si llegue) + REGLA DEL SUJETO DEL UMBRAL en core.md. Validado con reindexacion real de Qdrant (ejecuciones n8n 367/368 del 03/09, 114 y 50 puntos) y con el nodo Ontology Relevance Filter offline sobre los 4 textos reales + un control de peso de persona legitimo que SI debe sobrevivir.",
-    "out_of_scope_ramo (03/09, Legal Cue Pre-Filter v2 -- patron 5 cerrado por la via del alcance de ramo)": "El patron 5 se planteo como 'anexos de definicion de categoria no reconocidos como capitulo transversal', y la solucion prevista era ampliar TRANSVERSAL_CHAPTER_TITLE_PATTERNS. El usuario reencuadro el problema (03/09): el condicionado de Divina son TRES lineas de producto en un mismo PDF (primera categoria = ramo Autos, segunda = camiones, sin ramo hoy, tercera = ramo Motos), asi que el problema no es que una definicion se cuele, es que se estaba procesando entero un documento del que dos tercios pertenecen a otros productos. Medido en la ejecucion 359 (Divina, Ramo=Autos): de las 90 unidades que pasaban el pre-filtro, 21 vivian bajo un anexo de categoria ajena, y consumieron 4 de las 10 llamadas al LLM (40%) y 4 de los 8 artefactos. Fix: segundo gate en Legal Cue Pre-Filter v2, por TITULO de capitulo (nunca por texto -- ver GD-AUTO-SCOPE-002), con mapa RAMO_IN_SCOPE_CATEGORIES (Autos->primera, Motos->tercera; segunda y VMP declaradas pero sin ramo hoy). Los descartes viajan al contrato final como out_of_scope_ramo via workflow static data, igual que indice_diagnostics. LIMITE ACEPTADO: el cuerpo principal no declara su categoria en ningun titulo (medido: 0 de 57 unidades), asi que el gate solo actua en la direccion segura (descartar lo que declara explicitamente una categoria ajena); la inversa -- una ejecucion de Motos, donde habria que descartar el cuerpo principal por NO declarar categoria -- queda pendiente para cuando se arranque ese ramo."
+    "out_of_scope_ramo (03/09, Legal Cue Pre-Filter v2 -- patron 5 cerrado por la via del alcance de ramo)": "El patron 5 se planteo como 'anexos de definicion de categoria no reconocidos como capitulo transversal', y la solucion prevista era ampliar TRANSVERSAL_CHAPTER_TITLE_PATTERNS. El usuario reencuadro el problema (03/09): el condicionado de Divina son TRES lineas de producto en un mismo PDF (primera categoria = ramo Autos, segunda = camiones, sin ramo hoy, tercera = ramo Motos), asi que el problema no es que una definicion se cuele, es que se estaba procesando entero un documento del que dos tercios pertenecen a otros productos. Medido en la ejecucion 359 (Divina, Ramo=Autos): de las 90 unidades que pasaban el pre-filtro, 21 vivian bajo un anexo de categoria ajena, y consumieron 4 de las 10 llamadas al LLM (40%) y 4 de los 8 artefactos. Fix: segundo gate en Legal Cue Pre-Filter v2, por TITULO de capitulo (nunca por texto -- ver GD-AUTO-SCOPE-002), con mapa RAMO_IN_SCOPE_CATEGORIES (Autos->primera, Motos->tercera; segunda y VMP declaradas pero sin ramo hoy). Los descartes viajan al contrato final como out_of_scope_ramo via workflow static data, igual que indice_diagnostics. LIMITE ACEPTADO: el cuerpo principal no declara su categoria en ningun titulo (medido: 0 de 57 unidades), asi que el gate solo actua en la direccion segura (descartar lo que declara explicitamente una categoria ajena); la inversa -- una ejecucion de Motos, donde habria que descartar el cuerpo principal por NO declarar categoria -- queda pendiente para cuando se arranque ese ramo.",
+    "percentage_indemnification AMPLIADO (03/09, Guardrail v24 -- reversion de la decision del 01/09)": "El 01/09, al cerrar el hallazgo D, se decidio que una VARIANTE NOMBRADA sin porcentaje ('valor a nuevo' vs. 'valor de mercado ampliado' segun la antiguedad) SI era una dependencia real, y se dejo el caso de Zurich su_00077 como ejemplo de eso en el prompt (core.md y ramos/auto.md) y en los comentarios de v17. El 03/09 el usuario REVIERTE esa decision tras releer los textos completos: una tabla que dice CON QUE BASE se indemniza segun la antiguedad es calculo de indemnizacion y queda fuera, con porcentaje o sin el. Consecuencias: (1) reescritos los dos ejemplos del prompt que pedian explicitamente esa extraccion -- el de ramos/auto.md llegaba a decir 'Dos dependencias sobre registrationYears ... seleccion entre variantes de indemnizacion'; (2) Guardrail v24 amplia la deteccion de v17 con tres anclas (verbo de indemnizacion en el evidence; titulo que nombra una base de valoracion o un capitulo de criterios de valoracion; texto con base de valoracion Y campo de antiguedad de vehiculo). Medido sobre las 7 ejecuciones del 01/09: 40 dependencias pasan de SIN MARCA a marcadas, todas del mismo patron (las 33 de Zurich, la de Axa su_00169 y las 6 mitades sin marcar de Qualitas), 0 falsos positivos y 0 cambios en rechazos duros. Se conserva el nombre del flag ('percentage_indemnification') para no romper el hilado, el contador, el prompt de flujo 3 ni el golden set, pero desde v24 el nombre es mas estrecho que lo que detecta: lo que marca es 'esta dependencia pertenece a un criterio de valoracion o a una escala de indemnizacion'. Sigue siendo VISIBILIDAD, no rechazo duro: el ancla del verbo de indemnizacion podria capturar algun dia una condicion real ('se indemnizara ... siempre que el vehiculo este en garaje'), asi que la decision final la sigue tomando flujo 3 con el Excel delante."
   },
   "cases": [
     {
@@ -1619,6 +1620,137 @@
       ],
       "guardrail_catches": true,
       "notes": "El caso original del patron 5 (revision manual del 01/09), con el 'article' real que ya asigna bien la jerarquia desde el fix del 30/07. Es la CABECERA del ANEXO 1 (segunda categoria = camiones >3.500 kg): una linea de producto que no es ningun ramo de ASM hoy, asi que se descarta tanto en Autos como en Motos, y se conserva en Hogar (donde el gate esta inerte). Con esto la dependencia 'base7Category = segunda categoria' que quedaba sin ninguna marca desaparece por el motivo correcto -- el capitulo entero esta fuera de alcance -- en vez de por una regla sobre definiciones, que era el diseño que se iba a hacer antes de que el usuario reencuadrara el problema. La otra dependencia de la unidad ('weight > 3500') ya la rechazaba duro el Guardrail v22 desde el mismo dia. Ver tambien GD-AUTO-HIER-001, que es la misma unidad conservada con article a null para probar la deteccion de jerarquia."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-041",
+      "category": "percentage_indemnification",
+      "subtype": "valuation_basis_table_confused_with_coverage_condition",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-16-42-115Z.json, ejecucion n8n 361 del 01/09)",
+      "semantic_unit_ref": "su_00071",
+      "article": "5-. Robo",
+      "coverage_path": [],
+      "source_text": "a1) Para turismos de uso particular o furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg, el importe de indemnización será, en función de la modalidad de contratación a valor a nuevo (2 o 3 años), según se indique en Condiciones Particulares.\n\nDesde la fecha de primera matriculación hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo.\n\nDurante el tercero, cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado, siempre que este no sea inferior al valor de mercado en el momento del siniestro, en cuyo caso se aplicará el mayor de los dos importes.\n\nDesde la fecha de primera matriculación hasta el tercer año de antigüedad del vehículo, se indemnizará por el valor a nuevo.\n\nDurante el cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado, siempre que este no sea inferior al valor de mercado en el momento del siniestro, en cuyo caso se aplicará el mayor de los dos importes.\n\na2) Para el resto de los vehículos, se indemniza el 100% del valor de mercado, en base a lo establecido en el apartado II-Definiciones. En relación con lo dispuesto en los apartados a.1 y a.2, el importe de la indemnización no podrá, en ningún caso, exceder la suma asegurada del vehículo establecida en la póliza.\n\nSustracción de piezas que constituyan partes fijas e indispensables del vehículo, integradas en el modelo básico del mismo y que no tengan la consideración de accesorios. Se indemniza el 100% de su valor de nuevo exceptuando las piezas sustraídas susceptibles de desgaste por uso tales como, catalizadores, baterías, embragues, escapes, frenos, etc. a las que se les aplicará la correspondiente depreciación.\n\nDaños que se produzcan en el vehículo asegurado durante el tiempo en que, como consecuencia de la sustracción, se halle en poder de personas ajenas, así como los ocasionados por tentativa de sustracción. Se indemniza el 100% del importe de la reparación de dichos daños, exceptuando las piezas susceptibles de desgaste por uso tales como, catalizadores, baterías, embragues, escapes, frenos, etc. a las que se les aplicará la correspondiente depreciación salvo que se califique el siniestro como pérdida total, en cuyo caso se aplicarán los criterios de valoración definidos en el artículo 7.1 ó 8.1",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "=",
+          "value": "turismo",
+          "evidence": "Para turismos de uso particular o furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg, el importe de indemnización será, en función de la modalidad de contratación a valor a nuevo (2 o 3 años)"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "evidence": "Desde la fecha de primera matriculación hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo."
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3,
+          "evidence": "Durante el tercero, cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5,
+          "evidence": "Durante el tercero, cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3,
+          "evidence": "Desde la fecha de primera matriculación hasta el tercer año de antigüedad del vehículo, se indemnizará por el valor a nuevo."
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 4,
+          "evidence": "Durante el cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5,
+          "evidence": "Durante el cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_percentage_indemnification_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso que motivo la REVERSION del criterio del 01/09 (decision del usuario, 03/09). El mismo bloque de texto aparece repetido literalmente en 5 unidades de Zurich (su_00071 Robo, su_00077 Incendio, su_00082 Perdida total, su_00086 Danos propios, su_00092 Fenomenos atmosfericos), y son 33 dependencias sin ninguna marca -- el 47% de todas las dependencias sin marca de las 7 ejecuciones. El texto pone DOS tablas de antiguedad una detras de otra (la de la modalidad de 2 anios y la de la de 3) y dice que cual aplica lo decide 'la modalidad de contratacion a valor a nuevo (2 o 3 anios), segun se indique en Condiciones Particulares'. Eso produce umbrales contradictorios sobre el mismo campo ('<= 2' y '<= 3', '>= 3' y '>= 4'). El 01/09 se decidio que estas variantes NOMBRADAS sin porcentaje SI eran dependencia real; el 03/09 el usuario, releyendo el texto completo, concluye lo contrario: es un calculo de indemnizacion y queda fuera. Cerrado con Guardrail v24 (ancla 1: verbo de indemnizacion en el evidence) + reescritura de los dos ejemplos del prompt que pedian esta extraccion (core.md y ramos/auto.md). Nota: la modalidad de contratacion no es ningun campo del riesgo -- comprobado contra el catalogo real de Autos (114 campos en Qdrant) --, es una modalidad de producto, que en el modelo de flujo 3 se representa con PRODUCT_COMPANY_MODALITY_ID a nivel de ENTRY."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-042",
+      "category": "percentage_indemnification",
+      "subtype": "valuation_basis_table_confused_with_coverage_condition",
+      "source_company": "Axa (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-14-13-136Z.json, ejecucion n8n 360 del 01/09)",
+      "semantic_unit_ref": "su_00169",
+      "article": "6. Valor a nuevo a 3 años",
+      "coverage_path": [
+        "6. Valor a nuevo a 3 años"
+      ],
+      "source_text": "Mediante esta garantía, en caso de siniestro de Daños, Incendio o Robo se indemnizará el 100% de su valor a nuevo, si en la fecha del siniestro el vehículo tuviera una antigüedad inferior o igual a tres años desde la fecha de la primera matriculación.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3,
+          "evidence": "si en la fecha del siniestro el vehículo tuviera una antigüedad inferior o igual a tres años desde la fecha de la primera matriculación"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_percentage_indemnification_flagged": true,
+      "alias_match_expectations": [
+        {
+          "risk_field": "registrationYears",
+          "expected_alias_match": true,
+          "note": "Con el alias 'primera matriculacion' anadido el 03/09, el campo SI aparece como candidato en este texto; antes ninguno de los cinco alias matcheaba y la dependencia salia marcada ungrounded."
+        }
+      ],
+      "guardrail_catches": false,
+      "notes": "El segundo caso que esperaba criterio de negocio, resuelto por el usuario el 03/09: aunque el epigrafe se llame '6. Valor a nuevo a 3 anios' y viva en una lista de garantias adicionales (junto a '1. Vehiculo de sustitucion VIP' y '3. Ampliacion Asistencia en Carretera y Grua', y 'vehiculo de sustitucion' SI es una cobertura real en el modelo de ASM), lo que el texto describe es COMO se indemnizan Danos, Incendio y Robo, no si alguna de las tres aplica. Decision: es calculo de indemnizacion, queda fuera. Lo captura el ancla 2 de v24 (el TITULO nombra una base de valoracion). Ademas, esta unidad tenia la dependencia marcada 'ungrounded' por un HUECO DE ALIAS, no por un problema real: el texto dice 'desde la fecha de LA primera matriculacion' y el unico alias parecido de registrationYears era 'desde la fecha de primera matriculacion', que falla por una palabra. Corregido el 03/09 añadiendo el alias 'primera matriculacion' y reindexando (ejecucion n8n 369) -- ver alias_match_expectations."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-043",
+      "category": "percentage_indemnification",
+      "subtype": "valuation_basis_table_confused_with_coverage_condition",
+      "source_company": "Qualitas (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-23-30-291Z.json, ejecucion n8n 364 del 01/09)",
+      "semantic_unit_ref": "su_00027",
+      "article": "1. 2. Sección 2: Garantías Voluntarias",
+      "coverage_path": [
+        "1. 2. 2 Daños propios"
+      ],
+      "source_text": "-Valor de nuevo: Para vehículos con antigüedad inferior o igual a los 2 años desde la fecha de primera matriculación.\n\n-Valor venal mejorado: Para vehículos con antigüedad superior a los 2 años desde la fecha de primera matriculación mejora del 30%.\n\n-Ponerlos a disposición del Asegurador, en cuyo caso, será necesario que aporte toda la documentación necesaria para obtener el certificado de destrucción.\n\nLos daños en los accesorios fijos originales de la marca instalados en fábrica sin límite alguno, salvo los sistemas de sonido, navegación, telefonía y video de fábrica cuyos daños se cubrirán hasta el límite establecido en las condiciones particulares de esta póliza, incluidos impuestos, así como gastos totales de instalación y puesta en funcionamiento.\n\nSe cubren los daños ocasionados en accesorios no de serie en caso de tentativa de robo o incendio hasta el límite establecido en las condiciones particulares de la póliza.\n\nSe indemnizarán a valor a nuevo los neumáticos cuando sea necesaria la sustitución de éstos, siempre que en el accidente haya implicado otro vehículo y estén dañadas otras partes del vehículo asegurado como consecuencia de dicho accidente. En caso de no existir colisión con vehículo verificado, éstos se indemnizarán a valor venal siempre y cuando esté afectada cualquier otra parte fija del vehículo.\n\nEl importe de la franquicia, si estuviera contratada, en el momento en que se reciba la aceptación y conformidad del pago de la indemnización por la compañía responsable.\n\nQuedan cubiertos los daños ocasionados y/o ocurridos en vías no aptas para la circulación a los vehículos con denominación \" todo -terreno, todo -camino \".\n\nSe cubren los daños ocasionados en sillas infantiles como consecuencia de un accidente de circulación hasta una cuantía máxima de 200€ por siniestro, 100€ por silla.\n\nPara siniestros con lesiones, se cubre hasta un límite máximo de 300€ los daños ocasionados en skies, tablas de surf y bicicletas propiedad del tomador y transportados en el vehículo en el momento del accidente, siempre que los mismos sean de uso personal.\n\nQuedan incluidos los daños o deterioros sufridos por el equipaje de uso personal en caso de accidente del vehículo, robo con daños hacia el vehículo e incendio del mismo con el límite máximo indicado en las condiciones particulares.\n\nLos daños ocasionados en el vehículo por el uso o desgaste normal, así como las averías mecánicas y/o eléctricas y/o electrónicas, incluso las originadas por la congelación del agua en el circuito de refrigeración o la falta de agua, aceite, combustible u otros elementos similares, así como los daños sufridos por el vehículo al seguir circulando en esas condiciones; incluidas sus modificaciones.\n\nLos daños a los neumáticos que no resulten de un accidente que dañe conjuntamente a otras partes del vehículo, tales como pinchazos o reventones aislados, o desgaste natural.\n\nLos accesorios, sistemas de sonido, navegación, telefonía y video, de fábrica por importe superior al límite establecido en las condiciones particulares de esta póliza.\n\nEl robo de accesorios que sean considerados como no de serie.\n\nLos daños sufridos por el vehículo asegurado cuando éste sea conducido por una persona menor de 25 años o con menos de 2 años de antigüedad del permiso de conducir, r, salvo que esté expresamente designado en las condiciones particulares de esta póliza.\n\nEl equipaje profesional y los siguientes artículos: elementos ajenos al vehículo, elementos electrónicos e informáticos (teléfonos móviles, ordenadores, accesorios multimedia) y mercancías propias o ajenas transportadas en el vehículo.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "evidence": "Valor de nuevo: Para vehículos con antigüedad inferior o igual a los 2 años desde la fecha de primera matriculación."
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">",
+          "value": 2,
+          "evidence": "Valor venal mejorado: Para vehículos con antigüedad superior a los 2 años desde la fecha de primera matriculación mejora del 30%."
+        },
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": "<",
+          "value": 25,
+          "evidence": "Los daños sufridos por el vehículo asegurado cuando éste sea conducido por una persona menor de 25 años o con menos de 2 años de antigüedad del permiso de conducir."
+        },
+        {
+          "risk_field": "primaryDriver.licenseYears",
+          "operator": "<",
+          "value": 2,
+          "evidence": "Los daños sufridos por el vehículo asegurado cuando éste sea conducido por una persona menor de 25 años o con menos de 2 años de antigüedad del permiso de conducir."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_percentage_indemnification_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso que aparecio al MEDIR el fix de los otros dos, y que el usuario no habia marcado: Qualitas tiene el mismo patron en 6 unidades (su_00027/028/030/031/037/038), y en cada una de ellas v17 ya marcaba la mitad de la tabla (la que lleva un '%' en su evidence, p.ej. 'valor venal mejorado ... mejora del 30%') y dejaba la otra mitad SIN MARCAR (p.ej. 'Valor de nuevo: Para vehiculos con antiguedad inferior o igual a los 2 anios'). Media tabla marcada y media no. Lo cierra el ancla 3 de v24: el texto de la unidad nombra una base de valoracion Y el campo de la dependencia es la antiguedad del VEHICULO. Esa ancla va acotada al campo de antiguedad a proposito -- sin esa restriccion tambien marcaba Reale su_00025, donde 'valor venal' aparece en un parrafo sin relacion con su dependencia (una exclusion de Asistencia en Viaje por categoria de vehiculo)."
     }
   ]
 }

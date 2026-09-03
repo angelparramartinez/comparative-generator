@@ -199,15 +199,23 @@ Para la EDAD de una persona (no la antigüedad del vehículo), ver la REGLA DE A
 
 EJEMPLO ILUSTRATIVO (Autos)
 
-Texto: "Desde la fecha de primera matriculación hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo. Durante el tercero, cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado."
+Texto: "Los daños sufridos por el vehículo asegurado cuando éste tenga una antigüedad superior a 10 años quedan excluidos de esta garantía."
 
-→ Dos dependencias sobre "registrationYears": operator "<", value 2 (primera variante) y operator ">=", value 3 (segunda variante) -- selección entre variantes de indemnización según la antigüedad del vehículo.
+→ Una dependencia: risk_field "registrationYears", operator ">", value 10. Aquí la antigüedad decide si la garantía APLICA o no.
 
-Error a evitar: generar "owner.birthDate >= 2" o cualquier variante con birthDate -- confunde la antigüedad del VEHÍCULO con la fecha de nacimiento de una PERSONA, y además usa un entero pequeño (una duración) contra un campo de fecha absoluta.
+Error a evitar: generar "owner.birthDate > 10" o cualquier variante con birthDate -- confunde la antigüedad del VEHÍCULO con la fecha de nacimiento de una PERSONA, y además usa un entero pequeño (una duración) contra un campo de fecha absoluta.
 
-Texto: "El 100 % del valor de nuevo del vehículo durante los dos primeros años desde la primera matriculación... Si eres el segundo o posterior Propietario, el 100 % del valor de adquisición... El 100 % del valor GANVAM del vehículo si han transcurrido dos años..." / "se cubren según su antigüedad: 100 % en el primer año, 80 % en el segundo y tercero, y 50 % a partir del cuarto año."
+Texto: "Desde la fecha de primera matriculación hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo. Durante el tercero, cuarto y quinto año de antigüedad del vehículo se indemnizará por el valor de mercado ampliado." / "El 100 % del valor de nuevo del vehículo durante los dos primeros años desde la primera matriculación... El 100 % del valor GANVAM del vehículo si han transcurrido dos años..." / "se cubren según su antigüedad: 100 % en el primer año, 80 % en el segundo y tercero, y 50 % a partir del cuarto año."
 
-→ NO es una dependencia en ninguno de los dos casos. A diferencia del ejemplo anterior ("valor a nuevo" vs. "valor de mercado ampliado", dos bases de cálculo con nombre propio), aquí TODO son porcentajes numéricos (100%/80%/50%) de una escala de indemnización -- no generes "registrationYears < 2"/">= 2" ni ninguna otra variante a partir de este tipo de tabla. Omite la dependencia por completo.
+→ NO es una dependencia en ninguno de los tres casos, y es importante ver por qué son el MISMO caso: los tres son la tabla de valoración de la garantía. La garantía aplica igual en todos los tramos de antigüedad; lo único que cambia es la BASE con la que se calcula la indemnización -- da igual que esa base se exprese con un nombre propio ("valor a nuevo", "valor de mercado ampliado", "valor venal", "valor de adquisición", "valor GANVAM") o con un porcentaje (100%/80%/50%). No generes "registrationYears <= 2", ">= 3" ni ninguna otra variante a partir de este tipo de tabla: omite la dependencia por completo.
+
+Texto: "Mediante esta garantía, en caso de siniestro de Daños, Incendio o Robo se indemnizará el 100% de su valor a nuevo, si en la fecha del siniestro el vehículo tuviera una antigüedad inferior o igual a tres años desde la fecha de la primera matriculación."
+
+→ NO es una dependencia. Aunque el epígrafe se llame "Valor a nuevo a 3 años" y parezca una garantía propia, lo que el texto describe es CÓMO se indemnizan Daños, Incendio y Robo, no si alguna de esas tres garantías aplica: el umbral de tres años selecciona la base de valoración. No generes "registrationYears <= 3" a partir de este texto.
+
+Texto: "Para turismos de uso particular o furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg, el importe de indemnización será, en función de la modalidad de contratación a valor a nuevo (2 o 3 años), según se indique en Condiciones Particulares. [a continuación, las dos tablas de antigüedad, una detrás de otra]"
+
+→ NO es una dependencia (ni las tablas ni el tipo de vehículo). Además de ser una tabla de valoración, aquí hay una segunda razón para no extraer nada: cuál de las dos tablas aplica lo decide la MODALIDAD de contratación, un dato que no está en el riesgo y que el texto no permite resolver -- extraer las dos produce umbrales contradictorios sobre el mismo campo (por ejemplo "hasta el segundo año" y "hasta el tercer año" a la vez).
 
 REGLA DE CATEGORÍA DE VEHÍCULO IMPLÍCITA POR EL PROPIO CAPÍTULO
 
