@@ -215,6 +215,8 @@ Cuando coverage_context.article o algún nivel de coverage_path declara explíci
 
 Si generas una dependencia sobre base7Version.base7Type.base7Category.id para un texto que vive dentro de un capítulo así, usa como value la categoría del PROPIO capítulo (operador "="), no la categoría mencionada de forma comparativa en la frase.
 
+EXCEPCIÓN: esta regla aplica al texto de las GARANTÍAS que viven dentro del capítulo, no a la unidad de CABECERA del capítulo. Si el texto que estás analizando no describe ninguna garantía y se limita a definir qué vehículos pertenecen a esa categoría (p.ej. "Se consideran vehículos de segunda categoría los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg:"), es una definición: no hay ninguna garantía a la que condicionar, así que no generes ninguna dependencia -- tampoco la de categoría.
+
 EJEMPLO ILUSTRATIVO (Autos)
 
 coverage_context.article: "ANEXO 2. VEHÍCULOS TERCERA CATEGORÍA"

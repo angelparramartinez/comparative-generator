@@ -20,7 +20,8 @@
     "duration_field_used_as_existence_check / age_threshold_implausible_for_figure (01/09, Guardrail v18/v19 -- patron 3 cerrado)": "Dos rechazos duros nuevos, del analisis de causa raiz del patron 3 ('age inventado', revision manual del usuario sobre las 7 ejecuciones del 01/09). v18 (AGNOSTICO DE RAMO): cualquier campo sintetico de DURACION (age/licenseYears/registrationYears, con o sin prefijo) con value 0 -- son integer pero representan anios transcurridos, no capital, asi que '>0' es siempre cierto y '=0' siempre falso. Alcance deliberadamente acotado: los capitales (content/continent/specialValueObjects) SI admiten existencia con value 0, esa es la razon de ser de la regla de existencia del prompt. v19 (GATEADO A AUTOS): umbral de edad que implica minoria de edad ('<' con N<=18, '<=' o '=' con N<=17) sobre cualquier figura de Person -- en Autos ninguna figura declarada puede ser menor, luego siempre es un tercero (hijos/beneficiarios/ocupantes). NO cubre '<=18' ni '=18' a proposito (un conductor de 18 recien carnetizado es legal). Gateado a Autos porque en Motos si hay conductores de 15-16 (AM/A1). Barrido de falsos positivos sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09: exactamente 5 pasarian a rechazarse, y las 5 son casos que el usuario habia marcado como erroneos -- 0 falsos positivos.",
     "policy_admission_criteria vocabulario ampliado (03/09, Guardrail v20 -- patron 1 cerrado)": "v16 (01/09) se diseño sobre un unico caso real (GD-AUTO-HALLUC-028, Reale su_00038) y se documento explicitamente como conservador. La revision manual global del 01/09 encontro 3 unidades reales mas del MISMO patron que su vocabulario no capturaba (GD-AUTO-HALLUC-034/035/036 = Reale su_00036/su_00040/su_00044): v16 solo cubria VERBOS DE INCLUSION ('se podran incluir/declarar'), no las formulas con las que un condicionado presenta una LISTA DE REQUISITOS de admision ('que cumplan los siguientes requisitos', 'se deben cumplir los siguientes requisitos', 'son asegurables las personas fisicas que...'). v20 añade 4 patrones nuevos y relaja el 'se' obligatorio del primero. Decision deliberada: NO se añade 'siempre que se cumpla' a secas (lenguaje legal demasiado generico, alto riesgo de falso positivo) -- su_00040 queda cubierta igual por 'podra declarar' y por 'normas de contratacion'. Sigue siendo visibilidad, no bloqueo, y sigue gateado a ontology_type 'auto'. Validacion: barrido sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09 (Divina/Axa/Zurich/Reale/Pelayo/Qualitas/Generali) -> se marcan exactamente las 3 unidades objetivo (7 dependencias), 0 unidades colaterales, 0 regresiones (su_00038/su_00039 siguen marcadas). Alternativa descartada: marcar por CAPITULO (todo 1.3.x/1.4.x de Reale son normas de contratacion) -- solo Reale tiene capitulos de ese tipo en las 7 ejecuciones y es la unica compania con article=null, asi que habria sido una regla a medida de una sola compania.",
     "premium_calculation_rule (03/09, Guardrail v21 -- patron 2 cerrado)": "Patron 2 de la revision manual del 01/09: reglas de BONIFICACION/PRIMA (bonus-malus) confundidas con condicion de cobertura. Concepto que el prompt no cubria en absoluto y distinto de todo lo que habia: v17 es el calculo de la INDEMNIZACION de un siniestro, v16/v20 son la ADMISION de una persona o poliza, v6 es el procedimiento para ejercer un derecho ya reconocido; esto es el PRECIO de la poliza. Casos: GD-AUTO-HALLUC-037/038/039 (Reale su_00063/su_00064/su_00069, capitulo 1.4.x = normas de suscripcion economica). Fix en tres piezas: (1) nueva REGLA DE BONIFICACION/PRIMA (NO DE COBERTURA) en core.md, agnostica de ramo, mas 3 ejemplos reales en ramos/auto.md; (2) Guardrail v21 -- vocabulario bonificacion/bonus/malus/recargo/descuento sobre la UNIDAD completa (no sobre evidence: en su_00064 el '20%' esta fuera del evidence), visibilidad no bloqueo, AGNOSTICO de ramo por decision explicita del usuario; (3) v21b -- ampliacion de v6 con los NOMBRES de los documentos de suscripcion (ficha tecnica, permiso de circulacion, informe de verificacion, certificado de siniestralidad, justificantes), a nivel de evidence, porque los patrones originales de v6 son todos verbos de aportacion. Vocabulario descartado con datos: 'prima' (9 unidades, 26 dependencias limpias arrasadas -- es boilerplate legal) y extender v17 a nivel de unidad (21 unidades, 40 dependencias limpias arrasadas). Tambien se descarto anclar en el titulo del capitulo: de los 3 titulos reales solo uno menciona bonus. Validacion: barrido antes/despues con el guardrail real sobre las 116 dependencias de las 7 ejecuciones del 01/09 -> 6 cambios en las 3 unidades objetivo (las 4 dependencias que estaban SIN NINGUNA MARCA pasan a estar marcadas) y 5 colaterales, todos ellos dependencias que YA estaban marcadas por otro chequeo (transversal_chapter en Divina su_00008, policy_admission_criteria en Reale su_00044) -- ninguna dependencia pasa de limpia a marcada fuera de las 3 unidades objetivo, y 0 cambios en rechazos duros.",
-    "person_weight_field_for_non_person_evidence (03/09, Guardrail v22 -- patron 4 cerrado)": "Patron 4 de la revision manual del 01/09: un umbral numerico que describe el LIMITE del objeto cubierto (peso de un animal transportado, de un remolque arrastrado, del propio vehiculo) rendido como condicion de riesgo sobre el campo 'weight', que es el peso de una PERSONA. v7 (27/08) ya lo detectaba pero solo como VISIBILIDAD. Se sube a RECHAZO DURO (v22) por tres motivos medidos: (1) el prompt ya tenia la regla Y los dos ejemplos literales desde el 27/08 y el LLM los seguia generando -- el propio comentario de v7 daba su_00125 por resuelto y la ejecucion del 01/09 lo desmiente; (2) los 4 usos reales de weight en las 7 ejecuciones son errores, los 4, y ninguna dependencia legitima usa un peso de persona; (3) no existe ningun campo de peso de VEHICULO accesible (comprobado en el backend real: Base7Version no tiene peso ni MMA). Ampliado tambien el vocabulario de evidencia no-persona con PMA / masa maxima autorizada / peso total. En paralelo: negative_aliases en el campo weight de shared/person.md (para que ni llegue a ofrecerse como candidato) + alias reales nuevos en lightTrailer (para que el campo CORRECTO si llegue) + REGLA DEL SUJETO DEL UMBRAL en core.md. Validado con reindexacion real de Qdrant (ejecuciones n8n 367/368 del 03/09, 114 y 50 puntos) y con el nodo Ontology Relevance Filter offline sobre los 4 textos reales + un control de peso de persona legitimo que SI debe sobrevivir."
+    "person_weight_field_for_non_person_evidence (03/09, Guardrail v22 -- patron 4 cerrado)": "Patron 4 de la revision manual del 01/09: un umbral numerico que describe el LIMITE del objeto cubierto (peso de un animal transportado, de un remolque arrastrado, del propio vehiculo) rendido como condicion de riesgo sobre el campo 'weight', que es el peso de una PERSONA. v7 (27/08) ya lo detectaba pero solo como VISIBILIDAD. Se sube a RECHAZO DURO (v22) por tres motivos medidos: (1) el prompt ya tenia la regla Y los dos ejemplos literales desde el 27/08 y el LLM los seguia generando -- el propio comentario de v7 daba su_00125 por resuelto y la ejecucion del 01/09 lo desmiente; (2) los 4 usos reales de weight en las 7 ejecuciones son errores, los 4, y ninguna dependencia legitima usa un peso de persona; (3) no existe ningun campo de peso de VEHICULO accesible (comprobado en el backend real: Base7Version no tiene peso ni MMA). Ampliado tambien el vocabulario de evidencia no-persona con PMA / masa maxima autorizada / peso total. En paralelo: negative_aliases en el campo weight de shared/person.md (para que ni llegue a ofrecerse como candidato) + alias reales nuevos en lightTrailer (para que el campo CORRECTO si llegue) + REGLA DEL SUJETO DEL UMBRAL en core.md. Validado con reindexacion real de Qdrant (ejecuciones n8n 367/368 del 03/09, 114 y 50 puntos) y con el nodo Ontology Relevance Filter offline sobre los 4 textos reales + un control de peso de persona legitimo que SI debe sobrevivir.",
+    "out_of_scope_ramo (03/09, Legal Cue Pre-Filter v2 -- patron 5 cerrado por la via del alcance de ramo)": "El patron 5 se planteo como 'anexos de definicion de categoria no reconocidos como capitulo transversal', y la solucion prevista era ampliar TRANSVERSAL_CHAPTER_TITLE_PATTERNS. El usuario reencuadro el problema (03/09): el condicionado de Divina son TRES lineas de producto en un mismo PDF (primera categoria = ramo Autos, segunda = camiones, sin ramo hoy, tercera = ramo Motos), asi que el problema no es que una definicion se cuele, es que se estaba procesando entero un documento del que dos tercios pertenecen a otros productos. Medido en la ejecucion 359 (Divina, Ramo=Autos): de las 90 unidades que pasaban el pre-filtro, 21 vivian bajo un anexo de categoria ajena, y consumieron 4 de las 10 llamadas al LLM (40%) y 4 de los 8 artefactos. Fix: segundo gate en Legal Cue Pre-Filter v2, por TITULO de capitulo (nunca por texto -- ver GD-AUTO-SCOPE-002), con mapa RAMO_IN_SCOPE_CATEGORIES (Autos->primera, Motos->tercera; segunda y VMP declaradas pero sin ramo hoy). Los descartes viajan al contrato final como out_of_scope_ramo via workflow static data, igual que indice_diagnostics. LIMITE ACEPTADO: el cuerpo principal no declara su categoria en ningun titulo (medido: 0 de 57 unidades), asi que el gate solo actua en la direccion segura (descartar lo que declara explicitamente una categoria ajena); la inversa -- una ejecucion de Motos, donde habria que descartar el cuerpo principal por NO declarar categoria -- queda pendiente para cuando se arranque ese ramo."
   },
   "cases": [
     {
@@ -64,7 +65,7 @@
       ],
       "expected_coverage_dependencies": [],
       "guardrail_catches": true,
-      "notes": "Mismo patrón que GD-HIER-001/002 de Hogar (Allianz): el texto real pertenece a un anexo de definiciones (ANEXO I 'Vehículos segunda categoría', página 39) que el índice del documento no ancla correctamente (indice_diagnostics.indice_coverage_low=true, unmatched_indice_entries incluye tanto el ANEXO I como el ANEXO II en esta misma ejecución) -- el Hierarchy Builder cae al fallback heurístico y atribuye el texto al último capítulo numerado real ('19 QUEJAS Y RECLAMACIONES'), completamente ajeno. Es la primera confirmación real de este patrón en Autos, mismo mecanismo ya diagnosticado y aceptado conscientemente en Hogar/Axa (CLAUDE.md §5.10) -- no es un caso nuevo a resolver, es evidencia de que el límite conocido también aplica aquí. Ver también GD-AUTO-GAP-001 (mismo contenido semántico, sin duplicar la evidencia de por qué el risk_field 'weight' tampoco existe). ACTUALIZACION (27/08): reproducida identica en la ejecucion real posterior (mismo articulo erroneo '19 QUEJAS Y RECLAMACIONES', mismo risk_field 'weight' bare) -- esperado, ninguno de los dos fixes desplegados ese dia toca la atribucion de jerarquia ni el vocabulario de alias de 'category' ('segunda categoria' sigue sin ser alias literal, item 4 pendiente). Sigue abierta. ACTUALIZACION (27/08, Guardrail v7): confirmado en produccion (tercera ejecucion real, tras el fix de jerarquia de ANEXO I/II) que la regla de prompt (REGLA DE ENTIDAD DEL CAMPO) generaliza bien para owner.weight (su_00125 dejo de reproducirse) pero NO para la variante sin prefijo 'weight' (holder) -- esta unidad sigue generando 'weight > 3500' para el peso del vehiculo. Se anade Guardrail v7 (mismo mecanismo que v6) sobre PERSON_WEIGHT_RISK_FIELDS + evidencia de vehiculo/animal, como segunda red de seguridad. Este caso sirve de test de regresion para v7. ACTUALIZACION FINAL (27/08, 4a ejecucion real): con la jerarquia ya resuelta (fix de numeros romanos, commit 2a44340) y el refuerzo de la regla de entidad del campo, esta unidad concreta ya no genera 'weight > 3500' -- queda limpia, solo base7Category.id = segunda categoria. El Guardrail v7 sigue como red de seguridad para cuando el patron reaparezca en otras unidades (ver GD-AUTO-HALLUC-003). Actualizado 03/09: 'weight > 3500' pasa de marcada (v7) a RECHAZADA duro (v22). La otra mitad de esta unidad (la dependencia de base7Category sin marcar) sigue abierta: es el patron 5.",
+      "notes": "Mismo patrón que GD-HIER-001/002 de Hogar (Allianz): el texto real pertenece a un anexo de definiciones (ANEXO I 'Vehículos segunda categoría', página 39) que el índice del documento no ancla correctamente (indice_diagnostics.indice_coverage_low=true, unmatched_indice_entries incluye tanto el ANEXO I como el ANEXO II en esta misma ejecución) -- el Hierarchy Builder cae al fallback heurístico y atribuye el texto al último capítulo numerado real ('19 QUEJAS Y RECLAMACIONES'), completamente ajeno. Es la primera confirmación real de este patrón en Autos, mismo mecanismo ya diagnosticado y aceptado conscientemente en Hogar/Axa (CLAUDE.md §5.10) -- no es un caso nuevo a resolver, es evidencia de que el límite conocido también aplica aquí. Ver también GD-AUTO-GAP-001 (mismo contenido semántico, sin duplicar la evidencia de por qué el risk_field 'weight' tampoco existe). ACTUALIZACION (27/08): reproducida identica en la ejecucion real posterior (mismo articulo erroneo '19 QUEJAS Y RECLAMACIONES', mismo risk_field 'weight' bare) -- esperado, ninguno de los dos fixes desplegados ese dia toca la atribucion de jerarquia ni el vocabulario de alias de 'category' ('segunda categoria' sigue sin ser alias literal, item 4 pendiente). Sigue abierta. ACTUALIZACION (27/08, Guardrail v7): confirmado en produccion (tercera ejecucion real, tras el fix de jerarquia de ANEXO I/II) que la regla de prompt (REGLA DE ENTIDAD DEL CAMPO) generaliza bien para owner.weight (su_00125 dejo de reproducirse) pero NO para la variante sin prefijo 'weight' (holder) -- esta unidad sigue generando 'weight > 3500' para el peso del vehiculo. Se anade Guardrail v7 (mismo mecanismo que v6) sobre PERSON_WEIGHT_RISK_FIELDS + evidencia de vehiculo/animal, como segunda red de seguridad. Este caso sirve de test de regresion para v7. ACTUALIZACION FINAL (27/08, 4a ejecucion real): con la jerarquia ya resuelta (fix de numeros romanos, commit 2a44340) y el refuerzo de la regla de entidad del campo, esta unidad concreta ya no genera 'weight > 3500' -- queda limpia, solo base7Category.id = segunda categoria. El Guardrail v7 sigue como red de seguridad para cuando el patron reaparezca en otras unidades (ver GD-AUTO-HALLUC-003). Actualizado 03/09: 'weight > 3500' pasa de marcada (v7) a RECHAZADA duro (v22). La otra mitad de esta unidad (la dependencia de base7Category sin marcar) sigue abierta: es el patron 5. Actualizado 03/09 (patron 5 / alcance de ramo -- la expectativa de alcance de ramo vive en GD-AUTO-SCOPE-003, con el 'article' real; este caso conserva a proposito article/coverage_path a null porque prueba la deteccion de jerarquia, no el gate): esta unidad es la CABECERA del ANEXO 1 (segunda categoria = camiones >3.500 kg), una linea de producto que no es ningun ramo de ASM hoy. Con el gate de alcance de ramo del Legal Cue Pre-Filter v2 ya no llega al LLM en una ejecucion de Autos ni de Motos, asi que la dependencia de base7Category que quedaba sin marcar desaparece por el motivo correcto (el capitulo entero esta fuera de alcance), no por una regla sobre definiciones. En Hogar el gate esta inerte (las categorias de vehiculo no significan nada) y la unidad se conserva.",
       "expected_person_field_mismatch_flagged": true
     },
     {
@@ -1460,6 +1461,164 @@
       "expected_person_field_mismatch_flagged": false,
       "guardrail_catches": false,
       "notes": "CONTRA-PRUEBA de Guardrail v22 (03/09) y caso de referencia del patron 4. Es la MISMA clausula del mundo real que GD-AUTO-HALLUC-040 (Axa su_00053): ampliacion de la RC Voluntaria al arrastre de un remolque cuya masa maxima autorizada no exceda de 750 kg. Generali la extrajo bien, con el campo cualitativo del riesgo ('lightTrailer = true') en vez del umbral en kilos. v22 NO debe tocarla: la regla solo rechaza pesos de PERSONA (weight/owner.weight/...), nunca lightTrailer. Sirve de ancla para que un futuro chequeo por vocabulario de umbral ('no exceda de N') no se lleve por delante la extraccion correcta -- ese fue justamente el motivo por el que se descarto ese diseño el 03/09."
+    },
+    {
+      "id": "GD-AUTO-SCOPE-001",
+      "category": "out_of_scope_ramo",
+      "subtype": "chapter_declares_alien_vehicle_category",
+      "source_company": "Divina (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-12-08-637Z.json, ejecucion n8n 359 del 01/09)",
+      "semantic_unit_ref": "su_00211",
+      "article": "ANEXO 2. VEHÍCULOS TERCERA CATEGORÍA",
+      "coverage_path": [
+        "2. DEFENSA JURÍDICA Y RECLAMACIÓN DE DAÑOS"
+      ],
+      "source_text": "Además de los indicados para los vehículos de primera categoría, quedan excluidos de la presente garantía:\n\nReclamación de daños personales que pueda sufrir el TOMADOR como pasajero de cualquier vehículo privado.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "tercera categoría",
+          "evidence": "Además de los indicados para los vehículos de primera categoría, quedan excluidos de la presente garantía"
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "tercera categoría",
+          "evidence": "Además de los indicados para los vehículos de primera categoría, quedan excluidos de la presente garantía"
+        }
+      ],
+      "ramo_scope_expectations": [
+        {
+          "ramo": "Autos",
+          "expected_kept": false
+        },
+        {
+          "ramo": "Motos",
+          "expected_kept": true
+        },
+        {
+          "ramo": "Hogar",
+          "expected_kept": true
+        }
+      ],
+      "guardrail_catches": false,
+      "notes": "Caso de ALCANCE DE RAMO (03/09). Garantia real (exclusiones de Defensa Juridica) dentro del ANEXO 2 = tercera categoria = ramo MOTOS. Su dependencia 'base7Category = tercera categoria' es CORRECTA -- de hecho es lo que pide la REGLA DE CATEGORIA DE VEHICULO IMPLICITA del prompt --, pero pertenece a una linea de producto que no es la que se esta procesando en una ejecucion de Autos. Es el caso que demuestra por que el gate NO puede anclarse solo en el titulo del anexo sin mirar el ramo: para Autos hay que saltarla, para Motos hay que conservarla. Es tambien la correccion de un analisis inicial equivocado del asistente, que el 03/09 la clasifico como 'correcta y deseada' sin tener en cuenta el ramo -- el usuario lo corrigio."
+    },
+    {
+      "id": "GD-AUTO-SCOPE-002",
+      "category": "out_of_scope_ramo",
+      "subtype": "category_mentioned_in_text_not_in_chapter_title",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-16-42-115Z.json, ejecucion n8n 361 del 01/09)",
+      "semantic_unit_ref": "su_00039",
+      "article": "3-. Asistencia en viaje",
+      "coverage_path": [
+        "3-. Asistencia en viaje",
+        "b) Rescate"
+      ],
+      "source_text": "Para ciclomotores, motocicletas, Turismos y cualquier vehículo con PMA menor o igual a 3.500 kg, la compañía se hace cargo de los gastos de rescate del vehículo por vuelco o caída en desnivel, siempre que hubiera estado circulando por vías ordinarias y hasta un límite de 450 €. Para resto de vehículos (de PMA superior a 3.500 kg) se establece un límite de 900 €.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "ciclomotor",
+            "motocicleta",
+            "turismo"
+          ],
+          "evidence": "Para ciclomotores, motocicletas, Turismos y cualquier vehículo con PMA menor o igual a 3.500 kg, la compañía se hace cargo de los gastos de rescate"
+        },
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "NOT_IN",
+          "value": [
+            "ciclomotor",
+            "motocicleta",
+            "turismo"
+          ],
+          "evidence": "Para resto de vehículos (de PMA superior a 3.500 kg) se establece un límite de 900 €"
+        }
+      ],
+      "expected_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "ciclomotor",
+            "motocicleta",
+            "turismo"
+          ],
+          "evidence": "Para ciclomotores, motocicletas, Turismos y cualquier vehículo con PMA menor o igual a 3.500 kg, la compañía se hace cargo de los gastos de rescate"
+        },
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "NOT_IN",
+          "value": [
+            "ciclomotor",
+            "motocicleta",
+            "turismo"
+          ],
+          "evidence": "Para resto de vehículos (de PMA superior a 3.500 kg) se establece un límite de 900 €"
+        }
+      ],
+      "ramo_scope_expectations": [
+        {
+          "ramo": "Autos",
+          "expected_kept": true
+        },
+        {
+          "ramo": "Motos",
+          "expected_kept": true
+        },
+        {
+          "ramo": "Hogar",
+          "expected_kept": true
+        }
+      ],
+      "guardrail_catches": false,
+      "notes": "CONTRA-PRUEBA del gate de alcance de ramo (03/09), el control mas importante: el TEXTO menciona ciclomotores y motocicletas ('Para ciclomotores, motocicletas, Turismos y cualquier vehiculo con PMA menor o igual a 3.500 kg...'), pero el capitulo es '3-. Asistencia en viaje', que no declara ninguna categoria. La unidad NO debe descartarse en ningun ramo: es una garantia comun con limites distintos por tipo de vehiculo. Por esto el gate se ancla en el TITULO (article/coverage_path) y nunca en el texto, igual que v5 y v8. Nota aparte: las dos dependencias de esta unidad (base7Type IN/NOT_IN) son el caso de la posible señal 'limit_selection' -- limite de 450/900 EUR por tipo de vehiculo -- anotada como posible mejora sin decidir en el backlog de CLAUDE.md (punto 5), no tocada aqui."
+    },
+    {
+      "id": "GD-AUTO-SCOPE-003",
+      "category": "out_of_scope_ramo",
+      "subtype": "annex_header_of_alien_category_chapter",
+      "source_company": "Divina (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-12-08-637Z.json, ejecucion n8n 359 del 01/09)",
+      "semantic_unit_ref": "su_00185",
+      "article": "ANEXO 1. VEHÍCULOS DE SEGUNDA CATEGORÍA",
+      "coverage_path": [],
+      "source_text": "Se consideran vehículos de segunda categoría los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg:",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "segunda categoría",
+          "evidence": "Se consideran vehículos de segunda categoría los vehículos de cuatro o más ruedas, con peso superior a 3.500 kg"
+        },
+        {
+          "risk_field": "weight",
+          "operator": ">",
+          "value": 3500,
+          "evidence": "vehículos de cuatro o más ruedas, con peso superior a 3.500 kg"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "ramo_scope_expectations": [
+        {
+          "ramo": "Autos",
+          "expected_kept": false
+        },
+        {
+          "ramo": "Motos",
+          "expected_kept": false
+        },
+        {
+          "ramo": "Hogar",
+          "expected_kept": true
+        }
+      ],
+      "guardrail_catches": true,
+      "notes": "El caso original del patron 5 (revision manual del 01/09), con el 'article' real que ya asigna bien la jerarquia desde el fix del 30/07. Es la CABECERA del ANEXO 1 (segunda categoria = camiones >3.500 kg): una linea de producto que no es ningun ramo de ASM hoy, asi que se descarta tanto en Autos como en Motos, y se conserva en Hogar (donde el gate esta inerte). Con esto la dependencia 'base7Category = segunda categoria' que quedaba sin ninguna marca desaparece por el motivo correcto -- el capitulo entero esta fuera de alcance -- en vez de por una regla sobre definiciones, que era el diseño que se iba a hacer antes de que el usuario reencuadrara el problema. La otra dependencia de la unidad ('weight > 3500') ya la rechazaba duro el Guardrail v22 desde el mismo dia. Ver tambien GD-AUTO-HIER-001, que es la misma unidad conservada con article a null para probar la deteccion de jerarquia."
     }
   ]
 }

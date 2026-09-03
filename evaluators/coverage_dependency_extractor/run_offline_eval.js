@@ -25,6 +25,7 @@
 //   node run_offline_eval.js --engine-field-value -> solo el check de rechazo de valores invalidos (no vocabulario real de motor/combustible) para base7Version.base7Engine.id (Guardrail v15, hallazgo A)
 //   node run_offline_eval.js --policy-admission-criteria -> solo el check de visibilidad de criterios de admision de persona en figura confundidos con condicion de cobertura (Guardrail v16, hallazgo C)
 //   node run_offline_eval.js --percentage-indemnification -> solo el check de visibilidad de escalas de indemnizacion en porcentaje confundidas con condicion de cobertura (Guardrail v17, hallazgo D, agnostico de ramo)
+//   node run_offline_eval.js --ramo-scope -> solo el check del gate de alcance de ramo del Legal Cue Pre-Filter v2 (capitulos que declaran una categoria de vehiculo ajena al ramo procesado, 03/09)
 //   node run_offline_eval.js --negative-alias-score-door -> solo el check de que un alias suprimido por negative_aliases no reentra por la puerta del score alto del Ontology Relevance Filter (fix 03/09)
 //   node run_offline_eval.js --premium-calculation -> solo el check de visibilidad de reglas de bonificacion/prima (bonus-malus) confundidas con condicion de cobertura (Guardrail v21, patron 2, agnostico de ramo) + la ampliacion de v6 con nombres de documentos de suscripcion
 //   node run_offline_eval.js --invented-age -> solo los checks de "age inventado" (Guardrail v18: campo de duracion con value 0, agnostico de ramo; Guardrail v19: umbral de edad de menor sobre una figura declarada, gateado a Autos) + su contra-prueba de falsos positivos
@@ -153,34 +154,50 @@ function $getWorkflowStaticData() {
 
 // Envuelve el jsCode de un Code node de n8n respetando su modo de ejecucion
 // declarado (runOnceForAllItems por defecto, o runOnceForEachItem).
-function wrapCodeNode(node) {
+// 03/09: varios nodos reales leen el Ramo del formulario via
+// $('On form submission'). Hasta ahora cada check que lo necesitaba se
+// montaba su propio shim de "$" a mano (ver checkOntologyTypeThreading);
+// ahora lo provee wrapCodeNode para todos, con el ramo que le pase el
+// check (opts.ramo). Si no se pasa ninguno, "Ramo" llega vacio -- que es
+// justo lo que quieren los checks que no van de ramo: cualquier gate por
+// ramo queda inerte y siguen validando lo que validaban antes.
+function makeNodeRegistryShim(opts) {
+  const empty = { first: () => ({ json: {} }), all: () => [] };
+  const registry = {
+    "On form submission": { first: () => ({ json: { Ramo: opts && opts.ramo ? opts.ramo : null } }) }
+  };
+  return name => registry[name] || empty;
+}
+
+function wrapCodeNode(node, opts) {
   const code = node.parameters.jsCode;
   const mode = node.parameters.mode || "runOnceForAllItems";
+  const $ = makeNodeRegistryShim(opts);
 
   if (mode === "runOnceForEachItem") {
-    const fn = new Function("$json", "$getWorkflowStaticData", code);
-    return { mode, runOnItems: jsonInputs => jsonInputs.map(j => fn(j, $getWorkflowStaticData).json) };
+    const fn = new Function("$json", "$getWorkflowStaticData", "$", code);
+    return { mode, runOnItems: jsonInputs => jsonInputs.map(j => fn(j, $getWorkflowStaticData, $).json) };
   }
 
   // n8n expone $json (bound al primer item) incluso en modo "runOnceForAllItems"
   // -- Ontology Splitter depende de eso, asi que se replica aqui. Tambien expone
   // $input.first()/$input.all() -- Hierarchy Builder y ast walker dependen de eso.
-  const fn = new Function("items", "$json", "$input", "$getWorkflowStaticData", code);
+  const fn = new Function("items", "$json", "$input", "$getWorkflowStaticData", "$", code);
   return {
     mode,
     runOnItems: jsonInputs => {
       const items = jsonInputs.map(j => ({ json: j }));
       const $input = { first: () => items[0], all: () => items };
-      const result = fn(items, items[0]?.json, $input, $getWorkflowStaticData);
+      const result = fn(items, items[0]?.json, $input, $getWorkflowStaticData, $);
       return result.map(r => r.json);
     }
   };
 }
 
-function runNode(workflow, nodeName, jsonInputs) {
+function runNode(workflow, nodeName, jsonInputs, opts) {
   const node = findNode(workflow, nodeName);
   if (!node) return null;
-  return wrapCodeNode(node).runOnItems(jsonInputs);
+  return wrapCodeNode(node, opts).runOnItems(jsonInputs);
 }
 
 function checkChunking(workflow, golden) {
@@ -2162,8 +2179,104 @@ function checkChunkLevelMatching(workflow, golden) {
   return failures;
 }
 
+// Legal Cue Pre-Filter v2 (03/09): gate de ALCANCE DE RAMO. Verifica las dos
+// direcciones sobre casos reales: que una unidad cuyo capitulo declara una
+// categoria de vehiculo ajena al ramo se descarta, y que una unidad que solo
+// MENCIONA otra categoria en su texto (con un titulo de capitulo neutro) NO
+// se descarta en ningun ramo -- ese es el falso positivo que hundiria la
+// idea, y por eso el gate se ancla en el titulo. Cierra el patron 5 por la
+// via del alcance de ramo. Ver golden_dataset_auto.json, schema_notes
+// ["out_of_scope_ramo (03/09, ...)"].
+function checkRamoScopeGate(workflow, golden) {
+  console.log("\n=== Check: alcance de ramo (nodo Legal Cue Pre-Filter v2) ===");
+
+  if (!findNode(workflow, "Legal Cue Pre-Filter")) {
+    console.log("Nodo 'Legal Cue Pre-Filter' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const cases = golden.cases.filter(c => Array.isArray(c.ramo_scope_expectations));
+  let failures = 0;
+  let checked = 0;
+
+  for (const c of cases) {
+    for (const exp of c.ramo_scope_expectations) {
+      const kept = runNode(
+        workflow,
+        "Legal Cue Pre-Filter",
+        [{
+          semantic_unit_id: c.semantic_unit_ref,
+          semantic_unit: { id: c.semantic_unit_ref, text: c.source_text },
+          article: c.article || null,
+          coverage_path: c.coverage_path || []
+        }],
+        { ramo: exp.ramo }
+      );
+
+      const survives = Array.isArray(kept) && kept.length > 0;
+      const ok = survives === exp.expected_kept;
+      checked++;
+      if (!ok) failures++;
+      console.log(
+        `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}) Ramo=${exp.ramo}: pasa=${survives} (esperado ${exp.expected_kept})`
+      );
+    }
+  }
+
+  // Barrido global: sobre las unidades reales que SI generaron dependencias
+  // en produccion, con Ramo=Autos, cuantas descarta el gate nuevo y son
+  // exactamente las que declaran una categoria ajena en su titulo.
+  const ALIEN_TITLE = /(segunda|tercera)\s+categor[íi]a|categor[íi]a\s+(segunda|tercera)|\b[23][ªa]?\s*categor[íi]a\b|\bcamiones\b|\bmotocicletas?\b|\bciclomotores?\b/i;
+  let sweptTotal = 0;
+  let sweptSkipped = 0;
+  let unexpected = [];
+  for (const filename of REAL_RUN_FILES) {
+    const filePath = path.join(GGCC_OUTPUTS_DIR, filename);
+    if (!fs.existsSync(filePath)) continue;
+    const data = loadJson(filePath);
+    const root = Array.isArray(data) ? data[0] : data;
+    for (const artifact of root.artifacts || []) {
+      sweptTotal++;
+      const kept = runNode(
+        workflow,
+        "Legal Cue Pre-Filter",
+        [{
+          semantic_unit_id: artifact.semantic_unit_id,
+          semantic_unit: { id: artifact.semantic_unit_id, text: artifact.source_text },
+          article: artifact.article || null,
+          coverage_path: artifact.coverage_path || []
+        }],
+        { ramo: "Autos" }
+      );
+      const survives = Array.isArray(kept) && kept.length > 0;
+      if (survives) continue;
+      const titles = [artifact.article, ...(artifact.coverage_path || [])].filter(Boolean).join(" || ");
+      if (ALIEN_TITLE.test(titles)) sweptSkipped++;
+      else unexpected.push(`${filename} | ${artifact.semantic_unit_id} | titulo="${titles}"`);
+    }
+  }
+  checked++;
+  if (unexpected.length) {
+    failures++;
+    console.log(`FAIL barrido global: ${unexpected.length} unidad(es) descartadas SIN declarar categoria ajena en el titulo:`);
+    unexpected.forEach(u => console.log(`     ${u}`));
+  } else {
+    console.log(
+      `PASS barrido global (Ramo=Autos): ${sweptSkipped}/${sweptTotal} unidades reales con dependencias se descartan, y todas declaran una categoria ajena en su titulo`
+    );
+  }
+
+  console.log(`Resultado: ${checked - failures}/${checked} pasan.`);
+  return failures;
+}
+
+// Ojo (03/09): este check valida la garantia del gate de CUES, que es una
+// optimizacion de coste y por tanto no puede perder recall. NO valida el
+// segundo gate del nodo (alcance de ramo, v2), que SI descarta a proposito
+// unidades que llamarian al LLM -- eso lo valida checkRamoScopeGate. Aqui se
+// llama al nodo sin ramo, asi que ese segundo gate queda inerte.
 function checkCostPreFilter(workflow) {
-  console.log("\n=== Check: garantia del pre-filtro de coste (Fase 5 / Legal Cue Pre-Filter) ===");
+  console.log("\n=== Check: garantia del pre-filtro de coste (Fase 5 / Legal Cue Pre-Filter, gate de cues) ===");
 
   const node = findNode(workflow, "Legal Cue Pre-Filter");
   if (!node) {
@@ -2299,6 +2412,10 @@ function main() {
   if (runAll || args.includes("--invented-age")) {
     exitCode += checkInventedAgeRejections(workflow, golden) > 0 ? 1 : 0;
     exitCode += checkInventedAgeNoFalsePositives(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--ramo-scope")) {
+    exitCode += checkRamoScopeGate(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--negative-alias-score-door")) {
