@@ -18,7 +18,8 @@
     "policy_admission_criteria (01/09, Guardrail v16 -- hallazgo C cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6/v8) -- marca (policy_admission_criteria: true, lista agregada policy_admission_criteria_dependencies) cualquier dependencia de una unidad cuyo sourceText completo coincide con vocabulario de criterios de ADMISION de una persona en una figura del riesgo (p.ej. 'se podran incluir/declarar...conductor...que cumplan'). A diferencia de v6 (evalua evidence por dependencia), evalua sourceText de la UNIDAD completa (igual que v5/v8) porque la frase delatora suele vivir en la introduccion del bloque, no en el evidence acotado de cada dependencia individual. Basado en un unico caso real (Reale su_00038, hallazgo C) -- patrones deliberadamente conservadores, ampliar si aparecen mas casos con vocabulario distinto. Gateado por ontology_type === \"auto\".",
     "percentage_indemnification (01/09, Guardrail v17 -- hallazgo D cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6), AGNOSTICO DE RAMO (a diferencia de v14-v16) -- marca (percentage_indemnification: true, lista agregada percentage_indemnification_dependencies) cualquier dependencia cuyo evidence contiene un porcentaje numerico (\"100 %\", \"80%\"...). Decision del usuario (01/09): las escalas de indemnizacion en porcentaje por antiguedad de vehiculo (Pelayo su_00058/su_00059) se excluyen SIEMPRE -- calculo de indemnizacion, no condicion de aplicabilidad -- a diferencia del patron 1 ya confirmado (Zurich su_00077, variantes NOMBRADAS sin ningun porcentaje, SI son dependencia real). Un unico patron deliberado (\\\\d+\\\\s*%) -- 'valor GANVAM'/'valor de mercado ampliado' NO se incluyen como patrones porque el segundo es precisamente el ejemplo de variante NOMBRADA valida que el prompt contrasta con este hallazgo.",
     "duration_field_used_as_existence_check / age_threshold_implausible_for_figure (01/09, Guardrail v18/v19 -- patron 3 cerrado)": "Dos rechazos duros nuevos, del analisis de causa raiz del patron 3 ('age inventado', revision manual del usuario sobre las 7 ejecuciones del 01/09). v18 (AGNOSTICO DE RAMO): cualquier campo sintetico de DURACION (age/licenseYears/registrationYears, con o sin prefijo) con value 0 -- son integer pero representan anios transcurridos, no capital, asi que '>0' es siempre cierto y '=0' siempre falso. Alcance deliberadamente acotado: los capitales (content/continent/specialValueObjects) SI admiten existencia con value 0, esa es la razon de ser de la regla de existencia del prompt. v19 (GATEADO A AUTOS): umbral de edad que implica minoria de edad ('<' con N<=18, '<=' o '=' con N<=17) sobre cualquier figura de Person -- en Autos ninguna figura declarada puede ser menor, luego siempre es un tercero (hijos/beneficiarios/ocupantes). NO cubre '<=18' ni '=18' a proposito (un conductor de 18 recien carnetizado es legal). Gateado a Autos porque en Motos si hay conductores de 15-16 (AM/A1). Barrido de falsos positivos sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09: exactamente 5 pasarian a rechazarse, y las 5 son casos que el usuario habia marcado como erroneos -- 0 falsos positivos.",
-    "policy_admission_criteria vocabulario ampliado (03/09, Guardrail v20 -- patron 1 cerrado)": "v16 (01/09) se diseño sobre un unico caso real (GD-AUTO-HALLUC-028, Reale su_00038) y se documento explicitamente como conservador. La revision manual global del 01/09 encontro 3 unidades reales mas del MISMO patron que su vocabulario no capturaba (GD-AUTO-HALLUC-034/035/036 = Reale su_00036/su_00040/su_00044): v16 solo cubria VERBOS DE INCLUSION ('se podran incluir/declarar'), no las formulas con las que un condicionado presenta una LISTA DE REQUISITOS de admision ('que cumplan los siguientes requisitos', 'se deben cumplir los siguientes requisitos', 'son asegurables las personas fisicas que...'). v20 añade 4 patrones nuevos y relaja el 'se' obligatorio del primero. Decision deliberada: NO se añade 'siempre que se cumpla' a secas (lenguaje legal demasiado generico, alto riesgo de falso positivo) -- su_00040 queda cubierta igual por 'podra declarar' y por 'normas de contratacion'. Sigue siendo visibilidad, no bloqueo, y sigue gateado a ontology_type 'auto'. Validacion: barrido sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09 (Divina/Axa/Zurich/Reale/Pelayo/Qualitas/Generali) -> se marcan exactamente las 3 unidades objetivo (7 dependencias), 0 unidades colaterales, 0 regresiones (su_00038/su_00039 siguen marcadas). Alternativa descartada: marcar por CAPITULO (todo 1.3.x/1.4.x de Reale son normas de contratacion) -- solo Reale tiene capitulos de ese tipo en las 7 ejecuciones y es la unica compania con article=null, asi que habria sido una regla a medida de una sola compania."
+    "policy_admission_criteria vocabulario ampliado (03/09, Guardrail v20 -- patron 1 cerrado)": "v16 (01/09) se diseño sobre un unico caso real (GD-AUTO-HALLUC-028, Reale su_00038) y se documento explicitamente como conservador. La revision manual global del 01/09 encontro 3 unidades reales mas del MISMO patron que su vocabulario no capturaba (GD-AUTO-HALLUC-034/035/036 = Reale su_00036/su_00040/su_00044): v16 solo cubria VERBOS DE INCLUSION ('se podran incluir/declarar'), no las formulas con las que un condicionado presenta una LISTA DE REQUISITOS de admision ('que cumplan los siguientes requisitos', 'se deben cumplir los siguientes requisitos', 'son asegurables las personas fisicas que...'). v20 añade 4 patrones nuevos y relaja el 'se' obligatorio del primero. Decision deliberada: NO se añade 'siempre que se cumpla' a secas (lenguaje legal demasiado generico, alto riesgo de falso positivo) -- su_00040 queda cubierta igual por 'podra declarar' y por 'normas de contratacion'. Sigue siendo visibilidad, no bloqueo, y sigue gateado a ontology_type 'auto'. Validacion: barrido sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09 (Divina/Axa/Zurich/Reale/Pelayo/Qualitas/Generali) -> se marcan exactamente las 3 unidades objetivo (7 dependencias), 0 unidades colaterales, 0 regresiones (su_00038/su_00039 siguen marcadas). Alternativa descartada: marcar por CAPITULO (todo 1.3.x/1.4.x de Reale son normas de contratacion) -- solo Reale tiene capitulos de ese tipo en las 7 ejecuciones y es la unica compania con article=null, asi que habria sido una regla a medida de una sola compania.",
+    "premium_calculation_rule (03/09, Guardrail v21 -- patron 2 cerrado)": "Patron 2 de la revision manual del 01/09: reglas de BONIFICACION/PRIMA (bonus-malus) confundidas con condicion de cobertura. Concepto que el prompt no cubria en absoluto y distinto de todo lo que habia: v17 es el calculo de la INDEMNIZACION de un siniestro, v16/v20 son la ADMISION de una persona o poliza, v6 es el procedimiento para ejercer un derecho ya reconocido; esto es el PRECIO de la poliza. Casos: GD-AUTO-HALLUC-037/038/039 (Reale su_00063/su_00064/su_00069, capitulo 1.4.x = normas de suscripcion economica). Fix en tres piezas: (1) nueva REGLA DE BONIFICACION/PRIMA (NO DE COBERTURA) en core.md, agnostica de ramo, mas 3 ejemplos reales en ramos/auto.md; (2) Guardrail v21 -- vocabulario bonificacion/bonus/malus/recargo/descuento sobre la UNIDAD completa (no sobre evidence: en su_00064 el '20%' esta fuera del evidence), visibilidad no bloqueo, AGNOSTICO de ramo por decision explicita del usuario; (3) v21b -- ampliacion de v6 con los NOMBRES de los documentos de suscripcion (ficha tecnica, permiso de circulacion, informe de verificacion, certificado de siniestralidad, justificantes), a nivel de evidence, porque los patrones originales de v6 son todos verbos de aportacion. Vocabulario descartado con datos: 'prima' (9 unidades, 26 dependencias limpias arrasadas -- es boilerplate legal) y extender v17 a nivel de unidad (21 unidades, 40 dependencias limpias arrasadas). Tambien se descarto anclar en el titulo del capitulo: de los 3 titulos reales solo uno menciona bonus. Validacion: barrido antes/despues con el guardrail real sobre las 116 dependencias de las 7 ejecuciones del 01/09 -> 6 cambios en las 3 unidades objetivo (las 4 dependencias que estaban SIN NINGUNA MARCA pasan a estar marcadas) y 5 colaterales, todos ellos dependencias que YA estaban marcadas por otro chequeo (transversal_chapter en Divina su_00008, policy_admission_criteria en Reale su_00044) -- ninguna dependencia pasa de limpia a marcada fuera de las 3 unidades objetivo, y 0 cambios en rechazos duros."
   },
   "cases": [
     {
@@ -39,10 +40,11 @@
         }
       ],
       "expected_coverage_dependencies": "same_as_actual",
-      "notes": "El LLM extrajo el risk_field CORRECTO a la primera (owner.identificationType) -- misma cita real que motivó todo el rediseño de holder/owner (ver project_ontology_shared_person_figuras). En la ejecución real (26/08) fue rechazado por el guardrail como risk_field_not_in_ontology_catalog -- no por ser inválido, sino porque el catálogo hardcodeado del guardrail solo tenía 5 de los 88 campos de Person en ese momento (corregido el mismo día, commit b5a7af8). Tras el fix, este caso pasa. Limitaciones conocidas sin resolver: (1) condición compuesta OR real (PROPIETARIO *o* TOMADOR) -- el LLM solo capturó 'owner', no también 'holder.identificationType' -- mismo tipo de limitación ya aceptada para 'continente' en Hogar (v1 no soporta condiciones compuestas); (2) el valor extraído es texto en español ('persona jurídica'), el valor real comparable en SPEL es 'Cif' (ver identificationType en shared/person.md) -- la traducción es tarea de value_matcher.js (flujo 3), que todavía no cubre ningún campo de Autos. ACTUALIZACION (27/08): en la ejecucion real posterior (tras los fixes de figure_aliases + guardrail), esta unidad ya no genera las 4 dependencias rechazadas de GD-AUTO-GAP-002 (vehicle.category/.weight/.mainUse/.authorizedForPassengerTransport) -- coverage_dependencies queda limpio, solo owner.identificationType, rejected_dependencies:[]. No se afirma con certeza que sea causa directa de los fixes (Haiku no es determinista entre ejecuciones) frente a variabilidad de muestreo -- se documenta como observacion, no como confirmacion. Contra-prueba de falso positivo de Guardrail v20 (03/09): unidad de coberturas reales (14 dependencias validas de referencia) que NO debe quedar marcada como criterio de admision.",
+      "notes": "El LLM extrajo el risk_field CORRECTO a la primera (owner.identificationType) -- misma cita real que motivó todo el rediseño de holder/owner (ver project_ontology_shared_person_figuras). En la ejecución real (26/08) fue rechazado por el guardrail como risk_field_not_in_ontology_catalog -- no por ser inválido, sino porque el catálogo hardcodeado del guardrail solo tenía 5 de los 88 campos de Person en ese momento (corregido el mismo día, commit b5a7af8). Tras el fix, este caso pasa. Limitaciones conocidas sin resolver: (1) condición compuesta OR real (PROPIETARIO *o* TOMADOR) -- el LLM solo capturó 'owner', no también 'holder.identificationType' -- mismo tipo de limitación ya aceptada para 'continente' en Hogar (v1 no soporta condiciones compuestas); (2) el valor extraído es texto en español ('persona jurídica'), el valor real comparable en SPEL es 'Cif' (ver identificationType en shared/person.md) -- la traducción es tarea de value_matcher.js (flujo 3), que todavía no cubre ningún campo de Autos. ACTUALIZACION (27/08): en la ejecucion real posterior (tras los fixes de figure_aliases + guardrail), esta unidad ya no genera las 4 dependencias rechazadas de GD-AUTO-GAP-002 (vehicle.category/.weight/.mainUse/.authorizedForPassengerTransport) -- coverage_dependencies queda limpio, solo owner.identificationType, rejected_dependencies:[]. No se afirma con certeza que sea causa directa de los fixes (Haiku no es determinista entre ejecuciones) frente a variabilidad de muestreo -- se documenta como observacion, no como confirmacion. Contra-prueba de falso positivo de Guardrail v20 (03/09): unidad de coberturas reales (14 dependencias validas de referencia) que NO debe quedar marcada como criterio de admision. Contra-prueba de falso positivo de Guardrail v21 (03/09): dependencias reales de garantia, no debe marcarse como regla de precio.",
       "guardrail_catches": false,
       "expected_coverage_scope_flagged": false,
-      "expected_policy_admission_criteria_flagged": false
+      "expected_policy_admission_criteria_flagged": false,
+      "expected_premium_calculation_flagged": false
     },
     {
       "id": "GD-AUTO-HIER-001",
@@ -647,8 +649,9 @@
           "evidence": "Desde la fecha de primera matriculación hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo."
         }
       ],
-      "notes": "Caso real (27/08, patron 1). Confusion de ENTIDAD (owner.birthDate -- fecha de nacimiento del PROPIETARIO -- usada para expresar la antiguedad del VEHICULO desde matriculacion) Y de REPRESENTACION (entero pequeño 2-5 contra un campo de fecha absoluta, en vez de una duracion relativa). Decision del usuario (31/08): las condiciones de antiguedad/edad SIEMPRE se representan como duracion relativa -- nunca fecha absoluta -- porque el JSON alimenta expresiones SPEL persistidas en BBDD reutilizadas para comparativas futuras. Fix: campo sintetico registrationYears (ver ontology-auto.md) + Guardrail v11 (isImplausibleYearValue, rejection_reason date_field_used_with_relative_duration_value) que rechaza cualquier entero <1900 contra un campo data_type date, independientemente de si la entidad es correcta o no -- captura este caso sin necesidad de detectar la confusion de entidad por separado. Las 4 dependencias reales tienen valores ligeramente inconsistentes entre si (2/3/4/5, solapando en los limites) -- variabilidad tipica de Haiku ya vista en otros patrones, no se reclama aqui la extraccion perfecta de las 4 variantes, solo que ninguna se cuele con owner.birthDate.",
-      "expected_rejection_reason": "date_field_used_with_relative_duration_value"
+      "notes": "Caso real (27/08, patron 1). Confusion de ENTIDAD (owner.birthDate -- fecha de nacimiento del PROPIETARIO -- usada para expresar la antiguedad del VEHICULO desde matriculacion) Y de REPRESENTACION (entero pequeño 2-5 contra un campo de fecha absoluta, en vez de una duracion relativa). Decision del usuario (31/08): las condiciones de antiguedad/edad SIEMPRE se representan como duracion relativa -- nunca fecha absoluta -- porque el JSON alimenta expresiones SPEL persistidas en BBDD reutilizadas para comparativas futuras. Fix: campo sintetico registrationYears (ver ontology-auto.md) + Guardrail v11 (isImplausibleYearValue, rejection_reason date_field_used_with_relative_duration_value) que rechaza cualquier entero <1900 contra un campo data_type date, independientemente de si la entidad es correcta o no -- captura este caso sin necesidad de detectar la confusion de entidad por separado. Las 4 dependencias reales tienen valores ligeramente inconsistentes entre si (2/3/4/5, solapando en los limites) -- variabilidad tipica de Haiku ya vista en otros patrones, no se reclama aqui la extraccion perfecta de las 4 variantes, solo que ninguna se cuele con owner.birthDate. Contra-prueba de falso positivo de Guardrail v21 (03/09): la unidad menciona 'prima' (boilerplate legal de como se calculo la prima), y v21 NO debe marcarla -- 'prima' se dejo fuera del vocabulario a proposito: medido sobre las 7 ejecuciones reales arrasaba 26 dependencias limpias.",
+      "expected_rejection_reason": "date_field_used_with_relative_duration_value",
+      "expected_premium_calculation_flagged": false
     },
     {
       "id": "GD-AUTO-HALLUC-017",
@@ -1261,6 +1264,112 @@
       "expected_policy_admission_criteria_flagged": true,
       "guardrail_catches": false,
       "notes": "Caso real (patron 1, 01/09, confirmado el 03/09). 'Para la contratacion de residentes extranjeros con carne de conducir cuyo pais original de expedicion es extracomunitario, se deben cumplir los siguientes requisitos: ... Edad igual o superior a 30 anios. Antiguedad del permiso de conducir minima de 2 anios.' Requisitos de suscripcion de la poliza, no condiciones de garantia. Nota: la unidad ya llevaba UNA de las dos dependencias marcada como 'ungrounded' y la otra limpia -- proteccion accidental e incoherente dentro de la misma unidad, motivo por el que no se podia confiar en ella. Cerrado con Guardrail v20 (03/09) via el patron de lista de requisitos ('cumplir los siguientes requisitos')."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-037",
+      "category": "premium_calculation_rule",
+      "subtype": "premium_or_bonus_rule_confused_with_coverage_condition",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-18-56-535Z.json, ejecucion n8n 362 del 01/09)",
+      "semantic_unit_ref": "su_00063",
+      "article": null,
+      "coverage_path": [
+        "1.4.6.3 PROCEDENCIA REALE"
+      ],
+      "source_text": "Si la antigüedad de la póliza de origen es mayor a la antigüedad del carné del Conductor Ocasional, se toma como antigüedad de la póliza la del carné del Conductor Ocasional. Asimismo, cuando dicho Conductor Ocasional lleve menos de un año incluido y/o haya habido siniestros en la última anualidad el bonus recuperado será del 0%. Para poder asignar una bonificación a la póliza nueva:\n\nTiene que coincidir la persona del CONDUCTOR HABITUAL con el Conductor Habitual u Ocasional de la póliza de Reale de la que proceda la bonificación,\n\nEl vehículo del que procede el Bonus ha de ser un Turismo, Todo Terreno, Furgoneta o Furgón. Cuando se quiera grabar una póliza con Bonificación procedente de otra póliza en Reale y ésta se encuentre anulada, se quedará retenida en control técnico siempre que hayan pasado más de dos años desde la anulación de la anterior y el efecto de la nueva. En estos casos el Técnico correspondiente estudiará el caso para aceptar o rechazar su emisión. En el caso de que tanto el documento del tomador como la matrícula de la nueva póliza coincidan con los de la anulada, se recuperará la misma bonificación que tenía ésta. Cuando el conductor de la nueva póliza sea ocasional en la póliza origen de la bonificación, y tenga menos de 25 años de edad, será como máximo del 25%.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.licenseYears",
+          "operator": "<",
+          "value": 1,
+          "evidence": "cuando dicho Conductor Ocasional lleve menos de un año incluido"
+        },
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "Turismo",
+            "Todo Terreno",
+            "Furgoneta",
+            "Furgón"
+          ],
+          "evidence": "El vehículo del que procede el Bonus ha de ser un Turismo, Todo Terreno, Furgoneta o Furgón."
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">",
+          "value": 2,
+          "evidence": "siempre que hayan pasado más de dos años desde la anulación de la anterior y el efecto de la nueva"
+        },
+        {
+          "risk_field": "secondaryDriver.age",
+          "operator": "<",
+          "value": 25,
+          "evidence": "Cuando el conductor de la nueva póliza sea ocasional en la póliza origen de la bonificación, y tenga menos de 25 años de edad, será como máximo del 25%."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_premium_calculation_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (patron 2 de la revision manual del usuario del 01/09, confirmado el 03/09). Traspaso de bonus de una poliza anterior ('Para poder asignar una bonificacion a la poliza nueva: ... El vehiculo del que procede el Bonus ha de ser un Turismo, Todo Terreno, Furgoneta o Furgon ... y tenga menos de 25 anios de edad, sera como maximo del 25%'). Ninguna de las 4 dependencias es una condicion de aplicabilidad: todo el bloque decide QUE DESCUENTO se le reconoce al cliente. Errores encadenados que confirman el diagnostico: (a) 'lleve menos de un anio incluido' es el tiempo que la persona lleva incluida en la poliza, no la antiguedad del carne (licenseYears es el campo equivocado incluso conceptualmente); (b) 'el vehiculo del que procede el Bonus' es un vehiculo ANTERIOR de otra poliza, no el vehiculo asegurado; (c) 'mas de dos anios desde la anulacion de la anterior' es tiempo entre dos polizas, no antiguedad del vehiculo (registrationYears). Antes de v21 solo 1 de las 4 llevaba marca (percentage_indemnification, de rebote porque el '25%' quedo dentro del evidence)."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-038",
+      "category": "premium_calculation_rule",
+      "subtype": "premium_or_bonus_rule_confused_with_coverage_condition",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-18-56-535Z.json, ejecucion n8n 362 del 01/09)",
+      "semantic_unit_ref": "su_00064",
+      "article": null,
+      "coverage_path": [
+        "1.4.6.4 SIN BONUS / JUSTIFICADO"
+      ],
+      "source_text": "Cuando el conductor no pueda justificar bonificación por no siniestralidad, debido a que no haya figurado en ninguna póliza ni tenido vehículo de su propiedad, se podrá aceptar siempre que se trate de uno de los siguientes supuestos:\n\nHijo de asegurado. Se aplicará nivel neutro de bonus.\n\nCónyuge de asegurado. Se aplicará nivel neutro de bonus. Debe presentar condiciones particulares de la póliza del vehículo a asegurar (si no fuera nuevo).\n\nMenor de 28 años. En este caso será imprescindible aportar el permiso de circulación del vehículo para verificar la fecha de compra del mismo. Se aplicará recargo del 20%.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.age",
+          "operator": "<",
+          "value": 28,
+          "evidence": "Menor de 28 años. En este caso será imprescindible aportar el permiso de circulación del vehículo para verificar la fecha de compra del mismo."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_premium_calculation_flagged": true,
+      "expected_procedural_instruction_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (patron 2, 01/09, confirmado el 03/09). 'Cuando el conductor no pueda justificar bonificacion por no siniestralidad ... Menor de 28 anios. En este caso sera imprescindible aportar el permiso de circulacion del vehiculo para verificar la fecha de compra del mismo. Se aplicara recargo del 20%.' El umbral de edad selecciona un RECARGO de prima. Detalle que decidio el diseño de v21: el '20%' esta en la unidad pero NO en el evidence que eligio el LLM, asi que v17 (que evalua evidence por dependencia) no dispara -- por eso v21 se evalua sobre la unidad completa. Queda marcada tambien por la ampliacion de v6 (el evidence menciona 'permiso de circulacion'), segunda ancla independiente."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-039",
+      "category": "premium_calculation_rule",
+      "subtype": "premium_or_bonus_rule_confused_with_coverage_condition",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-18-56-535Z.json, ejecucion n8n 362 del 01/09)",
+      "semantic_unit_ref": "su_00069",
+      "article": null,
+      "coverage_path": [
+        "1.4.10 Duración del Contrato de Seguro"
+      ],
+      "source_text": "Certificado de siniestralidad: Cuando la compañía de procedencia no pertenece a SINCO.\n\nDocumentos del vehículo: permiso de conducir, de circulación, la ficha técnica (en caso de furgonetas y derivados del turismo) e incluso un informe de verificación del vehículo cuando el coche tiene más de 7 días de matriculación y se quiere contratar una modalidad a todo riesgo.\n\nLos justificantes agrícolas cuando se trate de uso agrícola.\n\nTodos los accesorios que vengan de serie en el vehículo están cubiertos. Los accesorios que no sean de serie deben declararse en póliza para tener cobertura (se incluyen por defecto 1.500 € en accesorios fijos no de serie y homologados). Para el caso de los coches eléctricos o híbridos enchufables, se incluye también el cable de recarga.\n\nDependiendo de la compañía de procedencia existen una serie de bonificaciones / recargos:\n\nSi la compañía está adscrita a SINCO: bonificaciones de hasta el 58%.\n\nSi la compañía no está adherida a SINCO: bonificaciones de hasta el 30%.\n\nSi la procedencia es REALE: bonificaciones máximas de hasta un 60% de descuento.\n\nCuando el conductor no pueda justificar bonificación por no siniestralidad, se podrá aceptar siempre que se trate de uno de los siguientes supuestos: Hijo de asegurado, cónyuge de asegurado o menor de 28 años.\n\nLa suspensión de las garantías sólo podrá ser motivada por la definitiva desaparición del riesgo asegurado, esto es, únicamente en los siguientes supuestos:\n\nEl importe de prima no consumida podrá ser utilizado por el Tomador del Seguro para la compensación en la contratación o renovación de otra póliza de cualquier Ramo.\n\nLa duración del contrato de seguro será, en todos los casos, anual prorrogable.\n\nHorario de Atención Telefónica: De Lunes a viernes de 08:00 a 21:00 y los sábados de 9:00 a 14:00.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "furgonetas",
+            "derivados del turismo"
+          ],
+          "evidence": "la ficha técnica (en caso de furgonetas y derivados del turismo) e incluso un informe de verificación del vehículo cuando el coche tiene más de 7 días de matriculación y se quiere contratar una modalidad a todo riesgo"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">",
+          "value": 0,
+          "evidence": "un informe de verificación del vehículo cuando el coche tiene más de 7 días de matriculación y se quiere contratar una modalidad a todo riesgo"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_premium_calculation_flagged": true,
+      "expected_procedural_instruction_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (patron 2, 01/09, confirmado el 03/09). Unidad cajon de sastre (documentos exigidos + escalas de bonificacion por compania de procedencia + suspension de garantias + duracion del contrato + horario telefonico). La dependencia que sobrevive ('base7Version.base7Type.id IN [furgonetas, derivados del turismo]') NO es del patron bonus: sale de 'la ficha tecnica (en caso de furgonetas y derivados del turismo)', o sea de un REQUISITO DOCUMENTAL de suscripcion -- el parentesis solo dice a que vehiculos se les pide ese papel. La cubre la ampliacion de v6 con nombres de documentos (ancla semanticamente correcta); v21 la marca ademas de rebote porque la unidad menciona 'bonificaciones' en otro parrafo. La segunda dependencia original ('registrationYears > 0', de 'mas de 7 dias de matriculacion') ya la rechaza duro v18 desde el 01/09."
     }
   ]
 }

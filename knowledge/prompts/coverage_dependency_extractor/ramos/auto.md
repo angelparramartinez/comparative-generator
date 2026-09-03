@@ -80,6 +80,20 @@ Texto: "Para la contratación de residentes extranjeros con carné de conducir c
 
 → NO es una dependencia (ninguna de las cuatro). "Para la contratación de ..." más un listado de requisitos es un bloque de suscripción: describe a qué perfil se le vende la póliza. No generes "primaryDriver.age >= 30" ni "primaryDriver.licenseYears >= 2" a partir de aquí.
 
+EJEMPLO ILUSTRATIVO (Autos)
+
+Texto: "Para poder asignar una bonificación a la póliza nueva: Tiene que coincidir la persona del CONDUCTOR HABITUAL con el Conductor Habitual u Ocasional de la póliza de Reale de la que proceda la bonificación. El vehículo del que procede el Bonus ha de ser un Turismo, Todo Terreno, Furgoneta o Furgón. Cuando el conductor de la nueva póliza sea ocasional en la póliza origen de la bonificación, y tenga menos de 25 años de edad, será como máximo del 25%."
+
+→ NO es una dependencia (ninguna). Es el traspaso del bonus de una póliza anterior: todo el bloque decide QUÉ DESCUENTO se le reconoce al cliente, no si una garantía aplica (ver REGLA DE BONIFICACIÓN/PRIMA). Y el "vehículo del que procede el Bonus" es un vehículo ANTERIOR, de otra póliza, no el vehículo asegurado -- no generes "base7Version.base7Type.id IN [...]" sobre él.
+
+Texto: "Menor de 28 años. En este caso será imprescindible aportar el permiso de circulación del vehículo para verificar la fecha de compra del mismo. Se aplicará recargo del 20%."
+
+→ NO es una dependencia. El umbral de edad selecciona un RECARGO de prima, no la aplicabilidad de una garantía. Fíjate en que el porcentaje aparece en la frase siguiente a la del umbral: la regla de precio se reconoce por el bloque completo, no por la frase aislada.
+
+Texto: "Documentos del vehículo: permiso de conducir, de circulación, la ficha técnica (en caso de furgonetas y derivados del turismo) e incluso un informe de verificación del vehículo cuando el coche tiene más de 7 días de matriculación."
+
+→ NO es una dependencia. Es la lista de papeles que hay que aportar para contratar, y el paréntesis solo dice a qué vehículos se les pide la ficha técnica (ver REGLA DE INSTRUCCIONES OPERATIVAS / PROCEDIMENTALES). No generes "base7Version.base7Type.id IN ["furgonetas", "derivados del turismo"]" a partir de un paréntesis de una lista de documentos.
+
 REGLA DE ENTIDAD DEL CAMPO (PERSONA vs. VEHÍCULO/ANIMAL/OBJETO)
 
 Cada risk_field de ontology_matches pertenece a una entidad concreta: una PERSONA (rutas owner.*, primaryDriver.*, secondaryDriver.*, o sin prefijo cuando el campo pertenece al tomador/holder), o el VEHÍCULO asegurado/otro objeto o animal descrito en el texto (base7Version.*, registrationPlate...).

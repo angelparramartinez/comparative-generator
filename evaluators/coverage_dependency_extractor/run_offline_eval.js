@@ -25,6 +25,7 @@
 //   node run_offline_eval.js --engine-field-value -> solo el check de rechazo de valores invalidos (no vocabulario real de motor/combustible) para base7Version.base7Engine.id (Guardrail v15, hallazgo A)
 //   node run_offline_eval.js --policy-admission-criteria -> solo el check de visibilidad de criterios de admision de persona en figura confundidos con condicion de cobertura (Guardrail v16, hallazgo C)
 //   node run_offline_eval.js --percentage-indemnification -> solo el check de visibilidad de escalas de indemnizacion en porcentaje confundidas con condicion de cobertura (Guardrail v17, hallazgo D, agnostico de ramo)
+//   node run_offline_eval.js --premium-calculation -> solo el check de visibilidad de reglas de bonificacion/prima (bonus-malus) confundidas con condicion de cobertura (Guardrail v21, patron 2, agnostico de ramo) + la ampliacion de v6 con nombres de documentos de suscripcion
 //   node run_offline_eval.js --invented-age -> solo los checks de "age inventado" (Guardrail v18: campo de duracion con value 0, agnostico de ramo; Guardrail v19: umbral de edad de menor sobre una figura declarada, gateado a Autos) + su contra-prueba de falsos positivos
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
 //   node run_offline_eval.js --figure-selection -> solo el check de visibilidad de seleccion de figura inconsistente (mismo campo base de Person con figuras distintas en la misma unidad) (Guardrail v12)
@@ -933,6 +934,66 @@ function checkPercentageIndemnificationVisibility(workflow, golden) {
   return failures;
 }
 
+// Guardrail v21 (03/09): verifica que premium_calculation_dependencies marca
+// (visibilidad, no bloqueo, AGNOSTICO de ramo) las dependencias de una unidad
+// cuyo sourceText completo describe una regla de PRECIO -- bonificacion/bonus/
+// malus/recargo/descuento -- en vez de una condicion de aplicabilidad de
+// garantia. Cierra el patron 2 de la revision manual del 01/09. Igual que
+// v16/v20 se evalua sobre la unidad completa, no sobre el evidence de cada
+// dependencia: en el caso real de Reale su_00064 el "recargo del 20%" esta en
+// la unidad pero fuera del evidence que eligio el LLM. Ver
+// golden_dataset_auto.json, schema_notes["premium_calculation_rule (03/09,
+// Guardrail v21 -- patron 2 cerrado)"].
+function checkPremiumCalculationVisibility(workflow, golden) {
+  console.log("\n=== Check: premium_calculation_dependencies (nodo Coverage Dependency Risk Field Guardrail v21) ===");
+
+  const cases = golden.cases.filter(c => c.expected_premium_calculation_flagged !== undefined);
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      {
+        semantic_unit_id: c.semantic_unit_ref,
+        ontology_type: c.ontology_type || "auto",
+        coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
+        chunks: [{ chunk_id: `${c.id}_c1`, text: c.source_text }],
+        output: { coverage_dependencies: c.actual_coverage_dependencies }
+      }
+    ]);
+
+    const isFlagged = (result.premium_calculation_dependencies || []).length > 0;
+    const flagOk = isFlagged === c.expected_premium_calculation_flagged;
+
+    // A diferencia de los checks de v16/v17, aqui "nada se pierde" no puede
+    // exigir que TODAS las dependencias sigan aceptadas: varios de estos
+    // casos reales contienen ademas dependencias que otro chequeo rechaza
+    // duro y con razon (p.ej. "registrationYears > 0" de su_00069, que cae
+    // en v18). La propiedad que de verdad importa de un chequeo de
+    // visibilidad es que ninguna dependencia desaparezca EN SILENCIO: cada
+    // una debe estar o aceptada o en rejected_dependencies.
+    const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
+    const rejectedFields = (result.rejected_dependencies || []).map(d => d.risk_field);
+    const inputFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = inputFields.every(f => acceptedFields.includes(f) || rejectedFields.includes(f));
+
+    const ok = flagOk && nothingLost;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_premium_calculation_flagged}) | nada_perdido_en_silencio=${nothingLost}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
 // Guardrail v11 (31/08): verifica que ningun risk_field de la categoria
 // person_vehicle_field_confusion se cuele en coverage_dependencies -- sea
 // cual sea la capa que lo rechace (v11 nueva, isImplausibleYearValue; o el
@@ -1056,7 +1117,8 @@ function checkGuardrailListThreading(workflow) {
     "coverage_scope_dependencies",
     "figure_selection_dependencies",
     "policy_admission_criteria_dependencies",
-    "percentage_indemnification_dependencies"
+    "percentage_indemnification_dependencies",
+    "premium_calculation_dependencies"
   ];
 
   let failures = 0;
@@ -2066,6 +2128,10 @@ function main() {
   if (runAll || args.includes("--invented-age")) {
     exitCode += checkInventedAgeRejections(workflow, golden) > 0 ? 1 : 0;
     exitCode += checkInventedAgeNoFalsePositives(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--premium-calculation")) {
+    exitCode += checkPremiumCalculationVisibility(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--relative-duration")) {

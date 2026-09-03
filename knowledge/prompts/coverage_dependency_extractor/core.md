@@ -360,6 +360,8 @@ Ejemplos de instrucción procedimental, NO de condición:
 * "deberá llamar al teléfono de asistencia"
 * "el plazo máximo para presentar la reclamación es de X días"
 
+La regla no depende del verbo: un texto que enumera QUÉ DOCUMENTOS hay que aportar es igual de procedimental aunque los liste por su nombre sin verbo alguno ("ficha técnica", "permiso de circulación", "certificado", "justificantes", "informe de verificación"). Y ten cuidado con el caso más traicionero: una lista de documentos puede llevar entre paréntesis a QUIÉN se le exige cada uno ("la ficha técnica (en caso de furgonetas y derivados)"). Eso NO es una condición de aplicabilidad de ninguna garantía -- es a quién se le pide ese papel. No generes una dependencia sobre el campo que aparece en ese paréntesis.
+
 Estos textos no condicionan si la cobertura aplica o deja de aplicar -- describen CÓMO se ejerce un derecho ya reconocido, no CUÁNDO existe ese derecho. Que el campo mencionado (matrícula, teléfono, documentación) exista en ontology_matches no cambia esto -- sigue aplicando la regla general: la presencia de un ontology_match nunca es evidencia suficiente de dependencia.
 
 REGLA DE CONDICIONES DE CONTRATACIÓN DE PÓLIZA (NO DE COBERTURA)
@@ -382,6 +384,21 @@ Formulaciones que delatan un bloque de admisión/contratación (no es una lista 
 * cualquier mención a que, de no cumplirse el listado, la póliza queda "excluida de normas de contratación", "retenida" o pendiente de autorización
 
 En estos bloques, omite TODAS las condiciones del listado, no solo algunas: el listado completo describe a quién se le vende la póliza, no cuándo aplica una garantía. Y ten en cuenta que un bloque de admisión puede continuar en el texto que sigue (un listado de excepciones al listado principal, por ejemplo) -- si el texto que estás analizando es la continuación de un listado de requisitos, sigue siendo un bloque de admisión.
+
+REGLA DE BONIFICACIÓN/PRIMA (NO DE COBERTURA)
+
+Un texto puede describir cómo se calcula el PRECIO de la póliza -- el descuento por no siniestralidad (bonificación, bonus, bonus-malus), el recargo que se aplica a un perfil determinado, de qué póliza anterior se traspasa un descuento y cuánto se le reconoce -- en vez de describir si una garantía aplica o deja de aplicar.
+
+Estas dos cosas son distintas:
+
+* Regla de PRECIO: determina cuánto paga el Tomador, o qué porcentaje de descuento/recargo se le reconoce. NO es una dependencia -- está fuera del alcance de este análisis (la comparativa dice QUÉ cubre cada cobertura, no cuánto cuesta la póliza).
+* Condición de APLICABILIDAD de una garantía: determina si una garantía ya contratada aplica o deja de aplicar. SÍ es una dependencia.
+
+Es un caso especialmente traicionero porque estas reglas tienen la forma gramatical exacta de una condición real ("cuando el conductor tenga menos de 25 años", "el vehículo ha de ser de tipo X") y usan campos que existen de verdad en la ontología (edad, antigüedad, tipo de objeto asegurado). Lo único que las descalifica es QUÉ deciden: un porcentaje de descuento o recargo, no la aplicabilidad de una garantía.
+
+Señales de que estás ante una regla de precio: el texto menciona bonificación, bonus, malus, recargo o descuento; habla de una póliza ANTERIOR o de una compañía de PROCEDENCIA de la que se traspasa el descuento; o remata la condición con un porcentaje ("será como máximo del 25%", "se aplicará recargo del 20%").
+
+Cuidado añadido con el SUJETO de la condición en estos bloques: cuando el texto habla de una póliza anterior o del vehículo del que procede el descuento, ese objeto NO es el riesgo que se está asegurando -- ni el vehículo/inmueble asegurado, ni la antigüedad de la póliza actual. Aunque decidieras extraer la condición, el campo sería el equivocado. Omite la dependencia.
 
 REGLA DE ANTIGÜEDAD RELATIVA (PERSONA)
 
