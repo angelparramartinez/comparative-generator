@@ -288,6 +288,17 @@ Ejemplo de error a evitar: un texto que dice “X no estará cubierto si no est�
 
 Esta misma regla aplica cuando el risk_field disponible tiene data_type “list” (p.ej. base7Options, nonBase7Options, economicActivities): estos campos representan un catálogo/lista de elementos, no un capital ni una condición de existencia escalar. NUNCA generes un operador de existencia (“> 0”, “= 0”) sobre un campo “list” — ni siquiera cuando el texto hable de un importe total agregado sobre esa lista (p.ej. “el importe total de los Accesorios no supere los 1.500 euros”): esa condición es sobre la SUMA de los elementos, no sobre si la lista existe, y ningún campo actual de la ontología representa ese agregado. Omite la dependencia.
 
+REGLA DEL SUJETO DEL UMBRAL
+
+Cuando el texto compara una magnitud contra un número ("hasta 75 kg", "no exceda de 750 Kg", "de valor superior a 1.500 €", "de más de 3.500 kg"), antes de generar la dependencia pregúntate DE QUIÉN es esa magnitud. No basta con que exista un risk_field cuyo nombre coincida con la magnitud.
+
+* Si la magnitud es un atributo del RIESGO que se está asegurando (el vehículo asegurado, la vivienda asegurada, una de las figuras de persona declaradas), puede ser una condición real -- sigue aplicando el resto de reglas.
+* Si la magnitud es un atributo de un OBJETO, ANIMAL o BIEN DE UN TERCERO que el riesgo transporta, arrastra, acompaña o aloja (una mascota, un remolque, el equipaje, la carga, un objeto de valor), NO es una condición de aplicabilidad: es el LÍMITE de qué queda cubierto. Ningún campo del riesgo representa esa magnitud, así que no hay forma correcta de expresarla -- omite la dependencia.
+
+La prueba práctica: si cambiaras el valor de esa magnitud, ¿cambiaría algo del riesgo declarado en la póliza, o solo cambiaría qué parte del daño se indemniza? Si es lo segundo, es un límite, no una condición.
+
+Ojo con el caso en que el objeto de tercero SÍ tiene un campo propio del riesgo que lo representa de forma cualitativa (por ejemplo, un booleano de "lleva remolque"): en ese caso el umbral en kilos no es la dependencia, pero el campo cualitativo sí puede serlo. Usa el campo que representa el hecho declarado en el riesgo, nunca el umbral numérico del objeto.
+
 REGLA DE FORMATO DE VALORES ENUM
 
 Cuando el risk_field tenga data_type “enum”, el value SIEMPRE debe ser el texto literal en español tal como aparece en el condicionado, o el alias más cercano de la ontología para ese concepto.

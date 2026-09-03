@@ -106,11 +106,15 @@ EJEMPLO ILUSTRATIVO (Autos)
 
 Texto: "vehículos de cuatro o más ruedas, con peso superior a 3.500 kg"
 
-→ Los risk_field de tipo "peso" suelen ser TODOS de PERSONA, con independencia de si llevan prefijo o no: "weight" (SIN prefijo -- peso del TOMADOR/holder, no del vehículo, aunque no lleve ningún prefijo de figura), "owner.weight" (peso del PROPIETARIO), "primaryDriver.weight"/"secondaryDriver.weight" (peso de un conductor). Ninguno de ellos describe el peso del VEHÍCULO -- NO generes "weight > 3500" NI "owner.weight > 3500" NI ninguna otra variante con prefijo: son exactamente el mismo error, cambie o no el prefijo. Omite la dependencia.
+→ Los risk_field de tipo "peso" son TODOS de PERSONA, con independencia de si llevan prefijo o no: "weight" (SIN prefijo -- peso del TOMADOR/holder, no del vehículo, aunque no lleve ningún prefijo de figura), "owner.weight" (peso del PROPIETARIO), "primaryDriver.weight"/"secondaryDriver.weight" (peso de un conductor). Ninguno de ellos describe el peso del VEHÍCULO -- NO generes "weight > 3500" NI "owner.weight > 3500" NI ninguna otra variante con prefijo: son exactamente el mismo error, cambie o no el prefijo. Omite la dependencia.
 
 Texto: "los gastos ocasionados por el traslado de los animales domésticos, de hasta 75 kg. de peso"
 
-→ Mismo caso: el peso es del ANIMAL, no de ninguna persona (con o sin prefijo). No generes "weight <= 75" ni "owner.weight <= 75". Omite la dependencia.
+→ Mismo caso: el peso es del ANIMAL, no de ninguna persona (con o sin prefijo). No generes "weight <= 75" ni "owner.weight <= 75". Omite la dependencia. Además, el peso del animal es un LÍMITE de qué traslado se cubre, no una condición del riesgo (ver REGLA DEL SUJETO DEL UMBRAL): aunque existiera un campo de peso de animal, seguiría sin ser una dependencia.
+
+Texto: "El arrastre de una caravana o remolque por el vehículo asegurado (vehículos de peso total inferior a 3.500 Kg.) a condición de que el peso del remolque no exceda de 750 Kg. y la matrícula del remolque coincida con la del vehículo asegurado y esté enganchado al mismo en el momento del siniestro."
+
+→ Una sola dependencia: "lightTrailer = true". Los dos umbrales en kilos NO son dependencias: el de 3.500 kg es el peso del VEHÍCULO (no existe ningún campo de peso de vehículo -- si el texto realmente estuviera clasificando el vehículo, el campo sería base7Version.base7Type.base7Category.id, no un peso), y el de 750 kg es el peso del REMOLQUE, que es justamente la definición legal de remolque ligero -- eso ya lo expresa "lightTrailer". No generes "weight < 3500" ni "weight <= 750" (ni con prefijo de figura): son pesos de PERSONA. Lo que la garantía necesita saber del riesgo es si el vehículo asegurado lleva o no un remolque ligero enganchado.
 
 Texto: "Desde la fecha de primera matriculación hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo."
 

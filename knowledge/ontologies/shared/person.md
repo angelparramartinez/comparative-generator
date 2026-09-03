@@ -353,9 +353,42 @@ data_type: number
 meaning: Weight of the person (kg).
 aliases:
 - peso
+negative_aliases:
+- animales domésticos
+- animal
+- mascota
+- remolque
+- semirremolque
+- caravana
+- masa máxima autorizada
+- PMA
+- peso total
+- peso máximo autorizado
+- vehículo
 interpretation:
 `getWeight()`: `@JsonView({V1, V1_B2C, COMPARATIVE_REQUEST, CRM})` --
 visible en ASM (V1 explícito), clave real `weight`.
+**Falsos amigos reales, corregidos con `negative_aliases` (03/09, patrón 4
+de la revisión global)**: el alias "peso" es el único que tiene este campo,
+y en los condicionados de Autos aparece casi siempre referido a algo que
+NO es una persona -- el peso de un animal transportado (Divina `su_00125`,
+"animales domésticos, de hasta 75 kg. de peso"), el de un remolque (Axa
+`su_00053`, "el peso del remolque no exceda de 750 Kg."), o el del propio
+vehículo (Divina `su_00185` y Zurich `su_00039`, "peso total inferior a
+3.500 Kg." / "PMA superior a 3.500 kg"). Los cuatro usos reales de este
+campo en las 7 ejecuciones del 01/09 fueron errores de ese tipo, con la
+regla del prompt ya puesta y con el ejemplo literal desde el 27/08. Estos
+`negative_aliases` evitan que el campo llegue siquiera a ofrecerse como
+candidato en esos fragmentos; el `Coverage Dependency Risk Field Guardrail`
+v22 lo rechaza además de forma dura si el LLM lo usa igualmente.
+**Importante**: NO existe ningún campo de peso del VEHÍCULO accesible
+(comprobado en el backend real el 03/09: `Base7Version` no tiene peso ni
+MMA; lo único parecido es `trailerMaxWeight` en
+`AgriculturalMachineryRisk`, otro modelo). Para el peso del vehículo la
+respuesta correcta es omitir o, si el texto realmente está clasificando el
+vehículo, usar `base7Type.base7Category.id` (la frontera de los 3.500 kg
+es la que separa primera de segunda categoría). Para el remolque, el campo
+correcto es `lightTrailer` (`ontology-auto.md`).
 
 ---
 

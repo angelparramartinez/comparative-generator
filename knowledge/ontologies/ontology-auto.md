@@ -222,6 +222,11 @@ aliases:
 - remolque ligero
 - arrastre de remolque
 - enganche de remolque
+- arrastre de una caravana o remolque
+- arrastre de remolques o caravanas
+- peso del remolque
+- 750 kilogramos
+- 750 kg
 negative_aliases:
 - asistencia en viaje
 - traslado del vehículo
@@ -234,6 +239,20 @@ visible en todas las vistas). El campo realmente accesible en el nivel
 correcto de la jerarquía (`AutoProperty`/`VehicleProperty`) es
 `getLightTrailer()` (`@JsonView(Views.V1.class)`), con clave `lightTrailer`
 — confirmado en `AutosRisk.java`/`AutoProperty.java` el 21/08.
+**Alias ampliados (03/09, patrón 4 de la revisión global)**: la misma
+cláusula del mundo real (ampliación de la RC Voluntaria al arrastre de un
+remolque ligero) apareció en dos compañías con resultados distintos --
+Generali `su_00030` la extrajo correctamente como `lightTrailer = true`,
+y Axa `su_00053` la rindió como `weight <= 750` (peso de PERSONA, ahora
+rechazado duro por el Guardrail v22). Ninguno de los alias que tenía este
+campo ("remolque ligero", "arrastre de remolque", "enganche de remolque")
+aparece literalmente en ninguno de los dos textos: Generali acertó por
+comprensión semántica, no porque el alias estuviera. Se añaden las formas
+reales de ambos condicionados, más el umbral legal de 750 kg (que es
+justamente la definición de remolque ligero), para que el campo correcto
+llegue como candidato. Se mantienen los `negative_aliases` de grúa/
+asistencia, que siguen siendo necesarios por el falso amigo de Mapfre.
+
 **Falso amigo real, corregido (21/08)**: el alias suelto "remolque" se quitó
 tras encontrarlo en el condicionado real de Mapfre (ME000P, art. sobre
 Asistencia en Viaje, epígrafe "REMOLQUE DEL VEHÍCULO Y TRASLADO") — ahí

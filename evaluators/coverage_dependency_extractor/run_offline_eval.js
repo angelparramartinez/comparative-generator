@@ -517,7 +517,7 @@ function checkProceduralInstructionVisibility(workflow, golden, validRiskFields)
 // pero cuyo "evidence" menciona vehiculo/animal/objeto -- visibilidad, no
 // bloqueo.
 function checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) {
-  console.log("\n=== Check: person_field_mismatch_dependencies (nodo Coverage Dependency Risk Field Guardrail v7) ===");
+  console.log("\n=== Check: person_field_mismatch_dependencies (Guardrail v7, RECHAZO DURO desde v22) ===");
 
   const cases = golden.cases.filter(c => c.expected_person_field_mismatch_flagged !== undefined);
   const validRiskFieldSet = new Set(validRiskFields.valid_risk_fields || []);
@@ -545,6 +545,18 @@ function checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) {
     const isFlagged = flaggedFields.length > 0;
     const flagOk = isFlagged === c.expected_person_field_mismatch_flagged;
 
+    // v22 (03/09): esto dejo de ser solo visibilidad -- un peso de PERSONA con
+    // evidencia de vehiculo/remolque/animal se RECHAZA duro. Se verifica
+    // tambien el motivo concreto, para que el check distinga entre "marcado"
+    // (v7) y "rechazado" (v22) y no pueda pasar por accidente si algun dia se
+    // vuelve atras.
+    const v22Rejections = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "person_weight_field_for_non_person_evidence")
+      .map(d => d.risk_field);
+    const hardRejectOk = !c.expected_person_field_mismatch_flagged
+      ? v22Rejections.length === 0
+      : flaggedFields.every(f => v22Rejections.includes(f));
+
     // 03/09: "sigue aceptada" se comprobaba filtrando la expectativa por
     // "el campo esta en valid_risk_fields", usando el catalogo de la
     // ontologia como PROXY de "esta dependencia deberia sobrevivir al
@@ -564,11 +576,11 @@ function checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) {
       f => acceptedFields.includes(f) || rejectedFields.includes(f)
     );
 
-    const ok = flagOk && nothingLost;
+    const ok = flagOk && nothingLost && hardRejectOk;
     if (!ok) failures++;
 
     console.log(
-      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_person_field_mismatch_flagged}) | sigue_aceptada=${nothingLost}`
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_person_field_mismatch_flagged}) | rechazo_duro_v22=${hardRejectOk} | nada_perdido_en_silencio=${nothingLost}`
     );
     if (!ok) {
       console.log("  evidence:", JSON.stringify((c.actual_coverage_dependencies || []).map(d => d.evidence)));
