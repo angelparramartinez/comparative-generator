@@ -72,6 +72,14 @@ Texto: "Se podrán incluir conductores principales de 23 a 25 años que cumplan:
 
 → NO es una dependencia (ninguna de las tres condiciones del listado). Todo el bloque define los REQUISITOS DE ADMISIÓN para que una persona de 23-25 años pueda darse de alta como conductor principal -- no condiciones sobre si una garantía ya contratada aplica. No generes "primaryDriver.age >= 23"/"<= 25" ni "primaryDriver.licenseYears > 4" a partir de este bloque, aunque "antigüedad del permiso de conducción" sea, en otro contexto, un campo real (licenseYears, ver REGLA DE CARNÉ DE CONDUCIR) -- aquí es un requisito de admisión de la persona en su figura, no una condición de riesgo sobre una garantía.
 
+Texto: "Debe declararse como conductor principal a la persona que conduzca habitualmente el vehículo, independientemente de la edad. Son asegurables las personas físicas que cumplan los siguientes requisitos: Antigüedad del carné superior a 1 año. Edad igual o superior a 25 años e inferior a 76 años."
+
+→ NO es una dependencia (ninguna de las tres). Mismo bloque de admisión que el ejemplo anterior, presentado con otra fórmula ("son asegurables ... que cumplan los siguientes requisitos") en vez de con un verbo de inclusión. El propio texto dice "independientemente de la edad" al hablar de quién debe declararse: la edad aparece solo como requisito de asegurabilidad de la persona, no como condición de ninguna garantía.
+
+Texto: "Para la contratación de residentes extranjeros con carné de conducir cuyo país original de expedición es extracomunitario, se deben cumplir los siguientes requisitos: Debe coincidir la figura del Propietario, Tomador y Conductor. Edad igual o superior a 30 años. Antigüedad del permiso de conducir mínima de 2 años."
+
+→ NO es una dependencia (ninguna de las cuatro). "Para la contratación de ..." más un listado de requisitos es un bloque de suscripción: describe a qué perfil se le vende la póliza. No generes "primaryDriver.age >= 30" ni "primaryDriver.licenseYears >= 2" a partir de aquí.
+
 REGLA DE ENTIDAD DEL CAMPO (PERSONA vs. VEHÍCULO/ANIMAL/OBJETO)
 
 Cada risk_field de ontology_matches pertenece a una entidad concreta: una PERSONA (rutas owner.*, primaryDriver.*, secondaryDriver.*, o sin prefijo cuando el campo pertenece al tomador/holder), o el VEHÍCULO asegurado/otro objeto o animal descrito en el texto (base7Version.*, registrationPlate...).

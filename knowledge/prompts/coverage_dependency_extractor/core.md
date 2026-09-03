@@ -373,6 +373,16 @@ Estas dos cosas son distintas:
 
 Antes de generar una dependencia, pregúntate: "¿esto determina si se puede contratar la póliza / declarar a esta persona en su figura, o si una garantía ya contratada aplica?" Si es lo primero, omite la dependencia -- aunque el texto use vocabulario (edad, antigüedad de carné...) que en otro contexto sí sería una condición de riesgo real.
 
+Formulaciones que delatan un bloque de admisión/contratación (no es una lista cerrada -- lo que importa es el sentido, no la frase exacta): un texto que presenta una LISTA DE REQUISITOS que una persona o una póliza debe cumplir para poder darse de alta es un bloque de admisión, sea cual sea el verbo con el que lo introduzca:
+
+* "se podrán incluir/declarar ... que cumplan:" / "podrá declarar a ... siempre que:"
+* "son asegurables las personas ... que cumplan los siguientes requisitos:"
+* "se deben cumplir los siguientes requisitos:" / "deberán cumplirse los siguientes requisitos:"
+* "requisitos de admisión / de contratación / de suscripción"
+* cualquier mención a que, de no cumplirse el listado, la póliza queda "excluida de normas de contratación", "retenida" o pendiente de autorización
+
+En estos bloques, omite TODAS las condiciones del listado, no solo algunas: el listado completo describe a quién se le vende la póliza, no cuándo aplica una garantía. Y ten en cuenta que un bloque de admisión puede continuar en el texto que sigue (un listado de excepciones al listado principal, por ejemplo) -- si el texto que estás analizando es la continuación de un listado de requisitos, sigue siendo un bloque de admisión.
+
 REGLA DE ANTIGÜEDAD RELATIVA (PERSONA)
 
 El campo birthDate (fecha de nacimiento de una persona) es una fecha ABSOLUTA. Una condición de edad expresada en AÑOS ("mayor de 25 años", "menor de 18 años") es siempre una duración RELATIVA a la fecha de evaluación, no una fecha fija -- NUNCA generes un entero de años directamente contra birthDate (p.ej. "birthDate >= 25"): esa comparación no tiene sentido contra una fecha absoluta.

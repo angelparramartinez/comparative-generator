@@ -17,7 +17,8 @@
     "engine_field_invalid_value (01/09, Guardrail v15 -- hallazgo A cerrado)": "Rechaza (mismo nivel que v9/v10/v11) cualquier value de \"base7Version.base7Engine.id\" que no coincida con vocabulario real de tipo de motor/combustible (ver shared/base7version.md, tabla real BASE7_ENGINE) ni sea un id numerico 1-13 real. Patron recurrente confirmado en 3 companias distintas (Zurich su_00051, Axa su_00070, Pelayo su_00105): \"combustible equivocado\"/\"combustible\" son AVERIAS del catalogo de eventos de una garantia de asistencia, no un tipo de motor -- el prompt ya tenia un ejemplo casi identico (\"falta de combustible, baterias... pinchazo\") y aun asi el LLM seguia generando la dependencia (confirmado por el usuario: ninguno de los 3 casos indica si la garantia esta incluida o no). Reforzado ademas el prompt (ramos/auto.md) con los 3 casos reales como ejemplo ilustrativo adicional. Gateado por ontology_type === \"auto\" (base7Engine no existe fuera de Autos).",
     "policy_admission_criteria (01/09, Guardrail v16 -- hallazgo C cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6/v8) -- marca (policy_admission_criteria: true, lista agregada policy_admission_criteria_dependencies) cualquier dependencia de una unidad cuyo sourceText completo coincide con vocabulario de criterios de ADMISION de una persona en una figura del riesgo (p.ej. 'se podran incluir/declarar...conductor...que cumplan'). A diferencia de v6 (evalua evidence por dependencia), evalua sourceText de la UNIDAD completa (igual que v5/v8) porque la frase delatora suele vivir en la introduccion del bloque, no en el evidence acotado de cada dependencia individual. Basado en un unico caso real (Reale su_00038, hallazgo C) -- patrones deliberadamente conservadores, ampliar si aparecen mas casos con vocabulario distinto. Gateado por ontology_type === \"auto\".",
     "percentage_indemnification (01/09, Guardrail v17 -- hallazgo D cerrado)": "Visibilidad (no bloqueo, mismo nivel que v6), AGNOSTICO DE RAMO (a diferencia de v14-v16) -- marca (percentage_indemnification: true, lista agregada percentage_indemnification_dependencies) cualquier dependencia cuyo evidence contiene un porcentaje numerico (\"100 %\", \"80%\"...). Decision del usuario (01/09): las escalas de indemnizacion en porcentaje por antiguedad de vehiculo (Pelayo su_00058/su_00059) se excluyen SIEMPRE -- calculo de indemnizacion, no condicion de aplicabilidad -- a diferencia del patron 1 ya confirmado (Zurich su_00077, variantes NOMBRADAS sin ningun porcentaje, SI son dependencia real). Un unico patron deliberado (\\\\d+\\\\s*%) -- 'valor GANVAM'/'valor de mercado ampliado' NO se incluyen como patrones porque el segundo es precisamente el ejemplo de variante NOMBRADA valida que el prompt contrasta con este hallazgo.",
-    "duration_field_used_as_existence_check / age_threshold_implausible_for_figure (01/09, Guardrail v18/v19 -- patron 3 cerrado)": "Dos rechazos duros nuevos, del analisis de causa raiz del patron 3 ('age inventado', revision manual del usuario sobre las 7 ejecuciones del 01/09). v18 (AGNOSTICO DE RAMO): cualquier campo sintetico de DURACION (age/licenseYears/registrationYears, con o sin prefijo) con value 0 -- son integer pero representan anios transcurridos, no capital, asi que '>0' es siempre cierto y '=0' siempre falso. Alcance deliberadamente acotado: los capitales (content/continent/specialValueObjects) SI admiten existencia con value 0, esa es la razon de ser de la regla de existencia del prompt. v19 (GATEADO A AUTOS): umbral de edad que implica minoria de edad ('<' con N<=18, '<=' o '=' con N<=17) sobre cualquier figura de Person -- en Autos ninguna figura declarada puede ser menor, luego siempre es un tercero (hijos/beneficiarios/ocupantes). NO cubre '<=18' ni '=18' a proposito (un conductor de 18 recien carnetizado es legal). Gateado a Autos porque en Motos si hay conductores de 15-16 (AM/A1). Barrido de falsos positivos sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09: exactamente 5 pasarian a rechazarse, y las 5 son casos que el usuario habia marcado como erroneos -- 0 falsos positivos."
+    "duration_field_used_as_existence_check / age_threshold_implausible_for_figure (01/09, Guardrail v18/v19 -- patron 3 cerrado)": "Dos rechazos duros nuevos, del analisis de causa raiz del patron 3 ('age inventado', revision manual del usuario sobre las 7 ejecuciones del 01/09). v18 (AGNOSTICO DE RAMO): cualquier campo sintetico de DURACION (age/licenseYears/registrationYears, con o sin prefijo) con value 0 -- son integer pero representan anios transcurridos, no capital, asi que '>0' es siempre cierto y '=0' siempre falso. Alcance deliberadamente acotado: los capitales (content/continent/specialValueObjects) SI admiten existencia con value 0, esa es la razon de ser de la regla de existencia del prompt. v19 (GATEADO A AUTOS): umbral de edad que implica minoria de edad ('<' con N<=18, '<=' o '=' con N<=17) sobre cualquier figura de Person -- en Autos ninguna figura declarada puede ser menor, luego siempre es un tercero (hijos/beneficiarios/ocupantes). NO cubre '<=18' ni '=18' a proposito (un conductor de 18 recien carnetizado es legal). Gateado a Autos porque en Motos si hay conductores de 15-16 (AM/A1). Barrido de falsos positivos sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09: exactamente 5 pasarian a rechazarse, y las 5 son casos que el usuario habia marcado como erroneos -- 0 falsos positivos.",
+    "policy_admission_criteria vocabulario ampliado (03/09, Guardrail v20 -- patron 1 cerrado)": "v16 (01/09) se diseño sobre un unico caso real (GD-AUTO-HALLUC-028, Reale su_00038) y se documento explicitamente como conservador. La revision manual global del 01/09 encontro 3 unidades reales mas del MISMO patron que su vocabulario no capturaba (GD-AUTO-HALLUC-034/035/036 = Reale su_00036/su_00040/su_00044): v16 solo cubria VERBOS DE INCLUSION ('se podran incluir/declarar'), no las formulas con las que un condicionado presenta una LISTA DE REQUISITOS de admision ('que cumplan los siguientes requisitos', 'se deben cumplir los siguientes requisitos', 'son asegurables las personas fisicas que...'). v20 añade 4 patrones nuevos y relaja el 'se' obligatorio del primero. Decision deliberada: NO se añade 'siempre que se cumpla' a secas (lenguaje legal demasiado generico, alto riesgo de falso positivo) -- su_00040 queda cubierta igual por 'podra declarar' y por 'normas de contratacion'. Sigue siendo visibilidad, no bloqueo, y sigue gateado a ontology_type 'auto'. Validacion: barrido sobre las 116 dependencias aceptadas de las 7 ejecuciones reales del 01/09 (Divina/Axa/Zurich/Reale/Pelayo/Qualitas/Generali) -> se marcan exactamente las 3 unidades objetivo (7 dependencias), 0 unidades colaterales, 0 regresiones (su_00038/su_00039 siguen marcadas). Alternativa descartada: marcar por CAPITULO (todo 1.3.x/1.4.x de Reale son normas de contratacion) -- solo Reale tiene capitulos de ese tipo en las 7 ejecuciones y es la unica compania con article=null, asi que habria sido una regla a medida de una sola compania."
   },
   "cases": [
     {
@@ -38,9 +39,10 @@
         }
       ],
       "expected_coverage_dependencies": "same_as_actual",
-      "notes": "El LLM extrajo el risk_field CORRECTO a la primera (owner.identificationType) -- misma cita real que motivó todo el rediseño de holder/owner (ver project_ontology_shared_person_figuras). En la ejecución real (26/08) fue rechazado por el guardrail como risk_field_not_in_ontology_catalog -- no por ser inválido, sino porque el catálogo hardcodeado del guardrail solo tenía 5 de los 88 campos de Person en ese momento (corregido el mismo día, commit b5a7af8). Tras el fix, este caso pasa. Limitaciones conocidas sin resolver: (1) condición compuesta OR real (PROPIETARIO *o* TOMADOR) -- el LLM solo capturó 'owner', no también 'holder.identificationType' -- mismo tipo de limitación ya aceptada para 'continente' en Hogar (v1 no soporta condiciones compuestas); (2) el valor extraído es texto en español ('persona jurídica'), el valor real comparable en SPEL es 'Cif' (ver identificationType en shared/person.md) -- la traducción es tarea de value_matcher.js (flujo 3), que todavía no cubre ningún campo de Autos. ACTUALIZACION (27/08): en la ejecucion real posterior (tras los fixes de figure_aliases + guardrail), esta unidad ya no genera las 4 dependencias rechazadas de GD-AUTO-GAP-002 (vehicle.category/.weight/.mainUse/.authorizedForPassengerTransport) -- coverage_dependencies queda limpio, solo owner.identificationType, rejected_dependencies:[]. No se afirma con certeza que sea causa directa de los fixes (Haiku no es determinista entre ejecuciones) frente a variabilidad de muestreo -- se documenta como observacion, no como confirmacion.",
+      "notes": "El LLM extrajo el risk_field CORRECTO a la primera (owner.identificationType) -- misma cita real que motivó todo el rediseño de holder/owner (ver project_ontology_shared_person_figuras). En la ejecución real (26/08) fue rechazado por el guardrail como risk_field_not_in_ontology_catalog -- no por ser inválido, sino porque el catálogo hardcodeado del guardrail solo tenía 5 de los 88 campos de Person en ese momento (corregido el mismo día, commit b5a7af8). Tras el fix, este caso pasa. Limitaciones conocidas sin resolver: (1) condición compuesta OR real (PROPIETARIO *o* TOMADOR) -- el LLM solo capturó 'owner', no también 'holder.identificationType' -- mismo tipo de limitación ya aceptada para 'continente' en Hogar (v1 no soporta condiciones compuestas); (2) el valor extraído es texto en español ('persona jurídica'), el valor real comparable en SPEL es 'Cif' (ver identificationType en shared/person.md) -- la traducción es tarea de value_matcher.js (flujo 3), que todavía no cubre ningún campo de Autos. ACTUALIZACION (27/08): en la ejecucion real posterior (tras los fixes de figure_aliases + guardrail), esta unidad ya no genera las 4 dependencias rechazadas de GD-AUTO-GAP-002 (vehicle.category/.weight/.mainUse/.authorizedForPassengerTransport) -- coverage_dependencies queda limpio, solo owner.identificationType, rejected_dependencies:[]. No se afirma con certeza que sea causa directa de los fixes (Haiku no es determinista entre ejecuciones) frente a variabilidad de muestreo -- se documenta como observacion, no como confirmacion. Contra-prueba de falso positivo de Guardrail v20 (03/09): unidad de coberturas reales (14 dependencias validas de referencia) que NO debe quedar marcada como criterio de admision.",
       "guardrail_catches": false,
-      "expected_coverage_scope_flagged": false
+      "expected_coverage_scope_flagged": false,
+      "expected_policy_admission_criteria_flagged": false
     },
     {
       "id": "GD-AUTO-HIER-001",
@@ -1054,7 +1056,8 @@
       ],
       "expected_percentage_indemnification_flagged": true,
       "guardrail_catches": false,
-      "notes": "Caso real (hallazgo D, 31/08, pagina 42 del PDF de Pelayo). Decision del usuario (01/09): las escalas de indemnizacion en PORCENTAJE por antiguedad se excluyen SIEMPRE (calculo de indemnizacion, regla ya existente 'no estas extrayendo porcentajes') -- a diferencia del patron 1 ya confirmado (Zurich su_00077, 'valor a nuevo' vs 'valor de mercado ampliado', variantes NOMBRADAS sin ningun porcentaje, esas SI son dependencia real). Fix: reforzado el prompt (core.md, contraste explicito con el ejemplo de Zurich; ramos/auto.md, ejemplo concreto) + Guardrail v17 (visibilidad, agnostico de ramo -- un numero seguido de '%' en evidence)."
+      "notes": "Caso real (hallazgo D, 31/08, pagina 42 del PDF de Pelayo). Decision del usuario (01/09): las escalas de indemnizacion en PORCENTAJE por antiguedad se excluyen SIEMPRE (calculo de indemnizacion, regla ya existente 'no estas extrayendo porcentajes') -- a diferencia del patron 1 ya confirmado (Zurich su_00077, 'valor a nuevo' vs 'valor de mercado ampliado', variantes NOMBRADAS sin ningun porcentaje, esas SI son dependencia real). Fix: reforzado el prompt (core.md, contraste explicito con el ejemplo de Zurich; ramos/auto.md, ejemplo concreto) + Guardrail v17 (visibilidad, agnostico de ramo -- un numero seguido de '%' en evidence). Contra-prueba de falso positivo de Guardrail v20 (03/09): escala de indemnizacion en porcentaje -- es un patron distinto (v17), NO debe quedar marcada tambien como criterio de admision.",
+      "expected_policy_admission_criteria_flagged": false
     },
     {
       "id": "GD-AUTO-HALLUC-030",
@@ -1159,6 +1162,105 @@
       "expected_rejection_reason": "age_threshold_implausible_for_figure",
       "corrected_coverage_dependencies": null,
       "notes": "Caso real (01/09, ejecucion 365). Aqui SI hay una edad real en el texto (15 anios), pero es la de los HIJOS de los Beneficiarios -- un tercero que no es ninguna de las 4 figuras declaradas del riesgo. Al generarse sin prefijo, 'age' cae en holder por defecto: el output afirma literalmente que el tomador tiene menos de 15 anios. Fix (01/09): Guardrail v19 (rechazo duro, gateado a Autos -- en Motos si hay conductores legales de 15-16 anios con carne AM/A1) + nueva REGLA DE PERSONAS QUE NO SON FIGURAS DEL RIESGO (TERCEROS) en ramos/auto.md."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-034",
+      "category": "policy_admission_criteria",
+      "subtype": "person_admission_criteria_confused_with_coverage_condition",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-18-56-535Z.json, ejecucion n8n 362 del 01/09)",
+      "semantic_unit_ref": "su_00036",
+      "article": null,
+      "coverage_path": [
+        "1.3.1 El Conductor Principal"
+      ],
+      "source_text": "Debe declararse como conductor principal a la persona que conduzca habitualmente el vehículo, independientemente de la edad. Son asegurables las personas físicas que cumplan los siguientes requisitos:\n\nAntigüedad del carné superior a 1 año.\n\nEdad igual o superior a 25 años e inferior a 76 años. En el caso de que el propietario sea diferente al conductor principal y no posea carnet de conducir, la póliza se quedará retenida en control técnico, y al autorizarlo (si procede) se deberá indicar el motivo de este hecho. Asimismo, cuando el propietario, por edad y/o antigüedad del carnet de conducir, sea más recargado que el conductor declarado, deberá figurar en lugar de éste. Excepciones para la contratación de menores de 25 años como conductores principales (en todos los casos las pólizas quedarán retenidas para su autorización): Excepciones para contratar conductores principales 18 – 25 años:",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.licenseYears",
+          "operator": ">",
+          "value": 1,
+          "evidence": "Antigüedad del carné superior a 1 año."
+        },
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": ">=",
+          "value": 25,
+          "evidence": "Edad igual o superior a 25 años e inferior a 76 años."
+        },
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": "<",
+          "value": 76,
+          "evidence": "Edad igual o superior a 25 años e inferior a 76 años."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_policy_admission_criteria_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (patron 1 de la revision manual del usuario del 01/09, confirmado el 03/09). Bloque de requisitos de asegurabilidad del conductor principal: 'Son asegurables las personas fisicas que cumplan los siguientes requisitos: Antiguedad del carne superior a 1 anio. Edad igual o superior a 25 anios e inferior a 76 anios.' Ninguna de las 3 dependencias es una condicion de aplicabilidad de garantia: son los requisitos de ADMISION de una persona como conductor principal, mismo patron que GD-AUTO-HALLUC-028 (su_00038, que de hecho es la CONTINUACION de esta misma unidad -- acaba en 'Excepciones para contratar conductores principales 18 - 25 anios:'). v16 marcaba el hijo y no el padre porque su vocabulario solo cubria verbos de inclusion ('se podran incluir'). Cerrado con Guardrail v20 (03/09), patron de LISTA DE REQUISITOS."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-035",
+      "category": "policy_admission_criteria",
+      "subtype": "person_admission_criteria_confused_with_coverage_condition",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-18-56-535Z.json, ejecucion n8n 362 del 01/09)",
+      "semantic_unit_ref": "su_00040",
+      "article": null,
+      "coverage_path": [
+        "1.3.2 El Conductor Ocasional"
+      ],
+      "source_text": "Como conductor principal cuando el menor de 25 años sea el conductor habitual del vehículo o elpropietario del mismo y se cumplan las excepciones previstas en el apartado anterior.\n\nComo conductor ocasional en el resto de los casos (si puede conducir más un vehículo, deberá figurar en el más recargado. Esta consideración se refiere únicamente a turismos y todo terrenos, es decir, quedan excluidos los derivados, furgonetas y vehículos de 2ª y 3ª categoría), siempre que se cumpla:\n\nSi ya es cliente de autos: podrá declarar al menor como conductor ocasional en todo caso.\n\nSi no es cliente de autos: podrá declarar al menor como conductor ocasional siempre que se realice consulta Sinco y no se hayan declarado partes en los dos últimos años, y el menor tenga una antigüedad de carnet superior a 4 años. Si no se cumplen estos criterios, la póliza estará excluida de normas de contratación. La aplicación indica la manera correcta de declarar el conductor ocasional:",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "turismo",
+            "todo terreno"
+          ],
+          "evidence": "Como conductor ocasional en el resto de los casos (si puede conducir más un vehículo, deberá figurar en el más recargado. Esta consideración se refiere únicamente a turismos y todo terrenos, es decir, quedan excluidos los derivados, furgonetas y vehículos de 2ª y 3ª categoría)"
+        },
+        {
+          "risk_field": "secondaryDriver.licenseYears",
+          "operator": ">",
+          "value": 4,
+          "evidence": "podrá declarar al menor como conductor ocasional siempre que se realice consulta Sinco y no se hayan declarado partes en los dos últimos años, y el menor tenga una antigüedad de carnet superior a 4 años"
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_policy_admission_criteria_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (patron 1, 01/09, confirmado el 03/09). Normas de contratacion del conductor ocasional menor de 25 anios: 'podra declarar al menor como conductor ocasional siempre que ... el menor tenga una antiguedad de carnet superior a 4 anios. Si no se cumplen estos criterios, la poliza estara excluida de normas de contratacion.' v16 no lo capturaba por dos motivos, ambos corregidos en v20: el texto dice 'podra declarar' (sin el 'se' que el patron original exigia) y la frase introductoria del listado es 'siempre que se cumpla:' (sin la palabra 'requisitos'). Marcado en v20 por dos anclas independientes: el verbo de inclusion relajado y 'normas de contratacion'. La dependencia de base7Type ('turismos y todo terrenos, quedan excluidos los derivados, furgonetas y vehiculos de 2a y 3a categoria') tampoco es una condicion de garantia: acota a que vehiculos se les permite declarar un conductor ocasional."
+    },
+    {
+      "id": "GD-AUTO-HALLUC-036",
+      "category": "policy_admission_criteria",
+      "subtype": "person_admission_criteria_confused_with_coverage_condition",
+      "source_company": "Reale (ggcc_outputs/coverage_matcher_contract_2026-09-01T10-18-56-535Z.json, ejecucion n8n 362 del 01/09)",
+      "semantic_unit_ref": "su_00044",
+      "article": null,
+      "coverage_path": [
+        "1.3.5 Pólizas para conductores con tarjeta de residencia o pasaporte extracomunitario"
+      ],
+      "source_text": "Para la contratación de residentes extranjeros con carné de conducir cuyo país original de expedición es extracomunitario, se deben cumplir los siguientes requisitos:\n\nDebe coincidir la figura del Propietario, Tomador y Conductor.\n\nEdad igual o superior a 30 años.\n\nAntigüedad del permiso de conducir mínima de 2 años. (Si el carné ha sido convalidado en nuestro país, se toma como referencia la fecha de expedición del permiso de conducir en el país originario).\n\nBonificación acreditada exclusivamente a través de SINCO con un mínimo de 2 años de experiencia sin siniestros.\n\nSiempre que se trate de residente extranjero, se deberá adjuntar mediante el gestor documental el carnet de conducir para comprobar el país de expedición del mismo.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": ">=",
+          "value": 30,
+          "evidence": "Edad igual o superior a 30 años."
+        },
+        {
+          "risk_field": "primaryDriver.licenseYears",
+          "operator": ">=",
+          "value": 2,
+          "evidence": "Antigüedad del permiso de conducir mínima de 2 años."
+        }
+      ],
+      "expected_coverage_dependencies": [],
+      "expected_policy_admission_criteria_flagged": true,
+      "guardrail_catches": false,
+      "notes": "Caso real (patron 1, 01/09, confirmado el 03/09). 'Para la contratacion de residentes extranjeros con carne de conducir cuyo pais original de expedicion es extracomunitario, se deben cumplir los siguientes requisitos: ... Edad igual o superior a 30 anios. Antiguedad del permiso de conducir minima de 2 anios.' Requisitos de suscripcion de la poliza, no condiciones de garantia. Nota: la unidad ya llevaba UNA de las dos dependencias marcada como 'ungrounded' y la otra limpia -- proteccion accidental e incoherente dentro de la misma unidad, motivo por el que no se podia confiar en ella. Cerrado con Guardrail v20 (03/09) via el patron de lista de requisitos ('cumplir los siguientes requisitos')."
     }
   ]
 }
