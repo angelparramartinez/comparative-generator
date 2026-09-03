@@ -402,11 +402,24 @@ function checkTransversalChapterVisibility(workflow, golden, validRiskFields) {
     // "vehicle.weight" alucinado de GD-AUTO-GAP-001 -- nunca iban a quedar
     // aceptados por ningun otro chequeo del guardrail, y no es lo que este
     // chequeo de visibilidad debe validar).
+    // 03/09: "sigue aceptada" se comprobaba filtrando la expectativa por
+    // "el campo esta en valid_risk_fields", usando el catalogo de la
+    // ontologia como PROXY de "esta dependencia deberia sobrevivir al
+    // guardrail". Ese proxy es falso desde que existen chequeos semanticos
+    // que rechazan duro campos perfectamente catalogados (v10 uso escalar de
+    // una lista, v11 entero implausible contra una fecha, v18 campo de
+    // duracion con value 0, v19 umbral de menor de edad...). Se vio al
+    // regenerar valid_risk_fields_auto.json: "registrationYears" paso a estar
+    // en el catalogo y este check empezo a exigir que sobreviviera una
+    // dependencia que v18 rechaza CON RAZON. La propiedad correcta de un
+    // chequeo de visibilidad es que ninguna dependencia desaparezca EN
+    // SILENCIO: cada una debe estar o aceptada o en rejected_dependencies.
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
-    const expectedAcceptedFields = (c.actual_coverage_dependencies || [])
-      .map(d => d.risk_field)
-      .filter(f => validRiskFieldSet.has(f));
-    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+    const rejectedFields = (result.rejected_dependencies || []).map(d => d.risk_field);
+    const inputFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = inputFields.every(
+      f => acceptedFields.includes(f) || rejectedFields.includes(f)
+    );
 
     const ok = flagOk && nothingLost;
     if (!ok) failures++;
@@ -462,11 +475,24 @@ function checkProceduralInstructionVisibility(workflow, golden, validRiskFields)
 
     // Misma anti-regresion que v5: la señal de visibilidad nunca debe
     // quitar una dependencia de coverage_dependencies.
+    // 03/09: "sigue aceptada" se comprobaba filtrando la expectativa por
+    // "el campo esta en valid_risk_fields", usando el catalogo de la
+    // ontologia como PROXY de "esta dependencia deberia sobrevivir al
+    // guardrail". Ese proxy es falso desde que existen chequeos semanticos
+    // que rechazan duro campos perfectamente catalogados (v10 uso escalar de
+    // una lista, v11 entero implausible contra una fecha, v18 campo de
+    // duracion con value 0, v19 umbral de menor de edad...). Se vio al
+    // regenerar valid_risk_fields_auto.json: "registrationYears" paso a estar
+    // en el catalogo y este check empezo a exigir que sobreviviera una
+    // dependencia que v18 rechaza CON RAZON. La propiedad correcta de un
+    // chequeo de visibilidad es que ninguna dependencia desaparezca EN
+    // SILENCIO: cada una debe estar o aceptada o en rejected_dependencies.
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
-    const expectedAcceptedFields = (c.actual_coverage_dependencies || [])
-      .map(d => d.risk_field)
-      .filter(f => validRiskFieldSet.has(f));
-    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+    const rejectedFields = (result.rejected_dependencies || []).map(d => d.risk_field);
+    const inputFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = inputFields.every(
+      f => acceptedFields.includes(f) || rejectedFields.includes(f)
+    );
 
     const ok = flagOk && nothingLost;
     if (!ok) failures++;
@@ -519,11 +545,24 @@ function checkPersonFieldMismatchVisibility(workflow, golden, validRiskFields) {
     const isFlagged = flaggedFields.length > 0;
     const flagOk = isFlagged === c.expected_person_field_mismatch_flagged;
 
+    // 03/09: "sigue aceptada" se comprobaba filtrando la expectativa por
+    // "el campo esta en valid_risk_fields", usando el catalogo de la
+    // ontologia como PROXY de "esta dependencia deberia sobrevivir al
+    // guardrail". Ese proxy es falso desde que existen chequeos semanticos
+    // que rechazan duro campos perfectamente catalogados (v10 uso escalar de
+    // una lista, v11 entero implausible contra una fecha, v18 campo de
+    // duracion con value 0, v19 umbral de menor de edad...). Se vio al
+    // regenerar valid_risk_fields_auto.json: "registrationYears" paso a estar
+    // en el catalogo y este check empezo a exigir que sobreviviera una
+    // dependencia que v18 rechaza CON RAZON. La propiedad correcta de un
+    // chequeo de visibilidad es que ninguna dependencia desaparezca EN
+    // SILENCIO: cada una debe estar o aceptada o en rejected_dependencies.
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
-    const expectedAcceptedFields = (c.actual_coverage_dependencies || [])
-      .map(d => d.risk_field)
-      .filter(f => validRiskFieldSet.has(f));
-    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+    const rejectedFields = (result.rejected_dependencies || []).map(d => d.risk_field);
+    const inputFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = inputFields.every(
+      f => acceptedFields.includes(f) || rejectedFields.includes(f)
+    );
 
     const ok = flagOk && nothingLost;
     if (!ok) failures++;
@@ -586,12 +625,16 @@ function checkCoverageScopeVisibility(workflow, golden, validRiskFields) {
     // general algo que este chequeo, por defecto, asumiria que sigue aceptado
     // (ver GD-AUTO-HALLUC-007, 28/08). Sin el campo, comportamiento identico a
     // antes de v9.
-    const expectedAcceptedFields = c.expected_accepted_risk_fields !== undefined
-      ? c.expected_accepted_risk_fields
+    // 03/09: mismo cambio de criterio que en v5/v6/v7 (ver nota alli) --
+    // cuando el caso declara "expected_accepted_risk_fields" se sigue
+    // respetando esa expectativa explicita; si no, se exige solo que nada
+    // desaparezca en silencio.
+    const rejectedFields = (result.rejected_dependencies || []).map(d => d.risk_field);
+    const nothingLost = c.expected_accepted_risk_fields !== undefined
+      ? c.expected_accepted_risk_fields.every(f => acceptedFields.includes(f))
       : (c.actual_coverage_dependencies || [])
           .map(d => d.risk_field)
-          .filter(f => validRiskFieldSet.has(f));
-    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+          .every(f => acceptedFields.includes(f) || rejectedFields.includes(f));
 
     const ok = flagOk && nothingLost;
     if (!ok) failures++;
