@@ -426,11 +426,25 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
    mayúsculas/acentos ya no afecta al matcher de valor enum (normaliza antes de
    comparar); sigue sin resolver la preferencia `IN` de 1 elemento vs. `=`
    (ambas formas son equivalentes en SPEL, no bloqueante).
-5. **[Opcional, menor]** Preservar separadores de bullet/salto de línea en
+5. **[Posible mejora, sin decidir — 03/09]** Señal `limit_selection` para
+   flujo 3: hay condiciones que no deciden si una cobertura está incluida,
+   sino **qué importe/límite aplica** (caso real: Zurich `su_00039`,
+   "límite de 450 € para ciclomotores, motocicletas y turismos; 900 € para
+   el resto"). El usuario confirmó (03/09) que son un límite, no una
+   condición de inclusión, y que serían candidatas a `VALUE_EXPR`, pero
+   **no está decidido si merece la pena abordarlo**. Diseño esbozado: marca
+   de visibilidad nueva en el guardrail (la dependencia se conserva
+   íntegra, no se rechaza) + el prompt del `Coverage Match Decision Agent`
+   la lee como "esto no decide la inclusión; es candidata a `VALUE_EXPR` o
+   a partir la cobertura en varios `ENTRY` con distinto importe". Antes de
+   implementarla habría que medir el vocabulario candidato ("límite de
+   N €", "hasta un límite de", "con un máximo de") sobre las ejecuciones
+   reales, igual que se hizo con los patrones 1, 2 y 4.
+6. **[Opcional, menor]** Preservar separadores de bullet/salto de línea en
    `Semantic Assembler` para que `Rule Chunker` pueda subdividir mejor prosa con
    listas largas (ver 5.9) — solo si aparecen más casos como `su_00196` que lo
    necesiten de verdad.
-6. **[Pendiente]** Variante "campo equivocado" del mismo antipatrón resuelto
+7. **[Pendiente]** Variante "campo equivocado" del mismo antipatrón resuelto
    en 5.11: `GD-HALLUC-003`/`004` (Generali) son casos donde SÍ existe una
    condición real (p. ej. "vivienda principal o secundaria"), pero el LLM
    elige un `risk_field` semánticamente incorrecto (`content`, un capital, en
@@ -439,7 +453,7 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
    `article`/`coverage_path` ya fiable (5.10) probablemente ayude igual que
    en 5.11, pero la solución no es la misma (no es un capítulo transversal,
    es una garantía concreta con el campo mal elegido).
-7. **[Pendiente, menor]** `su_00013` (Allianz): una frase de la sección
+8. **[Pendiente, menor]** `su_00013` (Allianz): una frase de la sección
    general de "Asegurado"/"Definiciones" aparece intercalada dentro del
    párrafo de la garantía "Acción del agua" (confirmado leyendo el
    `source_text` completo — no es un problema de interpretación del LLM,

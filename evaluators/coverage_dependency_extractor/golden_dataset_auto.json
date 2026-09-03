@@ -251,7 +251,14 @@
       ],
       "guardrail_catches": true,
       "notes": "Misma alucinación estructural que GD-AUTO-HALLUC-002 (owner.weight, mismo campo real de una PERSONA) pero aquí el objeto real es una MASCOTA, no un vehículo -- confirma que el patrón no es 'el LLM confunde persona/vehículo' sino más genérico: 'weight' se asigna al primer/único campo de peso disponible en el contexto ontológico, sea cual sea el objeto real del que habla el texto (vehículo, remolque, mascota...). Mismo guardrail_catches=false por la misma razón (integer, operador válido, sin validación semántica). ACTUALIZACION (27/08): reproducida identica en la ejecucion real posterior a los fixes de figure_aliases y guardrail transversal-chapter -- esperado, ninguno de los dos tocaba este patron (gap de campo real, no contaminacion de alias ni capitulo transversal). Sigue abierta. ACTUALIZACION FINAL (27/08, 4a ejecucion real): el refuerzo de la regla de entidad del campo NO elimina esta alucinacion de forma fiable -- reaparecio en la 4a ejecucion tras haber desaparecido en la 3a (variabilidad normal de Haiku, no una regresion). Con el Guardrail v7 desplegado, ahora SIEMPRE que ocurre queda marcada 'person_field_for_non_person_evidence': true, visible para flujo 3 -- ese es el estado final aceptado para este caso (mitigacion de visibilidad, no eliminacion en origen; el hueco de fondo -- no existe campo real de peso de mascota/vehiculo -- sigue sin resolverse, ver GD-AUTO-GAP-001). Actualizado 03/09 (patron 4): la ejecucion del 01/09 volvio a generar 'owner.weight <= 75' pese a que el prompt tiene esta MISMA frase como ejemplo literal desde el 27/08 -- el comentario de v7 en el guardrail daba este caso por 'ya no se reproduce' y era falso. Cerrado con Guardrail v22 (rechazo duro) + negative_aliases en el campo weight de shared/person.md.",
-      "expected_person_field_mismatch_flagged": true
+      "expected_person_field_mismatch_flagged": true,
+      "alias_match_expectations": [
+        {
+          "risk_field": "weight",
+          "expected_alias_match": false,
+          "note": "'peso' esta en el texto, pero pegado a 'animales domesticos' -> negative_alias lo suprime (03/09, patron 4). Y desde el fix del 03/09 tampoco puede reentrar por la puerta del score alto del Ontology Relevance Filter."
+        }
+      ]
     },
     {
       "id": "GD-AUTO-HALLUC-004",
@@ -1408,7 +1415,19 @@
       ],
       "expected_person_field_mismatch_flagged": true,
       "guardrail_catches": true,
-      "notes": "Caso real (patron 4 de la revision manual del 01/09, confirmado el 03/09). Dos umbrales en kilos rendidos como peso de PERSONA: 'vehiculos de peso total inferior a 3.500 Kg' (peso del VEHICULO -- no existe ningun campo de peso de vehiculo accesible, comprobado en el backend real: Base7Version no tiene peso ni MMA) y 'el peso del remolque no exceda de 750 Kg' (peso del REMOLQUE). Las dos se rechazan duro con Guardrail v22. IMPORTANTE -- la extraccion CORRECTA de esta clausula no es omitir todo: es 'lightTrailer = true' (criterio del usuario, 03/09), y lo demuestra GD-AUTO-REF-009: la MISMA clausula del mundo real en Generali (su_00030) se extrajo asi. 750 kg es justamente la definicion legal de remolque ligero. Por eso se añadieron alias reales a lightTrailer en ontology-auto.md (ninguno de los que tenia aparece literalmente en este texto). Nota aparte del usuario: esta semantic_unit esta englobada en un fragmento de texto que no habria que incluir, pero por su CONTEXTO, no por su contenido -- cuestion abierta, distinta de este patron."
+      "notes": "Caso real (patron 4 de la revision manual del 01/09, confirmado el 03/09). Dos umbrales en kilos rendidos como peso de PERSONA: 'vehiculos de peso total inferior a 3.500 Kg' (peso del VEHICULO -- no existe ningun campo de peso de vehiculo accesible, comprobado en el backend real: Base7Version no tiene peso ni MMA) y 'el peso del remolque no exceda de 750 Kg' (peso del REMOLQUE). Las dos se rechazan duro con Guardrail v22. IMPORTANTE -- la extraccion CORRECTA de esta clausula no es omitir todo: es 'lightTrailer = true' (criterio del usuario, 03/09), y lo demuestra GD-AUTO-REF-009: la MISMA clausula del mundo real en Generali (su_00030) se extrajo asi. 750 kg es justamente la definicion legal de remolque ligero. Por eso se añadieron alias reales a lightTrailer en ontology-auto.md (ninguno de los que tenia aparece literalmente en este texto). Nota aparte del usuario: esta semantic_unit esta englobada en un fragmento de texto que no habria que incluir, pero por su CONTEXTO, no por su contenido -- cuestion abierta, distinta de este patron.",
+      "alias_match_expectations": [
+        {
+          "risk_field": "weight",
+          "expected_alias_match": false,
+          "note": "'peso del remolque' / 'peso total' -> negative_alias suprime 'peso' (03/09, patron 4)."
+        },
+        {
+          "risk_field": "lightTrailer",
+          "expected_alias_match": true,
+          "note": "con los alias nuevos del 03/09 ('arrastre de una caravana o remolque', 'peso del remolque', '750 Kg'), el campo CORRECTO si aparece como candidato en esta clausula."
+        }
+      ]
     },
     {
       "id": "GD-AUTO-REF-009",

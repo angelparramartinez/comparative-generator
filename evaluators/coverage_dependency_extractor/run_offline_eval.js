@@ -25,6 +25,7 @@
 //   node run_offline_eval.js --engine-field-value -> solo el check de rechazo de valores invalidos (no vocabulario real de motor/combustible) para base7Version.base7Engine.id (Guardrail v15, hallazgo A)
 //   node run_offline_eval.js --policy-admission-criteria -> solo el check de visibilidad de criterios de admision de persona en figura confundidos con condicion de cobertura (Guardrail v16, hallazgo C)
 //   node run_offline_eval.js --percentage-indemnification -> solo el check de visibilidad de escalas de indemnizacion en porcentaje confundidas con condicion de cobertura (Guardrail v17, hallazgo D, agnostico de ramo)
+//   node run_offline_eval.js --negative-alias-score-door -> solo el check de que un alias suprimido por negative_aliases no reentra por la puerta del score alto del Ontology Relevance Filter (fix 03/09)
 //   node run_offline_eval.js --premium-calculation -> solo el check de visibilidad de reglas de bonificacion/prima (bonus-malus) confundidas con condicion de cobertura (Guardrail v21, patron 2, agnostico de ramo) + la ampliacion de v6 con nombres de documentos de suscripcion
 //   node run_offline_eval.js --invented-age -> solo los checks de "age inventado" (Guardrail v18: campo de duracion con value 0, agnostico de ramo; Guardrail v19: umbral de edad de menor sobre una figura declarada, gateado a Autos) + su contra-prueba de falsos positivos
 //   node run_offline_eval.js --relative-duration -> solo el check de rechazo de enteros implausibles contra campos data_type "date" (birthDate/registrationDate/purchaseDate) y aceptacion de registrationYears/age (Guardrail v11)
@@ -1720,6 +1721,121 @@ function checkWatermarkStripping(workflow) {
   return failures;
 }
 
+// 03/09: el hueco de la "puerta del score alto". "Ontology Relevance Filter"
+// conserva un concepto si alias_match O final_score >= 0.80. Un alias
+// suprimido por negative_aliases deja alias_match en false, asi que el
+// concepto podia reentrar por el segundo camino y deshacer la supresion en
+// silencio. checkOntology() no podia detectarlo porque monta todos los
+// candidatos de Qdrant con un score fijo de 0.5 (por debajo del umbral).
+// Este check reutiliza los mismos casos del golden set (los que declaran
+// alias_match_expectations con expected_alias_match: false) pero con un
+// score POR ENCIMA del umbral, y exige que un concepto realmente suprimido
+// no sobreviva. Incluye un control opuesto: un concepto SIN ningun alias en
+// el texto debe seguir entrando por score -- ese es el proposito legitimo
+// del grupo, y el fix no debe tocarlo.
+function checkNegativeAliasScoreDoor(workflow, golden, ramo) {
+  console.log("\n=== Check: negative_aliases vs. puerta del score alto (nodo Ontology Relevance Filter) ===");
+
+  if (!findNode(workflow, "Ontology Relevance Filter")) {
+    console.log("Nodo 'Ontology Relevance Filter' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const ontologyWorkflow = loadJson(ONTOLOGY_WORKFLOW_PATH);
+  const ontologyText = fs.readFileSync(ONTOLOGY_MD_PATH, "utf8");
+
+  // Se montan los conceptos igual que en produccion, expandiendo los
+  // ficheros compartidos por figura (Merge Shared Texts Into Ramo) -- sin
+  // eso, conceptos como "weight" (que vive en shared/person.md, no en el .md
+  // del ramo) no aparecerian y el check se saltaria en silencio los casos
+  // de Autos, que son justamente los nuevos.
+  const ownConcepts = runNode(ontologyWorkflow, "Ontology Splitter", [{ ontology_text: ontologyText }]) || [];
+  let sharedConcepts = [];
+  if (findNode(ontologyWorkflow, "Merge Shared Texts Into Ramo")) {
+    const sharedDir = path.join(REPO_ROOT, "knowledge", "ontologies", "shared");
+    const shared = {};
+    for (const name of fs.readdirSync(sharedDir)) {
+      if (name.endsWith(".md")) shared[name.replace(/\.md$/, "")] = fs.readFileSync(path.join(sharedDir, name), "utf8");
+    }
+    sharedConcepts = runMergeSharedTextsIntoRamo(ontologyWorkflow, ontologyText, ramo, shared) || [];
+  }
+  // Ontology Splitter da los conceptos propios del ramo; Merge Shared Texts
+  // Into Ramo da los generados por figura desde shared/*.md. Se necesitan los
+  // dos: "use"/"lastReformDate" (Hogar) son propios, y "weight" (el caso
+  // nuevo de Autos) viene de shared/person.md.
+  const byField = new Map();
+  for (const k of [...ownConcepts, ...sharedConcepts]) {
+    if (k && k.risk_field && !byField.has(k.risk_field)) byField.set(k.risk_field, k);
+  }
+  const concepts = [...byField.values()];
+  if (!concepts.length) {
+    console.log("No se pudieron montar los conceptos de la ontologia -- check omitido.");
+    return 0;
+  }
+
+  const HIGH = 0.95;
+  const LOW = 0.5;
+  let failures = 0;
+  let checked = 0;
+
+  const runOne = (text, concept, score) =>
+    runNode(workflow, "Ontology Relevance Filter", [
+      { chunk: { chunk_id: "c1", text }, result: [{ score, payload: concept }] }
+    ])[0];
+
+  for (const c of golden.cases.filter(x => Array.isArray(x.alias_match_expectations))) {
+    for (const exp of c.alias_match_expectations.filter(e => e.expected_alias_match === false)) {
+
+      const concept = concepts.find(k => k.risk_field === exp.risk_field);
+      if (!concept) continue;
+
+      // Hay que distinguir dos situaciones que desde fuera se parecen: que
+      // el alias existiera en el texto y lo SUPRIMIERA un negative_alias, o
+      // que simplemente no hubiera ningun alias. El nodo solo expone
+      // negative_alias_suppressed en los matches que devuelve, y un match
+      // suprimido con score bajo no se devuelve -- asi que se sondea con el
+      // propio nodo: se repite la llamada con los negative_aliases vaciados;
+      // si entonces hay alias_match, es que habia alias y lo suprimieron.
+      const probe = runOne(c.source_text, { ...concept, negative_aliases: [] }, LOW);
+      const probeMatch = (probe.ontology_matches || []).find(m => m.risk_field === exp.risk_field);
+      const hadAlias = !!(probeMatch && probeMatch.alias_match);
+
+      const low = runOne(c.source_text, concept, LOW);
+      const lowMatch = (low.ontology_matches || []).find(m => m.risk_field === exp.risk_field);
+      const wasSuppressed = hadAlias && (!lowMatch || lowMatch.negative_alias_suppressed === true || lowMatch.alias_match === false);
+
+      if (!wasSuppressed) continue;
+
+      const high = runOne(c.source_text, concept, HIGH);
+      const survivesByScore = (high.ontology_matches || []).some(m => m.risk_field === exp.risk_field);
+
+      checked++;
+      const ok = !survivesByScore;
+      if (!ok) failures++;
+      console.log(
+        `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): "${exp.risk_field}" suprimido por negative_alias NO reentra con score ${HIGH} (reentra=${survivesByScore})`
+      );
+    }
+  }
+
+  // Control opuesto: concepto sin ningun alias presente en el texto, score
+  // alto -> debe seguir entrando (no se ha roto el proposito del grupo).
+  const controlConcept = concepts.find(k => (k.aliases || []).length > 0);
+  if (controlConcept) {
+    const controlText = "Zzzz texto sin ninguna palabra de la ontologia qqqq.";
+    const out = runOne(controlText, controlConcept, HIGH);
+    const survives = (out.ontology_matches || []).some(m => m.risk_field === controlConcept.risk_field);
+    checked++;
+    if (!survives) failures++;
+    console.log(
+      `${survives ? "PASS" : "FAIL"} CONTROL: "${controlConcept.risk_field}" sin alias en el texto SIGUE entrando por score ${HIGH} (entra=${survives})`
+    );
+  }
+
+  console.log(`Resultado: ${checked - failures}/${checked} pasan.`);
+  return failures;
+}
+
 function checkOntology(workflow, golden) {
   console.log("\n=== Check: alias_match / negative_aliases (nodo Ontology Relevance Filter) ===");
 
@@ -2183,6 +2299,10 @@ function main() {
   if (runAll || args.includes("--invented-age")) {
     exitCode += checkInventedAgeRejections(workflow, golden) > 0 ? 1 : 0;
     exitCode += checkInventedAgeNoFalsePositives(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--negative-alias-score-door")) {
+    exitCode += checkNegativeAliasScoreDoor(workflow, golden, ramo) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--premium-calculation")) {
