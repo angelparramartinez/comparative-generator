@@ -53,10 +53,34 @@ function translateToSpel(dependency) {
 }
 
 // Combina varias dependencias de un mismo ENTRY con AND. Con 1 sola
-// dependencia no anade parentesis de mas.
+// dependencia no anade parentesis de mas. Es el punto de paso UNICO por el que
+// una dependencia de flujo 2 se convierte en SPEL, asi que es donde se filtran
+// las VACUAS (04/09).
+//
+// Una dependencia con "vacuous_for_ramo: true" (Guardrail v29b de flujo 2) es
+// cierta para TODOS los riesgos del ramo: exige una categoria de vehiculo que
+// cubre entera la del ramo que se esta procesando (p.ej. "primera categoria"
+// en un producto de Autos). Traducirla a SPEL produciria un FILTER_EXPR que
+// no discrimina nada y que, peor, LEIDO POR UNA PERSONA parece decir que la
+// cobertura solo aplica a cierto tipo de vehiculo.
+//
+// Caso real que lo motivo (Zurich su_00039, "Asistencia en viaje"): el texto
+// da 450 EUR para primera y tercera categoria y 900 EUR para el resto. La
+// rama de los 900 EUR ya la rechaza flujo 2 por estar fuera de ramo
+// (segunda categoria = camiones, sin ramo en ASM), y la que queda cubre todo
+// el ramo. Resultado correcto: UN solo ENTRY, INCLUDED, sin FILTER_EXPR y con
+// su importe -- que es exactamente lo que observo el usuario ("no necesitamos
+// 2 entries con diferente value_expr, porque para autos y motos el valor de
+// 900 EUR no se daria nunca").
+//
+// Solo se filtra la generacion de SPEL: la dependencia sigue viajando intacta
+// en el JSON revisable, con su marca, para que quien revise entienda por que
+// el FILTER_EXPR esta vacio.
 function combineFilterExpr(dependencies) {
   if (!dependencies || dependencies.length === 0) return null;
-  const parts = dependencies.map(translateToSpel);
+  const effective = dependencies.filter(dep => dep && dep.vacuous_for_ramo !== true);
+  if (effective.length === 0) return null;
+  const parts = effective.map(translateToSpel);
   return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
 }
 

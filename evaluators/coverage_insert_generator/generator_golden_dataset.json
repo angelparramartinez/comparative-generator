@@ -100,6 +100,76 @@
         }
       ],
       "expected_spel": "({'Vivienda principal','Vivienda secundaria'}.contains(insurance[\"risk\"].occupancy)) && (insurance[\"risk\"].content > 0)"
+    },
+    {
+      "id": "GEN-COMBINE-002",
+      "description": "unica dependencia VACUA para el ramo (vacuous_for_ramo) -> sin FILTER_EXPR (caso real Zurich su_00039)",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "IN",
+          "value": [
+            "primera categoria",
+            "tercera categoria"
+          ],
+          "vacuous_for_ramo": true
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-003",
+      "description": "una vacua + una real -> solo la real, sin parentesis de mas",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoria",
+          "vacuous_for_ramo": true
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": "vehiculo electrico"
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].base7Version.base7Engine.id == 'vehiculo electrico'"
+    },
+    {
+      "id": "GEN-COMBINE-004",
+      "description": "dos reales + una vacua -> las dos reales con AND, la vacua no aparece",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoria",
+          "vacuous_for_ramo": true
+        },
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": ">=",
+          "value": 25
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].primaryDriver.age >= 25) && (insurance[\"risk\"].registrationYears <= 5)"
+    },
+    {
+      "id": "GEN-COMBINE-005",
+      "description": "CONTRA-PRUEBA: vacuous_for_ramo ausente o false no filtra nada",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoria",
+          "vacuous_for_ramo": false
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].base7Version.base7Type.base7Category.id == 'primera categoria'"
     }
   ],
   "entry_building_cases": [
@@ -1998,8 +2068,15 @@
         "defaultBullets": [
           "Pago de una indemnización al asegurado cuando haya sido privado de su permiso de conducir."
         ],
-        "presentModalityIds": ["101", "102", "103"],
-        "missingModalityIds": ["201", "202"],
+        "presentModalityIds": [
+          "101",
+          "102",
+          "103"
+        ],
+        "missingModalityIds": [
+          "201",
+          "202"
+        ],
         "opcionales": []
       },
       "expected": {
@@ -2049,7 +2126,11 @@
         "coverId": 999,
         "coverName": "Cobertura de prueba sin contenido en ninguna modalidad",
         "presentModalityIds": [],
-        "missingModalityIds": ["201", "202", "203"],
+        "missingModalityIds": [
+          "201",
+          "202",
+          "203"
+        ],
         "opcionales": []
       },
       "expected": {
