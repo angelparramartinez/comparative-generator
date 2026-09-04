@@ -6,9 +6,12 @@
 // (CLAUDE.md SS7), sin gastar creditos de LLM.
 //
 // A diferencia del arnes de flujo 2, este NO extrae el codigo de un workflow
-// n8n real -- el workflow de flujo 3 todavia no existe (ver plan, Fase 4).
-// Valida directamente matcher.js; cuando se construya el nodo real en n8n,
-// migrar este arnes al mismo patron de "extraer el jsCode del workflow".
+// n8n real: valida los modulos .js de este directorio, y produccion ejecuta
+// una COPIA de ese codigo pegada en cada nodo. Los workflows de flujo 3 YA
+// existen (nota anterior obsoleta, corregida el 04/09), asi que la migracion
+// al patron de "extraer el jsCode del workflow" sigue siendo deseable pero es
+// mas costosa de lo que parece: el mapeo modulo<->nodo no es 1:1. Mientras
+// tanto, el check --node-sync verifica que las dos copias no divergan.
 //
 // Flags:
 //   --matching        valida el matcher de candidatos (dependencia -> COVER_ID/bullet)
@@ -61,6 +64,12 @@
 // substring) ya esta implementado, pero para el LLM de DECISION del diseno de
 // Fase 4 (Coverage Match Decision Agent), no para matcher.js -- ver
 // review_assembly.js (applyGroundingGuardrail) y su check --review-assembly.
+//   --node-sync       verifica que cada modulo .js de este directorio siga
+//                      identico a la copia pegada en su nodo n8n (9 de los 10
+//                      modulos estan duplicados). Compara funcion a funcion,
+//                      cabecera de comentarios incluida, normalizando el
+//                      namespace del require. No elimina la duplicacion:
+//                      impide que derive en silencio.
 
 const path = require("path");
 const fs = require("fs");
@@ -779,6 +788,201 @@ async function checkExcelGridReader() {
   return failures === 0 ? 0 : 1;
 }
 
+// ============================================================
+// SINCRONIA MODULO <-> NODO n8n (04/09)
+// ============================================================
+//
+// A diferencia del arnes de flujo 2 -- que extrae el jsCode del workflow y por
+// tanto valida EXACTAMENTE lo que corre produccion -- este arnes valida los
+// modulos .js de este directorio, mientras que produccion ejecuta una COPIA de
+// ese codigo pegada dentro de cada nodo n8n. 9 de los 10 modulos estan
+// duplicados asi (~114 KB). El fallo que eso habilita es el peor de todos: que
+// el arnes se quede verde validando el fichero mientras produccion ejecuta
+// algo distinto.
+//
+// Medido el 04/09 antes de escribir esto: 81 funciones comparadas, 79
+// identicas byte a byte, 2 distintas SOLO por el namespace del modulo y 0
+// divergencias reales -- la disciplina de editar los dos sitios ha aguantado
+// las 9 veces que hizo falta (9 de 23 commits del area). Este chequeo no
+// elimina la duplicacion: convierte "acuerdate de editar los dos" en "el
+// arnes no te deja olvidarlo".
+//
+// La solucion estructural (generar el codigo del nodo desde los modulos con un
+// paso de build) queda pendiente y es mas costosa de lo que parece, porque el
+// mapeo modulo<->nodo NO es 1:1: "Build Excel Fixture for Matcher" tiene
+// inlineados TRES modulos, y una funcion de excel_fixture_builder.js la
+// implementa produccion en otro nodo distinto.
+const NODE_SYNC_MAP = [
+  { module: "generator.js", workflow: "coverage insert generation", node: "Generate ENTRY/LINES per Cover" },
+  { module: "matcher.js", workflow: "coverage insert generation", node: "Build Excel Fixture for Matcher" },
+  { module: "rich_text_block_parser.js", workflow: "coverage insert generation", node: "Build Excel Fixture for Matcher" },
+  {
+    module: "excel_fixture_builder.js",
+    workflow: "coverage insert generation",
+    node: "Build Excel Fixture for Matcher",
+    // Produccion resuelve el marcador "No contratable" AGUAS ARRIBA, en el
+    // nodo que limpia las celdas, no en el que construye el fixture. La
+    // funcion vive en este modulo porque es donde el arnes la prueba
+    // (marker_cases). No es una divergencia -- se verifica que el nodo
+    // declarado aqui exista y siga respaldando el concepto.
+    implementedElsewhere: { isCoverNotOfferedMarker: "Clean covers and modalities" }
+  },
+  { module: "review_assembly.js", workflow: "coverage insert generation", node: "Grounding Guardrail" },
+  { module: "value_matcher.js", workflow: "coverage insert generation", node: "Translate Dependency Values" },
+  { module: "tuning_dictionary_merger.js", workflow: "coverage insert generation", node: "Merge Tuning Dictionaries" },
+  { module: "excel_grid_reader.js", workflow: "coverage insert generation", node: "Parse Coverage Excel" },
+  { module: "insert_generation.js", workflow: "coverage insert sql generation", node: "Build Insert SQL" }
+];
+
+// tuning_matcher.js NO tiene nodo espejo a proposito: ese matching lo hace un
+// LLM en produccion (agente + prompt), y el modulo solo existe para validar
+// offline el post-proceso determinista.
+const MODULES_WITHOUT_NODE = new Set(["tuning_matcher.js", "run_offline_eval.js"]);
+
+// Los modulos se llaman entre si con el namespace del require
+// (generator.computeCoverOverride(...)); dentro del nodo todo vive en un unico
+// ambito plano, asi que la misma llamada es directa. Consecuencia inevitable
+// del empaquetado, no un cambio de comportamiento: se normaliza antes de
+// comparar.
+const MODULE_NAMESPACES = [
+  "generator", "matcher", "richTextBlockParser", "excelFixtureBuilder",
+  "reviewAssembly", "valueMatcher", "insertGeneration", "tuningDictionaryMerger",
+  "excelGridReader", "tuningMatcher"
+];
+
+// Extrae cada "function nombre(...)" de nivel superior emparejando llaves, MAS
+// el bloque de comentarios "//" contiguo que la precede. Incluir la cabecera de
+// comentarios no es un extra: en este proyecto es donde vive el razonamiento y
+// los casos reales que motivaron cada regla, asi que un comentario actualizado
+// en un solo lado tambien es una divergencia que interesa ver.
+// (Escrito primero sin esto, y el propio test en negativo lo destapo: una
+// divergencia de solo comentario pasaba desapercibida.)
+function extractTopLevelFunctions(source) {
+  const found = {};
+  const declaration = /^function ([A-Za-z0-9_]+)\s*\(/gm;
+  let match;
+
+  while ((match = declaration.exec(source)) !== null) {
+    const open = source.indexOf("{", match.index);
+    if (open === -1) continue;
+
+    let depth = 0;
+    let cursor = open;
+    while (cursor < source.length) {
+      if (source[cursor] === "{") depth++;
+      else if (source[cursor] === "}") {
+        depth--;
+        if (depth === 0) break;
+      }
+      cursor++;
+    }
+    // Camina hacia atras por las lineas de comentario "//" contiguas.
+    let start = match.index;
+    const before = source.slice(0, match.index).split("\n");
+    let line = before.length - 2;
+    while (line >= 0 && before[line].trim().startsWith("//")) {
+      start -= before[line].length + 1;
+      line--;
+    }
+
+    found[match[1]] = source.slice(start, cursor + 1);
+  }
+
+  return found;
+}
+
+function normalizeFunctionText(text) {
+  let normalized = text.replace(/\s+/g, " ").trim();
+  for (const namespace of MODULE_NAMESPACES) {
+    normalized = normalized.split(`${namespace}.`).join("");
+  }
+  return normalized;
+}
+
+function checkNodeSync() {
+  console.log("\n=== Check: sincronia modulo .js <-> nodo n8n ===");
+
+  const workflowCache = {};
+  const nodeCodeOf = (workflowName, nodeName) => {
+    if (!(workflowName in workflowCache)) {
+      const file = path.join(REPO_ROOT, "n8n", "workflows", `${workflowName}.json`);
+      workflowCache[workflowName] = fs.existsSync(file)
+        ? JSON.parse(fs.readFileSync(file, "utf8"))
+        : null;
+    }
+    const workflow = workflowCache[workflowName];
+    if (!workflow) return null;
+    const node = (workflow.nodes || []).find(n => n.name === nodeName);
+    return node ? (node.parameters || {}).jsCode || null : null;
+  };
+
+  let failures = 0;
+  let comparadas = 0;
+
+  for (const entry of NODE_SYNC_MAP) {
+    const nodeCode = nodeCodeOf(entry.workflow, entry.node);
+
+    if (!nodeCode) {
+      failures++;
+      console.log(`  [FAIL] ${entry.module}: no se encontro el nodo '${entry.node}' en '${entry.workflow}'`);
+      continue;
+    }
+
+    const fileFunctions = extractTopLevelFunctions(fs.readFileSync(path.join(__dirname, entry.module), "utf8"));
+    const nodeFunctions = extractTopLevelFunctions(nodeCode);
+
+    const divergentes = [];
+    const ausentes = [];
+
+    for (const [name, text] of Object.entries(fileFunctions)) {
+      const elsewhere = (entry.implementedElsewhere || {})[name];
+
+      if (elsewhere) {
+        if (!nodeCodeOf(entry.workflow, elsewhere)) {
+          ausentes.push(`${name} (declarada como implementada en '${elsewhere}', nodo que ya no existe)`);
+        }
+        continue;
+      }
+
+      comparadas++;
+
+      if (!(name in nodeFunctions)) {
+        ausentes.push(name);
+        continue;
+      }
+
+      if (normalizeFunctionText(text) !== normalizeFunctionText(nodeFunctions[name])) {
+        divergentes.push(name);
+      }
+    }
+
+    const ok = divergentes.length === 0 && ausentes.length === 0;
+    if (!ok) failures++;
+
+    let detalle = `${Object.keys(fileFunctions).length} funciones`;
+    if (divergentes.length) detalle += ` | DIVERGEN: ${divergentes.join(", ")}`;
+    if (ausentes.length) detalle += ` | FALTAN en el nodo: ${ausentes.join(", ")}`;
+
+    console.log(`  [${ok ? "PASS" : "FAIL"}] ${entry.module} <-> '${entry.node}': ${detalle}`);
+  }
+
+  // Que ningun modulo nuevo se quede fuera del mapa sin que nadie se entere.
+  const mapeados = new Set(NODE_SYNC_MAP.map(e => e.module));
+  const sinClasificar = fs.readdirSync(__dirname)
+    .filter(f => f.endsWith(".js"))
+    .filter(f => !mapeados.has(f) && !MODULES_WITHOUT_NODE.has(f));
+
+  if (sinClasificar.length > 0) {
+    failures++;
+    console.log(`  [FAIL] modulos sin entrada en NODE_SYNC_MAP ni en MODULES_WITHOUT_NODE: ${sinClasificar.join(", ")} -- anadirlos a uno de los dos`);
+  } else {
+    console.log(`  [PASS] todos los modulos estan clasificados (${mapeados.size} con nodo espejo, ${MODULES_WITHOUT_NODE.size} sin nodo a proposito)`);
+  }
+
+  console.log(`--node-sync: ${comparadas} funciones comparadas, ${failures === 0 ? "0 divergencias" : failures + " modulo(s) con problemas"}`);
+  return failures === 0 ? 0 : 1;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
@@ -822,6 +1026,9 @@ async function main() {
   }
   if (runAll || args.includes("--excel-grid-reader")) {
     exitCode = Math.max(exitCode, await checkExcelGridReader());
+  }
+  if (runAll || args.includes("--node-sync")) {
+    exitCode = Math.max(exitCode, checkNodeSync());
   }
   process.exit(exitCode);
 }
