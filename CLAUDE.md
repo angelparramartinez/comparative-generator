@@ -92,7 +92,11 @@ Tres flujos:
 
 1. **`ontology indexing`**: parsea `knowledge/ontologies/*.md` (nodo `Ontology
    Splitter`) e indexa cada concepto en Qdrant (nodo `Build Qdrant Point` +
-   `Upsert en Qdrant`), colección `insurance_ontology`. Incluye ya el campo
+   `Upsert en Qdrant`), en una colección **por ramo**:
+   `insurance_ontology_auto` e `insurance_ontology_home` (comprobado en Qdrant
+   el 04/09 — antes aquí decía `insurance_ontology` a secas, que ya no existe;
+   el aislamiento por ramo se introdujo con el rediseño de la indexación del
+   21/08). Incluye ya el campo
    `negative_aliases` (ver 5.3).
 2. **`coverage rules extraction GGCC`** (foco del trabajo hecho hasta ahora):
    extrae del condicionado las dependencias de cada cobertura respecto a los
@@ -192,6 +196,96 @@ On form submission → Convert → ast walker → cleanup → Hierarchy Builder
   `ungrounded_dependencies` y sus contadores agregados. `source_text` se
   reconstruye como `chunks.map(c => c.text).join("\n\n")` — no es el texto
   original del PDF tal cual, es la unión de los chunks ya procesados.
+
+### 4.2 Catálogo de marcas y rechazos de una `coverage dependency`
+
+`Coverage Dependency Risk Field Guardrail` usa **dos mecanismos distintos**, y
+conviene no confundirlos:
+
+- **Marcas** (11): banderas que viajan **dentro** de la dependencia, en
+  `coverage_dependencies`. Nunca la quitan — son visibilidad, no bloqueo.
+- **Rechazos** (18 motivos): la dependencia sale de `coverage_dependencies` y
+  va a `rejected_dependencies` con su `rejection_reason`. Nunca se descarta
+  nada en silencio.
+
+Cada marca tiene además su lista agregada `<marca>_dependencies` en el
+artefacto, con su contador `total_<marca>_dependencies` en el contrato.
+
+**Las 11 marcas, agrupadas por la pregunta que responden:**
+
+*Cómo se obtuvo la dependencia (no dicen nada de su contenido)*
+
+| Marca | Para qué |
+|---|---|
+| `ungrounded` | El `risk_field` es válido pero no estaba entre los candidatos que recibió el LLM en esa llamada |
+| `unverified_evidence` | La `evidence` no es cita literal del `source_text` — evita que cite el `coverage_context` en vez del cuerpo |
+
+> **`ungrounded` NO es un indicador de calidad.** Significa "este campo no
+> estaba entre los candidatos de esa llamada", y es sensible al troceo y al
+> tope de 5 candidatos por chunk. En la ronda del 04/09 hay dependencias
+> `ungrounded` perfectamente correctas. **No usarlo como señal en la revisión
+> manual.**
+
+*"Esto no es una condición de inclusión"* (bien formada, pero responde a otra pregunta)
+
+| Marca | Guardrail |
+|---|---|
+| `transversal_chapter` | v5 / v23 — vive en un capítulo de glosario o definiciones |
+| `coverage_scope_definition` | v8 — describe a quién o qué cubre la garantía |
+| `procedural_instruction` | v6 / v21b — instrucción operativa, no condición |
+| `percentage_indemnification` | v17 / v24 — escala o tabla de valoración: decide el importe |
+| `policy_admission_criteria` | v16 / v20 — requisito de admisión en la **póliza** |
+| `premium_calculation_rule` | v21 — cálculo de prima, bonificación o recargo |
+
+*"Sí es condición, pero está mal expresada"*
+
+| Marca | Guardrail |
+|---|---|
+| `inconsistent_figure_selection` | v12 — el mismo campo base sobre más de una figura de Person en la misma unidad |
+| `category_expressed_as_type` | v29a — enumera subtipos donde el texto delimitaba una categoría entera |
+
+*"Es correcta, pero no aporta nada"*
+
+| Marca | Guardrail |
+|---|---|
+| `vacuous_for_ramo` | v29b — cierta para todo el ramo; el `FILTER_EXPR` debe omitirse |
+
+**Los 18 motivos de rechazo**: `risk_field_not_in_ontology_catalog`,
+`operator_incompatible_with_data_type`,
+`value_type_incompatible_with_data_type`,
+`date_field_used_with_relative_duration_value`, `list_field_used_as_scalar`,
+`driving_licenses_used_as_scalar`, `engine_field_invalid_value`,
+`vehicle_type_field_invalid_value`, `vehicle_category_field_invalid_value`,
+`vehicle_category_out_of_ramo_scope`,
+`duration_field_used_as_existence_check`,
+`age_threshold_implausible_for_figure`, `figure_keyword_mismatch`,
+`duplicate_figure_without_distinction`, `duplicate_dependency_in_unit`,
+`person_weight_field_for_non_person_evidence`,
+`trailer_scope_extension_not_condition`, `undeclared_person_at_claim_time`.
+
+**Quién lee las marcas**: el `Coverage Match Decision Agent` de
+`coverage insert generation` lee las 11. Su esquema de salida es cerrado
+(`additionalProperties: false`), así que solo puede reaccionar vía `confidence`
+y `reasoning`. Y `vacuous_for_ramo` es la única que además **cambia el SQL**:
+`combineFilterExpr` (en `generator.js` y en su nodo espejo) omite las
+dependencias vacuas del `FILTER_EXPR`.
+
+> **Trampa a recordar** (ver 5.11): *una marca que nadie lee no hace nada.*
+> `transversal_chapter` estuvo semanas sin efecto porque
+> `coverage insert generation` no la leía, y
+> `vacuous_for_ramo`/`category_expressed_as_type` repitieron el patrón el
+> 04/09. **Al crear una marca nueva, cablearla en
+> `coverage insert generation` en el mismo trabajo.**
+
+**Dos incoherencias estructurales reales, para no tropezar:**
+
+1. `person_field_mismatch_dependencies` es la **única** lista cuyo contenido
+   NO está en `coverage_dependencies`: va emparejada con el rechazo duro de
+   v22 y existe para no perder el motivo concreto. Si se lee esperando
+   dependencias aceptadas, confunde.
+2. La bandera se llama `coverage_scope_definition` pero su lista es
+   `coverage_scope_dependencies` (herencia de v8). Todas las demás coinciden
+   en nombre.
 
 ## 5. Historial de mejoras aplicadas
 
