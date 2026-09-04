@@ -1407,17 +1407,10 @@
           "evidence": "el peso del remolque no exceda de 750 Kg."
         }
       ],
-      "expected_coverage_dependencies": [
-        {
-          "risk_field": "lightTrailer",
-          "operator": "=",
-          "value": true,
-          "evidence": "El arrastre de una caravana o remolque por el vehículo asegurado ... a condición de que el peso del remolque no exceda de 750 Kg."
-        }
-      ],
+      "expected_coverage_dependencies": [],
       "expected_person_field_mismatch_flagged": true,
       "guardrail_catches": true,
-      "notes": "Caso real (patron 4 de la revision manual del 01/09, confirmado el 03/09). Dos umbrales en kilos rendidos como peso de PERSONA: 'vehiculos de peso total inferior a 3.500 Kg' (peso del VEHICULO -- no existe ningun campo de peso de vehiculo accesible, comprobado en el backend real: Base7Version no tiene peso ni MMA) y 'el peso del remolque no exceda de 750 Kg' (peso del REMOLQUE). Las dos se rechazan duro con Guardrail v22. IMPORTANTE -- la extraccion CORRECTA de esta clausula no es omitir todo: es 'lightTrailer = true' (criterio del usuario, 03/09), y lo demuestra GD-AUTO-REF-009: la MISMA clausula del mundo real en Generali (su_00030) se extrajo asi. 750 kg es justamente la definicion legal de remolque ligero. Por eso se añadieron alias reales a lightTrailer en ontology-auto.md (ninguno de los que tenia aparece literalmente en este texto). Nota aparte del usuario: esta semantic_unit esta englobada en un fragmento de texto que no habria que incluir, pero por su CONTEXTO, no por su contenido -- cuestion abierta, distinta de este patron.",
+      "notes": "Caso real (patron 4 de la revision manual del 01/09, confirmado el 03/09). Dos umbrales en kilos rendidos como peso de PERSONA: 'vehiculos de peso total inferior a 3.500 Kg' (peso del VEHICULO -- no existe ningun campo de peso de vehiculo accesible, comprobado en el backend real: Base7Version no tiene peso ni MMA) y 'el peso del remolque no exceda de 750 Kg' (peso del REMOLQUE). Las dos se rechazan duro con Guardrail v22. IMPORTANTE -- la extraccion CORRECTA de esta clausula no es omitir todo: es 'lightTrailer = true' (criterio del usuario, 03/09), y lo demuestra GD-AUTO-REF-009: la MISMA clausula del mundo real en Generali (su_00030) se extrajo asi. 750 kg es justamente la definicion legal de remolque ligero. Por eso se añadieron alias reales a lightTrailer en ontology-auto.md (ninguno de los que tenia aparece literalmente en este texto). Nota aparte del usuario: esta semantic_unit esta englobada en un fragmento de texto que no habria que incluir, pero por su CONTEXTO, no por su contenido -- cuestion abierta, distinta de este patron. ACTUALIZADO EL 04/09 -- CAMBIO DE CRITERIO DEL USUARIO: lightTrailer ya NO es una extraccion correcta. El usuario decidio que el campo no debe producir dependencias nunca (Guardrail v25, rechazo duro), porque el texto describe una AMPLIACION del alcance de la garantia al objeto arrastrado y no una condicion del riesgo. Es una decision de relacion coste/riesgo: la probabilidad de que una cobertura comparada en ASM se incluya/excluya por remolque es minima y el matiz acaba en el texto de la comparativa, mientras que el riesgo de falso positivo es alto. Por eso se revirtieron los 5 alias que se habian añadido el 03/09 a ontology-auto.md. La extraccion correcta de esta clausula es NINGUNA dependencia. Ver GD-AUTO-TRAILER-001/002.",
       "alias_match_expectations": [
         {
           "risk_field": "weight",
@@ -1426,8 +1419,8 @@
         },
         {
           "risk_field": "lightTrailer",
-          "expected_alias_match": true,
-          "note": "con los alias nuevos del 03/09 ('arrastre de una caravana o remolque', 'peso del remolque', '750 Kg'), el campo CORRECTO si aparece como candidato en esta clausula."
+          "expected_alias_match": false,
+          "note": "REVERTIDO el 04/09: los alias del 03/09 ('arrastre de una caravana o remolque', 'peso del remolque', '750 kg') se quitaron, asi que el campo ya no aparece como candidato en esta clausula -- que es lo que se quiere, porque ya no debe producir dependencia. El alias suelto '750 kg' era ademas el causante de la dependencia INVERTIDA de Zurich su_00038, cuyo texto habla de PMA SUPERIOR a 750 kg."
         }
       ]
     },
@@ -1451,17 +1444,10 @@
           "evidence": "El arrastre de remolques o caravanas para los que se encuentre legalmente autorizado, siempre y cuando su matrícula coincida con la del vehículo asegurado, cumpla las obligaciones legales de orden técnico para el arrastre de dichos objetos y su masa máxima autorizada no exceda de 750 kilogramos."
         }
       ],
-      "expected_coverage_dependencies": [
-        {
-          "risk_field": "lightTrailer",
-          "operator": "=",
-          "value": true,
-          "evidence": "El arrastre de remolques o caravanas para los que se encuentre legalmente autorizado, siempre y cuando su matrícula coincida con la del vehículo asegurado, cumpla las obligaciones legales de orden técnico para el arrastre de dichos objetos y su masa máxima autorizada no exceda de 750 kilogramos."
-        }
-      ],
+      "expected_coverage_dependencies": [],
       "expected_person_field_mismatch_flagged": false,
       "guardrail_catches": false,
-      "notes": "CONTRA-PRUEBA de Guardrail v22 (03/09) y caso de referencia del patron 4. Es la MISMA clausula del mundo real que GD-AUTO-HALLUC-040 (Axa su_00053): ampliacion de la RC Voluntaria al arrastre de un remolque cuya masa maxima autorizada no exceda de 750 kg. Generali la extrajo bien, con el campo cualitativo del riesgo ('lightTrailer = true') en vez del umbral en kilos. v22 NO debe tocarla: la regla solo rechaza pesos de PERSONA (weight/owner.weight/...), nunca lightTrailer. Sirve de ancla para que un futuro chequeo por vocabulario de umbral ('no exceda de N') no se lleve por delante la extraccion correcta -- ese fue justamente el motivo por el que se descarto ese diseño el 03/09."
+      "notes": "CONTRA-PRUEBA de Guardrail v22 (03/09) y caso de referencia del patron 4. Es la MISMA clausula del mundo real que GD-AUTO-HALLUC-040 (Axa su_00053): ampliacion de la RC Voluntaria al arrastre de un remolque cuya masa maxima autorizada no exceda de 750 kg. Generali la extrajo bien, con el campo cualitativo del riesgo ('lightTrailer = true') en vez del umbral en kilos. v22 NO debe tocarla: la regla solo rechaza pesos de PERSONA (weight/owner.weight/...), nunca lightTrailer. Sirve de ancla para que un futuro chequeo por vocabulario de umbral ('no exceda de N') no se lleve por delante la extraccion correcta -- ese fue justamente el motivo por el que se descarto ese diseño el 03/09. ACTUALIZADO EL 04/09 -- CAMBIO DE CRITERIO DEL USUARIO: lightTrailer ya NO es una extraccion correcta. El usuario decidio que el campo no debe producir dependencias nunca (Guardrail v25, rechazo duro), porque el texto describe una AMPLIACION del alcance de la garantia al objeto arrastrado y no una condicion del riesgo. Es una decision de relacion coste/riesgo: la probabilidad de que una cobertura comparada en ASM se incluya/excluya por remolque es minima y el matiz acaba en el texto de la comparativa, mientras que el riesgo de falso positivo es alto. Por eso se revirtieron los 5 alias que se habian añadido el 03/09 a ontology-auto.md. La extraccion correcta de esta clausula es NINGUNA dependencia. Ver GD-AUTO-TRAILER-001/002. Este caso era la 'referencia correcta' que justificaba el criterio viejo (la misma clausula del mundo real bien extraida en Generali); se conserva con el ID original, ahora como referencia de que la extraccion correcta paso a ser vacia."
     },
     {
       "id": "GD-AUTO-SCOPE-001",
@@ -1751,6 +1737,194 @@
       "expected_percentage_indemnification_flagged": true,
       "guardrail_catches": false,
       "notes": "Caso que aparecio al MEDIR el fix de los otros dos, y que el usuario no habia marcado: Qualitas tiene el mismo patron en 6 unidades (su_00027/028/030/031/037/038), y en cada una de ellas v17 ya marcaba la mitad de la tabla (la que lleva un '%' en su evidence, p.ej. 'valor venal mejorado ... mejora del 30%') y dejaba la otra mitad SIN MARCAR (p.ej. 'Valor de nuevo: Para vehiculos con antiguedad inferior o igual a los 2 anios'). Media tabla marcada y media no. Lo cierra el ancla 3 de v24: el texto de la unidad nombra una base de valoracion Y el campo de la dependencia es la antiguedad del VEHICULO. Esa ancla va acotada al campo de antiguedad a proposito -- sin esa restriccion tambien marcaba Reale su_00025, donde 'valor venal' aparece en un parrafo sin relacion con su dependencia (una exclusion de Asistencia en Viaje por categoria de vehiculo)."
+    },
+    {
+      "id": "GD-AUTO-TRAILER-001",
+      "category": "trailer_scope_extension",
+      "source_company": "Axa (exec 378, ronda del 03/09)",
+      "semantic_unit_ref": "su_00053",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "La Responsabilidad Civil Voluntaria se extiende al arrastre de una caravana o remolque ligero.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "lightTrailer",
+          "operator": "=",
+          "value": true,
+          "evidence": "se extiende al arrastre de una caravana o remolque ligero"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "lightTrailer"
+      ],
+      "expected_rejection_reason": "trailer_scope_extension_not_condition",
+      "corrected_coverage_dependencies": [],
+      "notes": "Familia A de la revision del 03/09. El campo se identifica BIEN, pero el texto amplia el ALCANCE de la garantia al objeto arrastrado, no condiciona que la garantia exista. El usuario decidio el 04/09 excluir lightTrailer de las condiciones SIEMPRE, por relacion coste/riesgo: la probabilidad de que una cobertura comparada se incluya/excluya por remolque es minima y el matiz acaba en el texto de la comparativa, mientras que el riesgo de falso positivo es alto. Medido: 9 dependencias de lightTrailer en la ronda, 6 sin ninguna marca."
+    },
+    {
+      "id": "GD-AUTO-TRAILER-002",
+      "category": "trailer_scope_extension",
+      "source_company": "Divina (exec 377, ronda del 03/09)",
+      "semantic_unit_ref": "su_00027",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Con caracter particular: De caravanas y remolques que no necesiten matriculacion propia, con la condicion de que el peso no exceda de 750 kg.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "lightTrailer",
+          "operator": "=",
+          "value": true,
+          "evidence": "De caravanas y remolques que no necesiten matriculacion propia, con la condicion de que el peso no exceda de 750 kg"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "lightTrailer"
+      ],
+      "expected_rejection_reason": "trailer_scope_extension_not_condition",
+      "corrected_coverage_dependencies": [],
+      "notes": "CASO LIMITE preguntado explicitamente al usuario el 04/09: este lightTrailer sale de una lista de EXCLUSIONES, no de una ampliacion, asi que era el candidato mas defendible a seguir siendo dependencia. El usuario decidio que tambien fuera. Este caso existe para que, si algun dia se revierte el criterio, quede claro cual es la frontera que se movio."
+    },
+    {
+      "id": "GD-AUTO-VTYPE-001",
+      "category": "vehicle_type_field_invalid_value",
+      "source_company": "Reale (exec 380, ronda del 03/09)",
+      "semantic_unit_ref": "su_00025",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Quedan excluidos los vehiculos de servicio publico, los que circulen con placas de prueba y los destinados a reparto.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "NOT_IN",
+          "value": [
+            "vehiculos de servicio publico",
+            "placas de prueba",
+            "reparto"
+          ],
+          "evidence": "Quedan excluidos los vehiculos de servicio publico, los que circulen con placas de prueba y los destinados a reparto"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "base7Version.base7Type.id"
+      ],
+      "expected_rejection_reason": "vehicle_type_field_invalid_value",
+      "corrected_coverage_dependencies": [],
+      "notes": "Familia B. Ninguno de los tres valores es un tipo de vehiculo: son usos y situaciones administrativas. Observacion literal del usuario: 'la dependencia no es correcta, base7Type no tendra esos posibles valores'."
+    },
+    {
+      "id": "GD-AUTO-VTYPE-002",
+      "category": "vehicle_type_valid_synonym",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-09-03T11-36-43-098Z.json, exec 379)",
+      "semantic_unit_ref": "su_00071",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Para turismos de uso particular o furgonetas de transporte propio.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "turismo",
+            "furgoneta"
+          ],
+          "evidence": "Para turismos de uso particular o furgonetas de transporte propio"
+        }
+      ],
+      "expected_rejected_risk_fields": [],
+      "corrected_coverage_dependencies": null,
+      "notes": "CONTRA-PRUEBA de v28. 'furgoneta' no es literal de ninguna fila de BASE7_TYPE (la fila es 'FURGONES Y CAMIONES LIGEROS') pero es un sinonimo legitimo que el value_matcher.js de flujo 3 ya sabe traducir. Medido: de 6 valores fuera del catalogo literal en la ronda, 5 eran sinonimos asi -- un chequeo literal habria dado 5 rechazos falsos. v28 debe aceptarla."
+    },
+    {
+      "id": "GD-AUTO-CAT-001",
+      "category": "category_expressed_as_type",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-09-03T11-36-43-098Z.json, exec 379)",
+      "semantic_unit_ref": "su_00039",
+      "article": "3-. Asistencia en viaje",
+      "coverage_path": [
+        "3-. Asistencia en viaje"
+      ],
+      "source_text": "Para ciclomotores, motocicletas, Turismos y cualquier vehiculo con PMA menor o igual a 3.500 kg, la compania se hace cargo de los gastos de rescate del vehiculo por vuelco o caida en desnivel, siempre que hubiera estado circulando por vias ordinarias y hasta un limite de 450 EUR. Para resto de vehiculos (de PMA superior a 3.500 kg) se establece un limite de 900 EUR.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "ciclomotor",
+            "motocicleta",
+            "turismo"
+          ],
+          "evidence": "Para ciclomotores, motocicletas, Turismos y cualquier vehiculo con PMA menor o igual a 3.500 kg, la compania se hace cargo de los gastos de rescate del vehiculo por vuelco o caida en desnivel"
+        }
+      ],
+      "expected_rejected_risk_fields": [],
+      "expected_dependency_marks": [
+        "category_expressed_as_type"
+      ],
+      "corrected_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "IN",
+          "value": [
+            "primera categoria",
+            "tercera categoria"
+          ],
+          "evidence": "Para ciclomotores, motocicletas, Turismos y cualquier vehiculo con PMA menor o igual a 3.500 kg"
+        }
+      ],
+      "notes": "Trabajo de categoria (04/09). El texto delimita por categoria ENTERA ('cualquier vehiculo con PMA menor o igual a 3.500 kg' = toda la primera categoria) pero la extraccion enumera 3 subtipos y pierde monovolumenes, todo terreno, derivados y furgones ligeros. Causa raiz: el concepto category no tenia ningun alias que matchease 'PMA', asi que no llegaba a ofrecerse como candidato en Ontology Relevance Filter y el LLM no podia elegirlo (misma forma de fallo que housingUse en Hogar, CLAUDE.md 5.3). Arreglo de raiz: alias de PMA en shared/base7version.md + REGLA DE FRONTERA LEGAL POR PMA en ramos/auto.md. Esta marca es la red mientras la extraccion siga imprecisa. Medido: 7 de 13 dependencias de base7Type.id en la ronda, las 7 de Zurich."
+    },
+    {
+      "id": "GD-AUTO-CAT-002",
+      "category": "vehicle_category_ramo_scope",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-09-03T11-36-43-098Z.json, exec 379)",
+      "semantic_unit_ref": "su_00039",
+      "article": "3-. Asistencia en viaje",
+      "coverage_path": [
+        "3-. Asistencia en viaje"
+      ],
+      "source_text": "Para resto de vehiculos (de PMA superior a 3.500 kg) se establece un limite de 900 EUR.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "segunda categoria",
+          "evidence": "Para resto de vehiculos (de PMA superior a 3.500 kg) se establece un limite de 900 EUR"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "base7Version.base7Type.base7Category.id"
+      ],
+      "expected_rejection_reason": "vehicle_category_out_of_ramo_scope",
+      "corrected_coverage_dependencies": [],
+      "notes": "Trabajo de categoria (04/09). Segunda categoria = CAMIONES, que no tiene ramo en ASM hoy ni se preve a corto/medio plazo, asi que esta condicion no puede ser cierta NUNCA para un producto de Autos o Motos -- los 900 EUR no se dan jamas. Observacion del usuario que lo destapo: 'realmente no necesitamos 2 entries con diferente value_expr, porque para autos y motos el valor de 900 EUR no se daria nunca'. El gate de Legal Cue Pre-Filter no lo caza porque mira TITULOS y descarta UNIDADES enteras, y aqui la distincion vive en el cuerpo y parte la unidad por dentro."
+    },
+    {
+      "id": "GD-AUTO-CAT-003",
+      "category": "vehicle_category_vacuous",
+      "source_company": "Zurich (ggcc_outputs/coverage_matcher_contract_2026-09-03T11-36-43-098Z.json, exec 379)",
+      "semantic_unit_ref": "su_00039",
+      "article": "3-. Asistencia en viaje",
+      "coverage_path": [
+        "3-. Asistencia en viaje"
+      ],
+      "source_text": "Para ciclomotores, motocicletas, Turismos y cualquier vehiculo con PMA menor o igual a 3.500 kg, la compania se hace cargo de los gastos de rescate hasta un limite de 450 EUR.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "IN",
+          "value": [
+            "primera categoria",
+            "tercera categoria"
+          ],
+          "evidence": "Para ciclomotores, motocicletas, Turismos y cualquier vehiculo con PMA menor o igual a 3.500 kg"
+        }
+      ],
+      "expected_rejected_risk_fields": [],
+      "expected_dependency_marks": [
+        "vacuous_for_ramo"
+      ],
+      "corrected_coverage_dependencies": null,
+      "notes": "Trabajo de categoria (04/09). Es la MISMA dependencia que GD-AUTO-CAT-001 pero ya bien extraida como categoria: para un producto de Autos cubre entera la categoria del ramo, asi que es cierta para todos los vehiculos del producto. No es falsa, simplemente no aporta condicion -- se marca vacuous_for_ramo para que flujo 3 OMITA el FILTER_EXPR en vez de construir una condicion falsa, y la cobertura salga INCLUDED con su unico importe. Esto es lo que hace que baste UN entry, como observo el usuario."
     }
   ]
 }

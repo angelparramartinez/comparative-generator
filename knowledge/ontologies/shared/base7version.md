@@ -197,6 +197,12 @@ aliases:
 - vehículo de primera categoría
 - vehículo de segunda categoría
 - vehículo de tercera categoría
+- PMA
+- peso máximo autorizado
+- PMA inferior o igual a 3.500 kg
+- PMA menor o igual a 3.500 kg
+- PMA menor de 3.500 kg
+- PMA superior a 3.500 kg
 values:
 - 1: AUTOS
 - 2: CAMIONES
@@ -218,6 +224,28 @@ ordinal (PRIMERA/SEGUNDA/TERCERA/VMP) y `DESCRIPTION` es el texto natural
 concreto (TURISMO, MONOVOLUMEN...) dentro de una categoría; este campo da
 el nivel por encima, útil para condiciones que excluyen/incluyen por
 categoría gruesa de vehículo en vez de por subtipo.
+
+**ALIAS DE LA FRONTERA DE PMA (04/09, trabajo de categoría)**: hasta ahora
+los alias de este campo eran solo las formas literales
+("primera categoría", "categoría del vehículo"...). Medido en la ronda del
+03/09: de 13 dependencias sobre `base7Type.id`, **7 tenían vocabulario de
+categoría en la evidencia**, y las 7 eran de Zurich, que expresa la
+frontera **por el número** ("cuyo PMA sea menor de 3.500 kg") en vez de
+nombrarla. Divina, que sí dice "vehículos de primera categoría"
+(`su_00008`/`su_00027`), elige este campo correctamente. La causa no era el
+prompt -- `shared/person.md` ya indica desde el 03/09 que para clasificar
+el vehículo se use este campo, con la frontera de los 3.500 kg citada
+expresamente -- sino que **sin alias que matchease "PMA", el concepto no
+llegaba a ofrecerse como candidato en `Ontology Relevance Filter`**, así que
+el LLM no podía elegirlo y caía en enumerar subtipos de `base7Type` (cuyos
+valores "turismo"/"furgoneta" sí matchean). Misma forma de fallo que el caso
+`housingUse` de Hogar (CLAUDE.md 5.3). Se añaden las formas multipalabra de
+la frontera, **deliberadamente sin ningún umbral numérico suelto**: la
+lección del alias `750 kg` de `lightTrailer` (ver `ontology-auto.md`) es que
+un número solo no puede distinguir la dirección de la comparación. Tampoco
+se añade "resto de vehículos", demasiado genérico para ser alias fiable
+aunque sea la expresión real de la categoría complementaria -- eso lo cubre
+la regla de prompt.
 
 **Correspondencia con la clasificación legal "primera/segunda/tercera
 categoría" (27/08, confirmado por el usuario, no asumido)**: pese a la

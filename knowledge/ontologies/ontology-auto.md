@@ -233,11 +233,6 @@ aliases:
 - remolque ligero
 - arrastre de remolque
 - enganche de remolque
-- arrastre de una caravana o remolque
-- arrastre de remolques o caravanas
-- peso del remolque
-- 750 kilogramos
-- 750 kg
 negative_aliases:
 - asistencia en viaje
 - traslado del vehículo
@@ -250,7 +245,31 @@ visible en todas las vistas). El campo realmente accesible en el nivel
 correcto de la jerarquía (`AutoProperty`/`VehicleProperty`) es
 `getLightTrailer()` (`@JsonView(Views.V1.class)`), con clave `lightTrailer`
 — confirmado en `AutosRisk.java`/`AutoProperty.java` el 21/08.
-**Alias ampliados (03/09, patrón 4 de la revisión global)**: la misma
+**ALIAS REVERTIDOS Y CAMPO EXCLUIDO DE LAS CONDICIONES (04/09,
+familia A de la revisión del 03/09)**: el usuario decidió que
+`lightTrailer` **no debe producir dependencias nunca**, y el Guardrail v25
+las rechaza de forma dura (`rejection_reason`
+`trailer_scope_extension_not_condition`). Su razonamiento, que es de
+relación coste/riesgo y no de corrección semántica: *"la posibilidad de que
+se incluya o excluya una cobertura de las que estamos comparando en ASM por
+`lightTrailer` es mínima, y creo que será más probable que esté matizado en
+el texto que se incluye en la comparativa. Sin embargo, el riesgo de que se
+incluya una condición con `lightTrailer` como falso positivo, creo que es
+alto"*. Medido en la ronda del 03/09: **9 dependencias de `lightTrailer`, 6
+sin ninguna marca**, y en todas ellas el texto describía una **ampliación
+del alcance** de la garantía al objeto arrastrado, no una condición del
+riesgo. Por eso se revierten los 5 alias que se habían añadido esa misma
+mañana (`arrastre de una caravana o remolque`, `arrastre de remolques o
+caravanas`, `peso del remolque`, `750 kilogramos`, `750 kg`): con el
+criterio nuevo solo servían para que el campo llegase como candidato y el
+LLM produjese una no-dependencia. El alias suelto `750 kg` era además el
+causante de la dependencia INVERTIDA de Zurich `su_00038`, cuyo texto habla
+de remolques de PMA **superior** a 750 kg. **Lección de alias**: no añadir
+umbrales numéricos sueltos como alias — no pueden distinguir la dirección
+de la comparación.
+
+**Alias ampliados (03/09, patrón 4 de la revisión global) — REVERTIDO, ver
+el bloque anterior**: la misma
 cláusula del mundo real (ampliación de la RC Voluntaria al arrastre de un
 remolque ligero) apareció en dos compañías con resultados distintos --
 Generali `su_00030` la extrajo correctamente como `lightTrailer = true`,

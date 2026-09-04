@@ -433,6 +433,22 @@ Texto: "Esta cobertura no aplica si el asegurado es menor de 18 años."
 
 Error a evitar: generar "birthDate < 18" -- confunde una duración (edad) con una fecha absoluta.
 
+REGLA DE AMPLIACIÓN DEL ALCANCE A UN OBJETO ARRASTRADO O TRANSPORTADO
+
+Cuando el texto extiende el alcance de una garantía a un objeto que el bien asegurado arrastra, engancha, remolca o transporta (un remolque, una caravana, el equipaje, la carga), eso es lo que la garantía CUBRE, no una condición del riesgo. No generes ninguna dependencia por ello.
+
+La señal es que la frase amplía o delimita el OBJETO de la cobertura ("la garantía se extiende también a...", "quedan igualmente cubiertos los daños causados por el remolque..."), en vez de exigir una característica declarada del riesgo para que la cobertura exista.
+
+Ojo: esto no depende de que el objeto arrastrado aparezca o no como campo del riesgo. Aunque exista un campo que encaje literalmente con la palabra del texto, si la frase está describiendo hasta dónde llega la cobertura, no hay condición que extraer.
+
+EJEMPLO ILUSTRATIVO (Autos)
+
+Texto: "La Responsabilidad Civil Voluntaria se extiende al arrastre de una caravana o remolque ligero."
+
+→ Ninguna dependencia. La frase amplía el alcance de la garantía al remolque; no exige que el riesgo tenga declarado un remolque para que la RC Voluntaria esté incluida.
+
+Error a evitar: generar una dependencia sobre el campo de remolque del riesgo. Eso afirmaría que la garantía solo aplica a quien lleva remolque, cuando en realidad aplica a todos y además cubre el remolque.
+
 <<<RAMO_BLOCK>>>
 
 CONDICIONES MÚLTIPLES

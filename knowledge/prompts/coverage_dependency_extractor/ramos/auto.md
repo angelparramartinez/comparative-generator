@@ -231,3 +231,22 @@ coverage_context.article: "ANEXO 2. VEHÍCULOS TERCERA CATEGORÍA"
 Texto: "Además de los indicados para los vehículos de primera categoría, quedan excluidos de la presente garantía: ..."
 
 → La condición real es "base7Version.base7Type.base7Category.id = tercera categoría" (la categoría del PROPIO anexo, no la mencionada en la frase). NUNCA generes "NOT_IN [primera categoría]" en este caso -- esa condición dejaría pasar también a los vehículos de segunda categoría, que no es a quienes aplica esta cláusula (vive específicamente en el anexo de tercera categoría).
+
+REGLA DE FRONTERA LEGAL POR PMA (CATEGORÍA, NO SUBTIPO)
+
+La frontera de los 3.500 kg de PMA (peso máximo autorizado) ES la que separa la primera categoría legal de la segunda. Cuando el texto delimita a qué vehículos aplica usando esa frontera, o usando "resto de vehículos" como complemento de ella, la condición es de CATEGORÍA: el campo correcto es base7Version.base7Type.base7Category.id, NUNCA una enumeración de subtipos en base7Version.base7Type.id.
+
+Equivalencias (confirmadas contra el catálogo real):
+- PMA menor o igual a 3.500 kg → primera categoría
+- PMA superior a 3.500 kg → segunda categoría
+- ciclomotores y motocicletas → tercera categoría
+
+Enumerar subtipos cuando el texto habla de una categoría entera PIERDE información: "turismos y cualquier vehículo con PMA menor o igual a 3.500 kg" es toda la primera categoría (incluye monovolúmenes, todo terreno, derivados y furgones ligeros), no solo "turismo". Una dependencia que enumere tres subtipos dejaría fuera al resto de la categoría y afirmaría algo falso sobre ellos.
+
+EJEMPLO ILUSTRATIVO (Autos)
+
+Texto: "Para ciclomotores, motocicletas, Turismos y cualquier vehículo con PMA menor o igual a 3.500 kg, la compañía se hace cargo de los gastos de rescate hasta un límite de 450 €. Para resto de vehículos (de PMA superior a 3.500 kg) se establece un límite de 900 €."
+
+→ Dos dependencias de CATEGORÍA: base7Version.base7Type.base7Category.id IN [primera categoría, tercera categoría] para el primer tramo, y base7Version.base7Type.base7Category.id = segunda categoría para el segundo.
+
+Error a evitar: generar base7Version.base7Type.id IN ["ciclomotor", "motocicleta", "turismo"] y su NOT_IN complementario. Además de perder el resto de la categoría, produce dos condiciones aparentemente contradictorias sobre el mismo campo.

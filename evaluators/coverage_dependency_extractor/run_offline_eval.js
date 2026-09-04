@@ -2287,6 +2287,197 @@ function checkRamoScopeGate(workflow, golden) {
 // segundo gate del nodo (alcance de ramo, v2), que SI descarta a proposito
 // unidades que llamarian al LLM -- eso lo valida checkRamoScopeGate. Aqui se
 // llama al nodo sin ramo, asi que ese segundo gate queda inerte.
+// Guardrail v25 (04/09, familia A): lightTrailer NUNCA es condicion.
+// Decision del usuario por relacion coste/riesgo, no por correccion
+// semantica -- ver notas de GD-AUTO-TRAILER-001/002.
+function checkTrailerScopeExtension(workflow, golden) {
+  console.log("\n=== Check: trailer_scope_extension_not_condition (Guardrail v25) ===");
+
+  const cases = golden.cases.filter(c => c.category === "trailer_scope_extension");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejected = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "trailer_scope_extension_not_condition")
+      .map(d => d.risk_field);
+    const allRejected = (c.expected_rejected_risk_fields || []).every(f => rejected.includes(f));
+    const nothingLeaked = (result.output?.coverage_dependencies || []).length === 0;
+
+    const ok = allRejected && nothingLeaked;
+    if (!ok) failures++;
+
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejected)} | nada_se_cuela=${nothingLeaked}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// Guardrail v28 (04/09, familia B): vocabulario real de tipo de vehiculo,
+// por raices y no por literal. Incluye la contra-prueba del sinonimo
+// legitimo, que es la que justifica no hacerlo literal.
+function checkVehicleTypeValue(workflow, golden) {
+  console.log("\n=== Check: vehicle_type_field_invalid_value (Guardrail v28) ===");
+
+  const invalidCases = golden.cases.filter(c => c.category === "vehicle_type_field_invalid_value");
+  const validCases = golden.cases.filter(c => c.category === "vehicle_type_valid_synonym");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  let failures = 0;
+
+  for (const c of invalidCases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+    const rejected = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "vehicle_type_field_invalid_value")
+      .map(d => d.risk_field);
+    const ok = (c.expected_rejected_risk_fields || []).every(f => rejected.includes(f))
+      && (result.output?.coverage_dependencies || []).length === 0;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazados=${JSON.stringify(rejected)}`);
+  }
+
+  for (const c of validCases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+    const accepted = result.output?.coverage_dependencies || [];
+    const ok = accepted.length === c.actual_coverage_dependencies.length
+      && (result.rejected_dependencies || []).length === 0;
+    if (!ok) failures++;
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}, CONTRA-PRUEBA sinonimo legitimo): aceptadas=${accepted.length}/${c.actual_coverage_dependencies.length} rechazadas=${(result.rejected_dependencies || []).length}`
+    );
+  }
+
+  const total = invalidCases.length + validCases.length;
+  console.log(`Resultado: ${total - failures}/${total} pasan.`);
+  return failures;
+}
+
+// Guardrail v29 (04/09, trabajo de categoria): (a) marca la extraccion que
+// enumera subtipos donde el texto delimitaba por categoria entera; (b)
+// alcance de ramo a nivel de DEPENDENCIA -- rechazo duro si la categoria es
+// ajena al ramo, marca vacuous_for_ramo si cubre entera la del ramo.
+function checkVehicleCategoryRamoScope(workflow, golden) {
+  console.log("\n=== Check: categoria de vehiculo vs. alcance de ramo (Guardrail v29) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const cases = golden.cases.filter(c =>
+    c.category === "category_expressed_as_type" ||
+    c.category === "vehicle_category_ramo_scope" ||
+    c.category === "vehicle_category_vacuous"
+  );
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      {
+        semantic_unit_id: c.semantic_unit_ref,
+        ontology_type: "auto",
+        coverage_context: { article: c.article, coverage_path: c.coverage_path || [] },
+        chunks: [{ text: c.source_text }],
+        output: { coverage_dependencies: c.actual_coverage_dependencies }
+      }
+    ]);
+
+    const accepted = result.output?.coverage_dependencies || [];
+    const rejected = result.rejected_dependencies || [];
+    let ok;
+    let detalle;
+
+    if (c.category === "vehicle_category_ramo_scope") {
+      const reasons = rejected.map(d => d.rejection_reason);
+      ok = reasons.includes(c.expected_rejection_reason) && accepted.length === 0;
+      detalle = `rechazo=${JSON.stringify(reasons)}`;
+    } else {
+      const mark = (c.expected_dependency_marks || [])[0];
+      ok = accepted.length === c.actual_coverage_dependencies.length
+        && accepted.every(d => d[mark] === true)
+        && rejected.length === 0;
+      detalle = `aceptadas=${accepted.length} marca_${mark}=${accepted.map(d => d[mark] === true).join(",")}`;
+    }
+
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}, ${c.category}): ${detalle}`);
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// v26/v27 (04/09): stripStructuralNumbering no quitaba la numeracion
+// "3-." / "II-." de Zurich, asi que ningun patron de titulo (v5 transversal,
+// v8 alcance) se evaluaba sobre el titulo limpio; y a los patrones de v8 les
+// faltaba "beneficiario" por una palabra. Se comprueba a traves del nodo
+// real, no reimplementando la funcion.
+function checkStructuralNumberingAndScopeTitles(workflow) {
+  console.log("\n=== Check: numeracion romana/guion en titulos + 'beneficiario' en v8 (Guardrail v26/v27) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const dep = { risk_field: "primaryDriver.age", operator: ">=", value: 25, evidence: "el conductor debera ser mayor de 25 anios" };
+
+  const expectations = [
+    { titulo: "II-. Definiciones", mark: "transversal_chapter", esperado: true, nota: "Zurich su_00014, numero romano con guion" },
+    { titulo: "3-. Asistencia en viaje", mark: "transversal_chapter", esperado: false, nota: "contra-prueba: garantia real con numeracion de guion" },
+    { titulo: "IV. Disposiciones generales", mark: "transversal_chapter", esperado: true, nota: "romano con punto" },
+    { titulo: "Incendio y sus consecuencias", mark: "transversal_chapter", esperado: false, nota: "CONTRA-PRUEBA CLAVE: empieza por 'I', no debe perder la letra" },
+    { titulo: "¿Quién es el Beneficiario?", mark: "coverage_scope_definition", esperado: true, nota: "Pelayo su_00105, familia E" },
+    { titulo: "¿Quién es el conductor?", mark: "coverage_scope_definition", esperado: true, nota: "no regresion del patron original" },
+    { titulo: "Robo del vehículo", mark: "coverage_scope_definition", esperado: false, nota: "contra-prueba: garantia normal" }
+  ];
+
+  let failures = 0;
+
+  for (const e of expectations) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      {
+        semantic_unit_id: "su_test",
+        ontology_type: "auto",
+        coverage_context: { article: e.titulo, coverage_path: [e.titulo] },
+        chunks: [{ text: dep.evidence }],
+        output: { coverage_dependencies: [dep] }
+      }
+    ]);
+
+    const accepted = result.output?.coverage_dependencies || [];
+    const obtenido = accepted.length > 0 && accepted[0][e.mark] === true;
+    const ok = obtenido === e.esperado;
+    if (!ok) failures++;
+
+    console.log(`${ok ? "PASS" : "FAIL"} "${e.titulo}" -> ${e.mark}=${obtenido} (esperado ${e.esperado}) -- ${e.nota}`);
+  }
+
+  console.log(`Resultado: ${expectations.length - failures}/${expectations.length} expectativas cumplidas.`);
+  return failures;
+}
+
 function checkCostPreFilter(workflow) {
   console.log("\n=== Check: garantia del pre-filtro de coste (Fase 5 / Legal Cue Pre-Filter, gate de cues) ===");
 
@@ -2375,6 +2566,22 @@ function main() {
 
   if (runAll || args.includes("--chunk-matching")) {
     exitCode += checkChunkLevelMatching(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--trailer-scope")) {
+    exitCode += checkTrailerScopeExtension(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--vehicle-type-value")) {
+    exitCode += checkVehicleTypeValue(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--vehicle-category")) {
+    exitCode += checkVehicleCategoryRamoScope(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--structural-numbering")) {
+    exitCode += checkStructuralNumberingAndScopeTitles(workflow) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--cost-prefilter")) {
