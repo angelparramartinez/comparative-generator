@@ -19,7 +19,12 @@
 # contra el .xlsx real de Generali antes de fijarlo aqui). jszip no hace
 # falta instalarlo aparte -- n8n ya lo trae de serie (usado por su nodo
 # "Compression"), NODE_FUNCTION_ALLOW_EXTERNAL solo necesita autorizarlo.
-FROM n8nio/n8n:latest
+# Version pineada a proposito (04/09/2026): con ":latest" la version real de
+# n8n la fijaba la fecha en que se construyo la imagen, no una decision -- un
+# "build --pull" por cualquier otro motivo saltaba varios minors de golpe y sin
+# avisar. Se subio de 2.20.6 (que era lo que habia quedado cacheado del
+# 08/05/2026) a 2.37.9, la ultima estable. Para actualizar: cambiar este tag.
+FROM n8nio/n8n:2.37.9
 
 USER root
 RUN mkdir -p /tmp/extra_modules \
