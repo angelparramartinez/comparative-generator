@@ -487,6 +487,11 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
   admite `executionOrder` (rechaza `binaryMode` y otros campos que sí trae el
   export completo). Verificar siempre con un segundo `GET` tras el `PUT` que el
   código desplegado coincide byte a byte con el local.
+  Desde la 2.x, si el workflow está **publicado**, el `PUT` lo **republica
+  automáticamente**; se evita con el query param `publishIfActive=false`, que
+  guarda el cambio como borrador sobre la versión publicada. Con los workflows de
+  este proyecto (todos despublicados, se lanzan a mano) no aplica, pero sí en
+  cuanto alguno se deje publicado de forma permanente.
 - **Acceso a n8n**: vía su API REST pública (`X-N8N-API-KEY`), no vía MCP — no hay
   conector oficial de n8n en el directorio de Anthropic a día de hoy. Variables de
   entorno esperadas:
@@ -496,10 +501,36 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
   ```
   **Ya están rellenas en `.env` en la raíz del proyecto** (gitignored, no commitear).
   Antes de pedirlas al usuario, cargar con `set -a; source .env; set +a`.
-  Nota: la API pública de n8n permite leer/actualizar workflows completos y lanzar
-  ejecuciones, pero no parece tener una operación de "ejecutar solo un nodo" — eso
-  sigue siendo función de la UI (pin data). Confirmar en
-  `docs.n8n.io/connect/n8n-api/api-reference` si hace falta más granularidad.
+  Nota: la API pública permite leer/actualizar workflows completos, pero **no**
+  tiene operación de "ejecutar solo un nodo" — eso sigue siendo función de la UI
+  (pin data).
+- **Ejecutar un workflow por API (comprobado en n8n 2.37.9)**: no existe endpoint
+  `/run` ni `/execute` (devuelven 405), y `/executions/{id}/retry` solo admite
+  ejecuciones **fallidas**. La vía que funciona es disparar el webhook del
+  formulario:
+  1. **Publicar** el workflow — `POST /api/v1/workflows/{id}/publish`. Los cuatro
+     workflows de este proyecto viven en `active=false`, así que este paso hace
+     falta siempre. En la 2.x `publish`/`unpublish` son los endpoints buenos;
+     `activate`/`deactivate` siguen respondiendo pero están marcados como
+     deprecated en el OpenAPI del propio n8n.
+  2. **POST multipart** a `http://<host>:<puerto>/form/{webhookId}` — el
+     `webhookId` está en el nodo `formTrigger` del JSON del workflow. Los campos
+     se llaman **`field-0`, `field-1`, ...** por el **orden** de
+     `formFields.values`, tanto los de texto como los ficheros (así los lee
+     `prepareFormReturnItem`, en `nodes/Form/utils/utils.js` de la imagen).
+     Ejemplo real: `-F "field-0=Hogar" -F "field-1=@condicionado.pdf"`.
+  3. Responde `{"status":200}` **al instante** y ejecuta en background.
+  4. **Despublicar** al terminar (`/unpublish`), para dejar los workflows como
+     estaban.
+
+  **Trampa que cuesta un rato si no se sabe**: `GET /api/v1/executions` **no
+  lista las ejecuciones en curso** por defecto, así que tras un POST correcto
+  parece que no ha pasado nada. Hay que pedir `?status=running`, o ir directo a
+  `GET /api/v1/executions/{id}`.
+
+  Ojo también con el arranque en frío: tras reiniciar los contenedores, la
+  primera conversión de **Docling tarda ~177 s** (recarga de modelos) frente a
+  los ~2 min de una ejecución completa en caliente. No es un cuelgue.
 - **Ejecución del flujo (relajada el 31/08)**: puedes ejecutar un flujo de n8n (vía API) **solo cuando el usuario te lo pida explícitamente en ese momento** — nunca de forma autónoma o proactiva, ni siquiera dentro de una fase ya aprobada para otros pasos (editar ficheros, desplegar por API, ejecutar el arnés offline). Si crees que hace falta una ejecución real para validar algo, propónlo y espera confirmación explícita antes de lanzarla — no asumas que una autorización pasada para otro paso cubre también esto. Motivo del cambio (indicado por el usuario): los flujos ya están más estables y los inputs de prueba son más sencillos que al principio del proyecto.
 
 ## 8. Glosario rápido
