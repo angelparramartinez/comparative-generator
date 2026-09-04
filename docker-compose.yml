@@ -32,7 +32,7 @@ services:
       - "${PDF_WATERMARK_CLEANER_PORT}:8000"
 
   docling:
-    image: quay.io/docling-project/docling-serve:latest
+    image: quay.io/docling-project/docling-serve:v1.32.0
     restart: unless-stopped
 
     ports:
@@ -47,7 +47,7 @@ services:
 
   qdrant:
 
-    image: qdrant/qdrant:latest
+    image: qdrant/qdrant:v1.19.1
 
     restart: unless-stopped
 

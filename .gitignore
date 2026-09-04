@@ -31,3 +31,6 @@ node_modules/
 
 # Other
 Posibles mejoras.txt
+
+# Backups locales (n8n SQLite, exports)
+backups/
