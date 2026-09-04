@@ -857,9 +857,9 @@
         "secondaryDriver.age",
         "secondaryDriver.licenseYears"
       ],
-      "expected_rejection_reason": "duplicate_figure_without_distinction",
+      "expected_rejection_reason": "undeclared_person_at_claim_time",
       "corrected_coverage_dependencies": null,
-      "notes": "Caso real (31/08, reejecucion tras desplegar los fixes de patron 1/2/6 -- confirma que el sub-patron de duplicacion arbitraria seguia reproduciendose pese a la nueva REGLA DE SELECCION DE FIGURA del prompt, que instruye omitir cuando el texto no distingue habitual/ocasional). \"el conductor\" generico (sin distinguir habitual/ocasional) genera 4 dependencias -- 2 pares identicos, uno de 'age' y otro de 'licenseYears', cada par duplicado sobre primaryDriver Y secondaryDriver con evidencia EXACTAMENTE igual dentro de cada par. Ninguna evidencia contiene una frase inclusiva real (tipo 'ya sea principal u ocasional'), asi que Guardrail v13 (duplicate_figure_without_distinction) rechaza las 4 -- decision del usuario (31/08): omitir es lo correcto, no hay forma de saber cual de las dos figuras (si alguna) es la real. corrected_coverage_dependencies vacio a proposito: no se reclama ninguna extraccion valida, la omision completa es el comportamiento correcto aqui."
+      "notes": "Caso real (31/08, reejecucion tras desplegar los fixes de patron 1/2/6 -- confirma que el sub-patron de duplicacion arbitraria seguia reproduciendose pese a la nueva REGLA DE SELECCION DE FIGURA del prompt, que instruye omitir cuando el texto no distingue habitual/ocasional). \"el conductor\" generico (sin distinguir habitual/ocasional) genera 4 dependencias -- 2 pares identicos, uno de 'age' y otro de 'licenseYears', cada par duplicado sobre primaryDriver Y secondaryDriver con evidencia EXACTAMENTE igual dentro de cada par. Ninguna evidencia contiene una frase inclusiva real (tipo 'ya sea principal u ocasional'), asi que Guardrail v13 (duplicate_figure_without_distinction) rechaza las 4 -- decision del usuario (31/08): omitir es lo correcto, no hay forma de saber cual de las dos figuras (si alguna) es la real. corrected_coverage_dependencies vacio a proposito: no se reclama ninguna extraccion valida, la omision completa es el comportamiento correcto aqui. ACTUALIZADO EL 04/09: las 4 dependencias siguen rechazandose (el resultado final no cambia) pero ahora salen por v30 (undeclared_person_at_claim_time) en vez de por v13 (duplicate_figure_without_distinction). El cambio de enrutado es una MEJORA: v13 atacaba el SINTOMA (el LLM duplico figura porque el texto no distinguia habitual/ocasional) y v30 ataca la CAUSA (la clausula habla de quien va al volante en el momento del siniestro, que no es ninguna figura declarada). Se añadio a v30 el patron de la forma NEGATIVA del idioma de designacion ('que no este expresamente designado como conductor'), que es como lo escribe Qualitas aqui; sin el, las 2 dependencias de licenseYears se colaban hasta v13 y el mismo texto salia por dos vias distintas. v13 sigue cubierto por GD-AUTO-DUPFIG-001."
     },
     {
       "id": "GD-AUTO-HALLUC-022",
@@ -1925,6 +1925,106 @@
       ],
       "corrected_coverage_dependencies": null,
       "notes": "Trabajo de categoria (04/09). Es la MISMA dependencia que GD-AUTO-CAT-001 pero ya bien extraida como categoria: para un producto de Autos cubre entera la categoria del ramo, asi que es cierta para todos los vehiculos del producto. No es falsa, simplemente no aporta condicion -- se marca vacuous_for_ramo para que flujo 3 OMITA el FILTER_EXPR en vez de construir una condicion falsa, y la cobertura salga INCLUDED con su unico importe. Esto es lo que hace que baste UN entry, como observo el usuario."
+    },
+    {
+      "id": "GD-AUTO-UNDECL-001",
+      "category": "undeclared_person_at_claim_time",
+      "source_company": "Qualitas (ggcc_outputs/coverage_matcher_contract_2026-09-03T11-43-09-205Z.json, exec 382)",
+      "semantic_unit_ref": "su_00029",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Quedan excluidos: Los danos sufridos por el vehiculo asegurado cuando este sea conducido por una persona menor de 25 anos o con menos de 2 anos de antiguedad del permiso de conducir, salvo que este expresamente designado en las condiciones particulares.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": "<",
+          "value": 25,
+          "evidence": "cuando este sea conducido por una persona menor de 25 anos"
+        },
+        {
+          "risk_field": "primaryDriver.licenseYears",
+          "operator": "<",
+          "value": 2,
+          "evidence": "cuando este sea conducido por una persona menor de 25 anos o con menos de 2 anos de antiguedad del permiso de conducir, salvo que este expresamente designado"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "primaryDriver.age",
+        "primaryDriver.licenseYears"
+      ],
+      "expected_rejection_reason": "undeclared_person_at_claim_time",
+      "corrected_coverage_dependencies": [],
+      "notes": "Punto 7. El usuario leia esto como 'alcance de la cobertura'; el analisis del 04/09 mostro que la frase esta DENTRO de una lista de exclusiones (es una exclusion real) pero habla de quien va al VOLANTE en el momento del siniestro, no de la figura declarada -- y el usuario acepto esa lectura. La coletilla 'salvo que este expresamente designado' lo confirma: si ese conductor joven estuviera declarado, la exclusion no aplicaria. No existe ningun risk_field para esa persona, asi que la extraccion correcta es NINGUNA dependencia. Medido sobre las 9 ejecuciones locales: el vocabulario estrecho caza 48 dependencias en exactamente 5 unidades, todas de Qualitas (su_00027/029/030/031/071), y las 5 son el mismo error."
+    },
+    {
+      "id": "GD-AUTO-UNDECL-002",
+      "category": "declared_figure_condition",
+      "source_company": "Sintetico (contra-prueba de v30)",
+      "semantic_unit_ref": "su_sint_01",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Esta garantia requiere que el conductor habitual tenga cumplidos 25 anos.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.age",
+          "operator": ">=",
+          "value": 25,
+          "evidence": "requiere que el conductor habitual tenga cumplidos 25 anos"
+        }
+      ],
+      "expected_rejected_risk_fields": [],
+      "corrected_coverage_dependencies": null,
+      "notes": "CONTRA-PRUEBA de v30. Mismo campo y umbral parecido, pero el texto nombra EXPLICITAMENTE la figura declarada ('conductor habitual'), asi que si es una condicion legitima. El contra-vocabulario DECLARED_FIGURE_PATTERNS es lo que la salva; sin el, v30 seria demasiado ancho."
+    },
+    {
+      "id": "GD-AUTO-UNDECL-003",
+      "category": "declared_figure_condition",
+      "source_company": "Mapfre/Divina (su_00063, visto en 6 ejecuciones)",
+      "semantic_unit_ref": "su_00063",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "La bonificacion se reduce cuando dicho Conductor Ocasional lleve menos de un ano incluido y/o haya habido siniestros en la ultima anualidad.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "secondaryDriver.licenseYears",
+          "operator": "<",
+          "value": 1,
+          "evidence": "cuando dicho Conductor Ocasional lleve menos de un ano incluido"
+        }
+      ],
+      "expected_rejected_risk_fields": [],
+      "corrected_coverage_dependencies": null,
+      "notes": "CONTRA-PRUEBA CLAVE de v30, y la razon de que exista el contra-vocabulario. Al medir el vocabulario amplio, 'conductor ocasional' salia entre los candidatos -- pero el Conductor Ocasional SI es una figura declarada del riesgo (secondaryDriver). Meterla en v30 habria sido un rechazo falso. Este caso ya esta correctamente marcado por v21 (calculo de prima), que es su familia real. v30 debe abstenerse."
+    },
+    {
+      "id": "GD-AUTO-DUPFIG-001",
+      "category": "duplicate_figure_without_distinction",
+      "source_company": "Sintetico (cobertura de v13 tras la llegada de v30)",
+      "semantic_unit_ref": "su_sint_02",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Esta garantia cubre los danos siempre que el conductor tenga una antiguedad de carne superior a 3 anos.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "primaryDriver.licenseYears",
+          "operator": ">",
+          "value": 3,
+          "evidence": "siempre que el conductor tenga una antiguedad de carne superior a 3 anos"
+        },
+        {
+          "risk_field": "secondaryDriver.licenseYears",
+          "operator": ">",
+          "value": 3,
+          "evidence": "siempre que el conductor tenga una antiguedad de carne superior a 3 anos"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "primaryDriver.licenseYears",
+        "secondaryDriver.licenseYears"
+      ],
+      "expected_rejection_reason": "duplicate_figure_without_distinction",
+      "corrected_coverage_dependencies": [],
+      "notes": "Caso SINTETICO añadido el 04/09 para que v13 no se quede sin cobertura: su unico caso real (GD-AUTO-HALLUC-021, Qualitas su_00071) paso a rechazarse por v30, que ataca la causa en vez del sintoma. v13 sigue haciendo falta para el patron generico: un texto que dice 'el conductor' sin distinguir habitual de ocasional y que NO habla del momento del siniestro (por eso este texto evita a proposito el vocabulario de v30: ni 'conducido por una persona' ni 'designado'). El LLM duplica la condicion sobre las dos figuras y ninguna de las dos es defendible, asi que v13 quita el par completo."
     }
   ]
 }

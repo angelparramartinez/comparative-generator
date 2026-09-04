@@ -167,6 +167,20 @@ Texto: "Si debido a un mismo accidente fallecieran el conductor y su cónyuge, d
 
 → NO es una dependencia, por dos motivos acumulados: los 18 años son de los hijos beneficiarios (terceros), y además el texto describe cuándo se DUPLICA el capital indemnizado, no si la garantía aplica (ver la regla de "no extraigas para calcular una indemnización" del núcleo).
 
+CASO ESPECIAL: QUIEN VA AL VOLANTE EN EL MOMENTO DEL SINIESTRO
+
+Hay un tipo de tercero que es fácil de confundir con una figura declarada, porque el texto sí habla de conducir: la persona que conduce el vehículo cuando ocurre el siniestro. Una cláusula que condiciona por ELLA no habla del Conductor Habitual ni del Ocasional, sino de cualquiera que se pusiera al volante -- y para esa persona no existe ningún risk_field.
+
+La señal es doble. Primero, la persona aparece de forma INDEFINIDA: "cuando sea conducido por una persona menor de 25 años", "si lo conduce un tercero", frente a "cuando el conductor habitual tenga menos de 25 años", que sí es la figura declarada. Y segundo, muchas veces aparece una coletilla de designación expresa ("salvo que esté expresamente designado en las condiciones particulares") que lo confirma del todo: si esa persona estuviera declarada, la cláusula no aplicaría, precisamente porque la cláusula existe para los NO declarados.
+
+EJEMPLO ILUSTRATIVO (Autos)
+
+Texto: "Los daños sufridos por el vehículo asegurado cuando éste sea conducido por una persona menor de 25 años o con menos de 2 años de antigüedad del permiso de conducir, salvo que esté expresamente designado en las condiciones particulares."
+
+→ NO es una dependencia. Es una exclusión real, pero sobre quien conduce en el momento del siniestro, no sobre una figura declarada. Generar "primaryDriver.age < 25" afirmaría que el conductor habitual declarado tiene menos de 25 años, que es falso: si lo tuviera y estuviera designado, la exclusión no aplicaría.
+
+Contraste, para que se vea la diferencia: "Esta garantía requiere que el conductor habitual tenga cumplidos 25 años." → esta SÍ es una dependencia (primaryDriver.age >= 25), porque nombra explícitamente la figura declarada.
+
 REGLA DE CARNÉ DE CONDUCIR (CAMPO DE LISTA)
 
 El campo drivingLicenses (con o sin prefijo de figura: drivingLicenses, owner.drivingLicenses, primaryDriver.drivingLicenses, secondaryDriver.drivingLicenses) es una LISTA de carnés, no un campo escalar. NUNCA generes una dependencia con risk_field terminado en "drivingLicenses" directamente -- ni "!= null", ni ">= N", ni ningún otro operador. Ese risk_field existe en ontology_matches solo para que reconozcas el concepto, no para que lo uses tal cual en una dependencia.

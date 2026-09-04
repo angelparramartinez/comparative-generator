@@ -2,6 +2,25 @@
 
 OntologyType: auto
 Imports: person, base7version
+ExcludeImportedFields: person.sport, person.isSmoker, person.height, person.weight, person.childrenNumber, person.annualIncomeRange
+
+**ExcludeImportedFields (04/09)**: `person.md` es deliberadamente genérico —
+declara los 25 campos del tipo `Person` sin saber nada de ramos. Hasta ahora
+los 25 se expandían para las 4 figuras de Autos, así que campos sin ningún
+sentido en un seguro de coche llegaban a Qdrant y podían salir como
+candidatos. Caso real que lo motivó: `sport` en Qualitas `su_00063`
+(observación del usuario: *"en el riesgo de autos no hay nada referente al
+`sport`"*). Y el coste no es teórico — **`weight` costó el patrón 4 completo**
+(alias, regla de prompt y Guardrail v22 de rechazo duro) y con este mecanismo
+no habría llegado nunca al LLM. El rechazo duro de v22 se mantiene como red
+de seguridad, pero ya no es la única línea de defensa.
+Se excluyen 6 de 25: los 4 de salud/físico y estilo de vida (`sport`,
+`isSmoker`, `height`, `weight`) y 2 de perfil socioeconómico que solo tienen
+sentido en Vida/Salud (`childrenNumber`, `annualIncomeRange`). Se CONSERVAN a
+propósito los de empresa (`economicActivities`, `employeesNumber`,
+`yearlyBilling`, `incorporationDate`) porque el tomador o propietario puede
+ser una persona jurídica — caso real confirmado en Divina (`su_00027`/
+`su_00146`, `owner.identificationType = "persona jurídica"`).
 
 **AVISO (25/08, rediseño 2)**: `Imports: person` declara que este ramo usa
 `knowledge/ontologies/shared/person.md` — un fichero puramente genérico

@@ -161,11 +161,20 @@ function $getWorkflowStaticData() {
 // check (opts.ramo). Si no se pasa ninguno, "Ramo" llega vacio -- que es
 // justo lo que quieren los checks que no van de ramo: cualquier gate por
 // ramo queda inerte y siguen validando lo que validaban antes.
+// opts.nodes permite inyectar la salida de nodos anteriores para los nodos que
+// la consultan con $('Nombre') -- p.ej. "Merge Shared Texts Into Ramo", que
+// necesita $('Prepare Import File Paths').all(). Formato:
+//   { nodes: { "Prepare Import File Paths": [ {json: {...}}, ... ] } }
 function makeNodeRegistryShim(opts) {
   const empty = { first: () => ({ json: {} }), all: () => [] };
   const registry = {
     "On form submission": { first: () => ({ json: { Ramo: opts && opts.ramo ? opts.ramo : null } }) }
   };
+
+  for (const [name, items] of Object.entries((opts && opts.nodes) || {})) {
+    registry[name] = { first: () => items[0], all: () => items };
+  }
+
   return name => registry[name] || empty;
 }
 
@@ -1003,15 +1012,26 @@ function checkPercentageIndemnificationVisibility(workflow, golden) {
     const isFlagged = flaggedFields.length > 0;
     const flagOk = isFlagged === c.expected_percentage_indemnification_flagged;
 
+    // Alineado el 04/09 con la invariante que ya usaban los otros chequeos de
+    // visibilidad (transversal, procedural, person_field_mismatch): lo que hay
+    // que asertar es que NADA DESAPARECE SIN DEJAR RASTRO, no que todo siga
+    // aceptado. La marca en si nunca quita nada, pero otra regla de rechazo
+    // duro si puede, y eso es legitimo mientras quede en
+    // rejected_dependencies. Lo destapo v30, que rechaza duro las 2
+    // dependencias de persona de su_00027 -- conviven en la misma unidad con
+    // la tabla de valoracion que vigila este chequeo.
     const acceptedFields = (result.output?.coverage_dependencies || []).map(d => d.risk_field);
-    const expectedAcceptedFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
-    const nothingLost = expectedAcceptedFields.every(f => acceptedFields.includes(f));
+    const rejectedFields = (result.rejected_dependencies || []).map(d => d.risk_field);
+    const inputFields = (c.actual_coverage_dependencies || []).map(d => d.risk_field);
+    const nothingLost = inputFields.every(
+      f => acceptedFields.includes(f) || rejectedFields.includes(f)
+    );
 
     const ok = flagOk && nothingLost;
     if (!ok) failures++;
 
     console.log(
-      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_percentage_indemnification_flagged}) | sigue_aceptada=${nothingLost}`
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): flagged=${isFlagged} (esperado ${c.expected_percentage_indemnification_flagged}) | nada_desaparece_sin_rastro=${nothingLost}`
     );
   }
 
@@ -2478,6 +2498,128 @@ function checkStructuralNumberingAndScopeTitles(workflow) {
   return failures;
 }
 
+// Guardrail v30 (04/09, punto 7): persona no declarada en el momento del
+// siniestro. Rechazo duro, con las dos contra-pruebas que definen su frontera:
+// la figura declarada nombrada explicitamente, y el conductor ocasional (que
+// es una figura REAL y ya lo marcan v20/v21).
+function checkUndeclaredPersonAtClaimTime(workflow, golden) {
+  console.log("\n=== Check: undeclared_person_at_claim_time (Guardrail v30) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const cases = golden.cases.filter(c =>
+    c.category === "undeclared_person_at_claim_time" ||
+    c.category === "declared_figure_condition"
+  );
+
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", chunks: [{ text: c.source_text }], output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+
+    const rejectedByV30 = (result.rejected_dependencies || [])
+      .filter(d => d.rejection_reason === "undeclared_person_at_claim_time")
+      .map(d => d.risk_field);
+    const accepted = result.output?.coverage_dependencies || [];
+
+    let ok;
+    if (c.category === "undeclared_person_at_claim_time") {
+      ok = (c.expected_rejected_risk_fields || []).every(f => rejectedByV30.includes(f)) && accepted.length === 0;
+    } else {
+      // Contra-prueba: v30 no debe tocarla.
+      ok = rejectedByV30.length === 0 && accepted.length === c.actual_coverage_dependencies.length;
+    }
+
+    if (!ok) failures++;
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}, ${c.category}): rechazadas_v30=${JSON.stringify(rejectedByV30)} aceptadas=${accepted.length}`
+    );
+  }
+
+  console.log(`Resultado: ${cases.length - failures}/${cases.length} pasan.`);
+  return failures;
+}
+
+// ExcludeImportedFields (04/09, punto 6): campos de un fichero compartido que
+// un ramo declara que NO le aplican, para que no lleguen ni a Qdrant. Se
+// prueba contra los ficheros REALES de knowledge/ontologies, no con un
+// fixture, porque lo que importa es que la lista declarada surta efecto.
+function checkExcludedImportedFields() {
+  console.log("\n=== Check: ExcludeImportedFields (nodo Merge Shared Texts Into Ramo) ===");
+
+  // Este nodo vive en el workflow de indexacion, no en el de extraccion.
+  const workflow = loadJson(ONTOLOGY_WORKFLOW_PATH);
+
+  if (!findNode(workflow, "Merge Shared Texts Into Ramo")) {
+    console.log("Nodo 'Merge Shared Texts Into Ramo' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const autoMd = fs.readFileSync(path.join(REPO_ROOT, "knowledge", "ontologies", "ontology-auto.md"), "utf8");
+  const personMd = fs.readFileSync(path.join(REPO_ROOT, "knowledge", "ontologies", "shared", "person.md"), "utf8");
+  const base7Md = fs.readFileSync(path.join(REPO_ROOT, "knowledge", "ontologies", "shared", "base7version.md"), "utf8");
+
+  const run = (ramoText) => {
+    const prepared = [
+      { json: { import_name: "person", ramo_ontology_text: ramoText, ramo_ontology_type: "auto" } },
+      { json: { import_name: "base7version", ramo_ontology_text: ramoText, ramo_ontology_type: "auto" } }
+    ];
+    return runNode(
+      workflow,
+      "Merge Shared Texts Into Ramo",
+      [{ shared_text: personMd }, { shared_text: base7Md }],
+      { nodes: { "Prepare Import File Paths": prepared } }
+    );
+  };
+
+  let failures = 0;
+
+  const generated = run(autoMd);
+  const riskFields = new Set(generated.map(g => g.risk_field));
+
+  const declared = (autoMd.match(/^ExcludeImportedFields:\s*(.*)$/mi) || [])[1] || "";
+  const excluded = declared.split(",").map(e => e.trim()).filter(Boolean);
+
+  const okDeclared = excluded.length > 0;
+  if (!okDeclared) failures++;
+  console.log(`${okDeclared ? "PASS" : "FAIL"} ontology-auto.md declara ExcludeImportedFields (${excluded.length} campos)`);
+
+  for (const entry of excluded) {
+    const fieldName = entry.split(".").slice(1).join(".");
+    const leaked = [...riskFields].filter(rf => rf === fieldName || rf.endsWith(`.${fieldName}`));
+    const ok = leaked.length === 0;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} '${entry}' no llega a ningun punto de Qdrant${ok ? "" : ` -- se cuela como ${JSON.stringify(leaked)}`}`);
+  }
+
+  // Contra-prueba: los campos que SI aplican siguen generandose para las 4
+  // figuras. Si la exclusion se pasara de larga, esto lo caza.
+  for (const must of ["primaryDriver.age", "primaryDriver.licenseYears", "owner.identificationType", "maritalStatus"]) {
+    const ok = riskFields.has(must);
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} CONTRA-PRUEBA: '${must}' sigue generandose`);
+  }
+
+  // El typo en la lista debe romper la indexacion, no pasar desapercibido.
+  let threw = false;
+  try {
+    run(autoMd.replace(/^ExcludeImportedFields:.*$/mi, "ExcludeImportedFields: person.noExisteEsteCampo"));
+  } catch (e) {
+    threw = /no existen en ningun import/.test(e.message);
+  }
+  if (!threw) failures++;
+  console.log(`${threw ? "PASS" : "FAIL"} un campo inexistente en la lista rompe la indexacion (fallo ruidoso, no silencioso)`);
+
+  const total = 1 + excluded.length + 4 + 1;
+  console.log(`Resultado: ${total - failures}/${total} expectativas cumplidas.`);
+  return failures;
+}
+
 function checkCostPreFilter(workflow) {
   console.log("\n=== Check: garantia del pre-filtro de coste (Fase 5 / Legal Cue Pre-Filter, gate de cues) ===");
 
@@ -2582,6 +2724,14 @@ function main() {
 
   if (runAll || args.includes("--structural-numbering")) {
     exitCode += checkStructuralNumberingAndScopeTitles(workflow) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--undeclared-person")) {
+    exitCode += checkUndeclaredPersonAtClaimTime(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--excluded-imported-fields")) {
+    exitCode += checkExcludedImportedFields() > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--cost-prefilter")) {
