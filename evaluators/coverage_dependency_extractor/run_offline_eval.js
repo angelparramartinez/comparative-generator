@@ -2620,6 +2620,106 @@ function checkExcludedImportedFields() {
   return failures;
 }
 
+// Guardrail v31 (04/09, revision manual del usuario): valor invalido de
+// base7Category. Chequeo hermano de v15 (motor) y v28 (tipo) que faltaba, con
+// la contra-prueba del sinonimo legitimo, que es la que justifica no hacerlo
+// por lista literal.
+function checkVehicleCategoryValue(workflow, golden) {
+  console.log("\n=== Check: vehicle_category_field_invalid_value (Guardrail v31) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const invalid = golden.cases.filter(c => c.category === "vehicle_category_field_invalid_value");
+  const valid = golden.cases.filter(c => c.category === "vehicle_category_valid_synonym");
+
+  let failures = 0;
+
+  for (const c of invalid) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", chunks: [{ text: c.source_text }], output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+    const reasons = (result.rejected_dependencies || []).map(d => d.rejection_reason);
+    const ok = reasons.includes("vehicle_category_field_invalid_value")
+      && (result.output?.coverage_dependencies || []).length === 0;
+    if (!ok) failures++;
+    console.log(`${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): rechazos=${JSON.stringify(reasons)}`);
+  }
+
+  for (const c of valid) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", chunks: [{ text: c.source_text }], output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+    const accepted = result.output?.coverage_dependencies || [];
+    // Sinonimos legitimos: no se rechazan Y, al cubrir entera la categoria del
+    // ramo, quedan marcadas vacuous_for_ramo por v29b.
+    const ok = accepted.length === c.actual_coverage_dependencies.length
+      && (result.rejected_dependencies || []).length === 0
+      && accepted.every(d => d.vacuous_for_ramo === true);
+    if (!ok) failures++;
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (CONTRA-PRUEBA sinonimo legitimo): aceptadas=${accepted.length} vacuous=${accepted.map(d => d.vacuous_for_ramo === true).join(",")}`
+    );
+  }
+
+  const total = invalid.length + valid.length;
+  console.log(`Resultado: ${total - failures}/${total} pasan.`);
+  return failures;
+}
+
+// Guardrail v32 (04/09, revision manual del usuario): deduplicacion general
+// dentro de la unidad, que no existia. La clave normaliza mayusculas y el
+// orden de las listas, las dos inconsistencias no deterministas de 5.9.
+function checkDuplicateDependencies(workflow, golden) {
+  console.log("\n=== Check: duplicate_dependency_in_unit (Guardrail v32) ===");
+
+  if (!findNode(workflow, "Coverage Dependency Risk Field Guardrail")) {
+    console.log("Nodo 'Coverage Dependency Risk Field Guardrail' no encontrado -- check omitido.");
+    return 0;
+  }
+
+  const cases = golden.cases.filter(c => c.category === "duplicate_dependency_in_unit");
+  let failures = 0;
+
+  for (const c of cases) {
+    const [result] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+      { semantic_unit_id: c.semantic_unit_ref, ontology_type: "auto", chunks: [{ text: c.source_text }], output: { coverage_dependencies: c.actual_coverage_dependencies } }
+    ]);
+    const accepted = result.output?.coverage_dependencies || [];
+    const dupRejected = (result.rejected_dependencies || []).filter(d => d.rejection_reason === "duplicate_dependency_in_unit");
+    const sobrantes = c.actual_coverage_dependencies.length - c.expected_accepted_count;
+
+    const ok = accepted.length === c.expected_accepted_count
+      && dupRejected.length === sobrantes;
+
+    if (!ok) failures++;
+    console.log(
+      `${ok ? "PASS" : "FAIL"} ${c.id} (${c.semantic_unit_ref}): aceptadas=${accepted.length} (esperado ${c.expected_accepted_count}) | duplicados_rechazados=${dupRejected.length} (esperado ${sobrantes})`
+    );
+  }
+
+  // Contra-prueba estructural: dos dependencias del MISMO campo con valores
+  // DISTINTOS no son duplicados y deben sobrevivir las dos.
+  const [r2] = runNode(workflow, "Coverage Dependency Risk Field Guardrail", [
+    {
+      semantic_unit_id: "su_sint_dup", ontology_type: "auto",
+      chunks: [{ text: "para vehiculos electricos y para vehiculos hibridos" }],
+      output: { coverage_dependencies: [
+        { risk_field: "base7Version.base7Engine.id", operator: "=", value: "vehiculo electrico", evidence: "para vehiculos electricos" },
+        { risk_field: "base7Version.base7Engine.id", operator: "=", value: "vehiculo hibrido", evidence: "para vehiculos hibridos" }
+      ] }
+    }
+  ]);
+  const okDistinct = (r2.output?.coverage_dependencies || []).length === 2;
+  if (!okDistinct) failures++;
+  console.log(`${okDistinct ? "PASS" : "FAIL"} CONTRA-PRUEBA: mismo campo con valores distintos NO se deduplica (aceptadas=${(r2.output?.coverage_dependencies || []).length}/2)`);
+
+  console.log(`Resultado: ${cases.length + 1 - failures}/${cases.length + 1} pasan.`);
+  return failures;
+}
+
 function checkCostPreFilter(workflow) {
   console.log("\n=== Check: garantia del pre-filtro de coste (Fase 5 / Legal Cue Pre-Filter, gate de cues) ===");
 
@@ -2732,6 +2832,14 @@ function main() {
 
   if (runAll || args.includes("--excluded-imported-fields")) {
     exitCode += checkExcludedImportedFields() > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--vehicle-category-value")) {
+    exitCode += checkVehicleCategoryValue(workflow, golden) > 0 ? 1 : 0;
+  }
+
+  if (runAll || args.includes("--duplicate-dependencies")) {
+    exitCode += checkDuplicateDependencies(workflow, golden) > 0 ? 1 : 0;
   }
 
   if (runAll || args.includes("--cost-prefilter")) {

@@ -2025,6 +2025,120 @@
       "expected_rejection_reason": "duplicate_figure_without_distinction",
       "corrected_coverage_dependencies": [],
       "notes": "Caso SINTETICO añadido el 04/09 para que v13 no se quede sin cobertura: su unico caso real (GD-AUTO-HALLUC-021, Qualitas su_00071) paso a rechazarse por v30, que ataca la causa en vez del sintoma. v13 sigue haciendo falta para el patron generico: un texto que dice 'el conductor' sin distinguir habitual de ocasional y que NO habla del momento del siniestro (por eso este texto evita a proposito el vocabulario de v30: ni 'conducido por una persona' ni 'designado'). El LLM duplica la condicion sobre las dos figuras y ninguna de las dos es defendible, asi que v13 quita el par completo."
+    },
+    {
+      "id": "GD-AUTO-CATVAL-001",
+      "category": "vehicle_category_field_invalid_value",
+      "source_company": "Zurich (ronda del 04/09, exec del 08-30-33)",
+      "semantic_unit_ref": "su_00035",
+      "article": "3-. Asistencia en viaje",
+      "coverage_path": [
+        "3-. Asistencia en viaje"
+      ],
+      "source_text": "el vehiculo automovil objeto de la poliza, asi como la caravana o remolque que pudiera arrastrar hasta 750 kg de PMA",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "remolque ligero",
+          "evidence": "el vehiculo automovil objeto de la poliza, asi como la caravana o remolque que pudiera arrastrar hasta 750 kg de PMA"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "base7Version.base7Type.base7Category.id"
+      ],
+      "expected_rejection_reason": "vehicle_category_field_invalid_value",
+      "corrected_coverage_dependencies": [],
+      "notes": "Señalado por el usuario en su revision manual de la ronda del 04/09 ('la dependencia es erronea'). 'remolque ligero' no es ninguna de las 4 categorias (primera/segunda/tercera/vmp). Efecto secundario medido del trabajo del 04/09: los alias de PMA hacen que este campo se ofrezca como candidato mucho mas a menudo, y el rechazo duro de lightTrailer (v25) deja al LLM sin el campo que usaba para el remolque, asi que alcanza el de categoria e inventa el valor. v29b no lo cazaba porque canonicalCategory se abstiene ante un valor que no reconoce, deliberadamente, para no rechazar por un sinonimo no previsto."
+    },
+    {
+      "id": "GD-AUTO-CATVAL-002",
+      "category": "vehicle_category_field_invalid_value",
+      "source_company": "Generali (ronda del 04/09, exec del 08-47-54)",
+      "semantic_unit_ref": "su_00078",
+      "article": "3.1.2. ¿Que no se cubre?",
+      "coverage_path": [
+        "3.1.2. ¿Que no se cubre?"
+      ],
+      "source_text": "Utilizacion o conduccion del vehiculo por persona que carezca del Permiso de Conduccion o del correspondiente a la categoria del vehiculo que conduzca.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "categoria del vehiculo",
+          "evidence": "Utilizacion o conduccion del vehiculo por persona que carezca del Permiso de Conduccion o del correspondiente a la categoria del vehiculo"
+        }
+      ],
+      "expected_rejected_risk_fields": [
+        "base7Version.base7Type.base7Category.id"
+      ],
+      "expected_rejection_reason": "vehicle_category_field_invalid_value",
+      "corrected_coverage_dependencies": [],
+      "notes": "Señalado por el usuario ('la dependencia es erronea, no deberia aparecer'). Doblemente mal: el value es literalmente EL TEXTO DEL ALIAS del concepto ('categoria del vehiculo'), y el campo es equivocado -- el texto habla del PERMISO DE CONDUCCION correspondiente a la categoria, que es asunto de licenseType, no de la categoria del vehiculo asegurado. v31 lo caza por el valor, que es la parte decidible por codigo."
+    },
+    {
+      "id": "GD-AUTO-CATVAL-003",
+      "category": "vehicle_category_valid_synonym",
+      "source_company": "Sintetico (contra-prueba de v31)",
+      "semantic_unit_ref": "su_sint_03",
+      "article": null,
+      "coverage_path": [],
+      "source_text": "Aplicable unicamente a vehiculos de la categoria AUTOS y a los de tercera categoria.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "IN",
+          "value": [
+            "AUTOS",
+            "tercera categoria"
+          ],
+          "evidence": "Aplicable unicamente a vehiculos de la categoria AUTOS y a los de tercera categoria"
+        }
+      ],
+      "expected_rejected_risk_fields": [],
+      "corrected_coverage_dependencies": null,
+      "notes": "CONTRA-PRUEBA de v31. 'AUTOS' es el DESCRIPTION real de la fila 1 de BASE7_CATEGORY y 'tercera categoria' su NAME ordinal: las dos formas son sinonimos legitimos de la misma categoria y canonicalCategory las reconoce. v31 no debe rechazarlas. Ademas, al cubrir entera la categoria del ramo Autos, la dependencia debe quedar marcada vacuous_for_ramo por v29b."
+    },
+    {
+      "id": "GD-AUTO-DUP-001",
+      "category": "duplicate_dependency_in_unit",
+      "source_company": "Zurich (ronda del 04/09, exec del 08-30-33)",
+      "semantic_unit_ref": "su_00066",
+      "article": "3-. Asistencia en viaje",
+      "coverage_path": [
+        "3-. Asistencia en viaje"
+      ],
+      "source_text": "Para el caso de vehiculos electricos/hibridos, se ofrece asistencia tecnologica remota al automovil 24 h, los 7 dias de la semana. En el momento de la carga del vehiculo electrico/hibrido, se ofrece asistencia telefonica con un tecnico especialista.",
+      "actual_coverage_dependencies": [
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": "vehiculo electrico",
+          "evidence": "Para el caso de vehiculos electricos/hibridos, se ofrece asistencia tecnologica remota al automovil 24 h"
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": "vehiculo hibrido",
+          "evidence": "Para el caso de vehiculos electricos/hibridos, se ofrece asistencia tecnologica remota al automovil 24 h"
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": "Vehiculo Electrico",
+          "evidence": "En el momento de la carga del vehiculo electrico/hibrido, se ofrece asistencia telefonica con un tecnico especialista"
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": "vehiculo hibrido",
+          "evidence": "En el momento de la carga del vehiculo electrico/hibrido, se ofrece asistencia telefonica con un tecnico especialista"
+        }
+      ],
+      "expected_accepted_count": 2,
+      "expected_rejection_reason": "duplicate_dependency_in_unit",
+      "corrected_coverage_dependencies": null,
+      "notes": "Señalado por el usuario ('tiene 4 dependencias iguales'). Son 2 condiciones reales (electrico, hibrido) repetidas porque la unidad tiene dos frases que las mencionan. La 3a copia se escribe aqui como 'Vehiculo Electrico' a proposito, para probar que la clave de deduplicacion normaliza mayusculas (inconsistencia no determinista documentada en CLAUDE.md 5.9). Al medirlo sobre la ronda resulto sistematico y no aislado: 7 duplicados en 6 unidades (Zurich su_00066/077/082/086/092 y Qualitas su_00030), un 7,5% de las aceptadas."
     }
   ]
 }
