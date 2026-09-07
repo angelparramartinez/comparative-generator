@@ -1,0 +1,93 @@
+{
+    "cdnegocioMediacion": {
+        "section": "section.additionalData",
+        "label": "Código de negocio",
+        "type": "string",
+        "component": "input",
+        "enabled": false,
+        "required": false,
+        "value": null,
+        "help": "Para modificar el valor de este campo debe de ir a la fase de tarificación"
+    },
+    "usoVehiculo": {
+        "section": "section.additionalData",
+        "label": "Uso del vehículo",
+        "type": "string",
+        "component": "select",
+        "placeholder": "Seleccione una opción",
+        "required": true,
+        "value": null,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Turismo particular",
+                        "value": "110"
+                    },
+                    {
+                        "label": "Turismo particular matriculado a nombre de empresa",
+                        "value": "111"
+                    },
+                    {
+                        "label": "Turismo particular histórico",
+                        "value": "113"
+                    },
+                    {
+                        "label": "Turismo particular clásico",
+                        "value": "117"
+                    },
+                    {
+                        "label": "Furgoneta particular y transportes propios",
+                        "value": "210"
+                    },
+                    {
+                        "label": "Furgoneta particular y transportes terceros",
+                        "value": "220"
+                    }
+                ]
+            }
+        ]
+    },
+    "paisExpedicion": {
+        "section": "section.additionalData",
+        "label": "País expedición carnet del conductor habitual",
+        "type": "string",
+        "component": "autocomplete",
+        "required": "/insurance.risk?.primaryDriver?.drivingLicenses?.size() > 0 && insurance.risk?.primaryDriver?.drivingLicenses[0]?.issuingZone != 'Spain'/",
+        "visible": "/insurance.risk?.primaryDriver?.drivingLicenses?.size() > 0 && insurance.risk?.primaryDriver?.drivingLicenses[0]?.issuingZone != 'Spain'/",
+        "value": null,
+        "resource": {
+            "url": "/persons/nationalities"
+        }
+    },
+    "proteccionJuridicaAmpliada": {
+        "section": "section.covers",
+        "label": "Protección jurídica ampliada",
+        "type": "boolean",
+        "component": "radio",
+        "visible": "/${modalityId}!=1358/",
+        "required": true,
+        "value": false,
+        "allowSavedTuning": true
+    },
+    "fenomenosAtmosfericos": {
+        "section": "section.covers",
+        "label": "Fenómenos atmosféricos y daños cinegéticos",
+        "type": "boolean",
+        "component": "radio",
+        "visible": "/${modalityId}==1358||${modalityId}==1359/",
+        "required": true,
+        "value": false,
+        "allowSavedTuning": true
+    },
+    "perdidaTotal": {
+        "section": "section.covers",
+        "label": "Pérdida total",
+        "type": "boolean",
+        "component": "radio",
+        "visible": "/${modalityId}==1360/",
+        "required": true,
+        "value": false,
+        "allowSavedTuning": true
+    }
+}

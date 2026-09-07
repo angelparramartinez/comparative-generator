@@ -1,0 +1,181 @@
+{
+    "vehiculoKmCero": {
+        "section": "section.additionalData",
+        "label": "tuning.mapfre.vehiculoKmCero",
+        "type": "boolean",
+        "component": "radio",
+        "required": true,
+        "value": false
+    },
+    "vehicleUse": {
+        "section": "section.additionalData",
+        "label": "tuning.mapfre.vehicleUse",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "value": "PARTICULAR",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "tuning.mapfre.vehicleUseParticular",
+                        "value": "PARTICULAR"
+                    },
+                    {
+                        "label": "tuning.mapfre.commercialActivity",
+                        "value": "ACTIVIDAD COMERCIAL"
+                    },
+                    {
+                        "label": "tuning.mapfre.companyUse",
+                        "value": "UTILIZACION EMPRESA"
+                    }
+                ]
+            }
+        ]
+    },
+    "garageTypeCode": {
+        "section": "section.additionalData",
+        "label": "tuning.mapfre.garageTypeCode",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "value": "/insurance?.risk?.garageType == 'PrivateGarage' ? 'GARAJE PRIVADO SIN VIGILANCIA' : insurance?.risk?.garageType == 'CommunalParking' ? 'PARKING PUBLICO DESCUBIERTO' : 'VIA PUBLICA'/",
+        "options": [
+            {
+                "condition": "/insurance?.risk?.garageType == 'PrivateGarage'/",
+                "items": [
+                    {
+                        "label": "tuning.mapfre.garageIndividualVigilance",
+                        "value": "GARAJE PRIVADO CON VIGILANCIA"
+                    },
+                    {
+                        "label": "tuning.mapfre.garageIndividualNoVigilance",
+                        "value": "GARAJE PRIVADO SIN VIGILANCIA"
+                    }
+                ]
+            },
+            {
+                "condition": "/insurance?.risk?.garageType == 'CommunalParking'/",
+                "items": [
+                    {
+                        "label": "tuning.mapfre.garagePublicCovered",
+                        "value": "PARKING PUBLICO CUBIERTO"
+                    },
+                    {
+                        "label": "tuning.mapfre.garagePublicUncovered",
+                        "value": "PARKING PUBLICO DESCUBIERTO"
+                    },
+                    {
+                        "label": "tuning.mapfre.garageIndividualVigilance",
+                        "value": "GARAJE PRIVADO CON VIGILANCIA"
+                    },
+                    {
+                        "label": "tuning.mapfre.garageIndividualNoVigilance",
+                        "value": "GARAJE PRIVADO SIN VIGILANCIA"
+                    }
+                ]
+            },
+            {
+                "condition": "/insurance?.risk?.garageType == 'NoGarage'/",
+                "items": [
+                    {
+                        "label": "tuning.mapfre.streetParking",
+                        "value": "VIA PUBLICA"
+                    }
+                ]
+            }
+        ]
+    },
+    "transportMaterialType": {
+        "section": "section.additionalData",
+        "label": "tuning.mapfre.transportMaterialType",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "visible": "/insurance.risk.base7Version.typeCode == '300' || insurance.risk.base7Version.typeCode == '310' || insurance.risk.base7Version.typeCode == '200' || insurance.risk.base7Version.typeCode == '250'/",
+        "value": "TRANSPORTE EN GENERAL",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "tuning.mapfre.transportGeneral",
+                        "value": "TRANSPORTE EN GENERAL"
+                    },
+                    {
+                        "label": "tuning.mapfre.transportAridos",
+                        "value": "ÁRIDOS"
+                    },
+                    {
+                        "label": "tuning.mapfre.transportFruitsVegetables",
+                        "value": "FRUTAS Y HORTALIZAS"
+                    },
+                    {
+                        "label": "tuning.mapfre.transportVehicles",
+                        "value": "VEHÍCULOS"
+                    },
+                    {
+                        "label": "tuning.mapfre.transportFish",
+                        "value": "PESCADO"
+                    },
+                    {
+                        "label": "tuning.mapfre.transportCattle",
+                        "value": "GANADO MAYOR"
+                    }
+                ]
+            }
+        ]
+    },
+    "circulationScopeCode": {
+        "section": "section.additionalData",
+        "label": "tuning.mapfre.circulationScopeCode",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "visible": "/insurance.risk.base7Version.typeCode == '300' || insurance.risk.base7Version.typeCode == '310' || insurance.risk.base7Version.typeCode == '200' || insurance.risk.base7Version.typeCode == '250'/",
+        "value": "ESTÁNDAR",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "tuning.mapfre.circulationStandard",
+                        "value": "ESTÁNDAR"
+                    },
+                    {
+                        "label": "tuning.mapfre.circulationInternational",
+                        "value": "INTERNACIONAL"
+                    },
+                    {
+                        "label": "tuning.mapfre.circulationAirport",
+                        "value": "RECINTOS AEROPORTUARIOS"
+                    },
+                    {
+                        "label": "tuning.mapfre.circulationPort",
+                        "value": "RECINTOS PORTUARIOS"
+                    }
+                ]
+            }
+        ]
+    },
+    "chargersToInsureBreakdown": {
+        "section": "Datos del cargador",
+        "label": "tuning.mapfre.chargersToInsure",
+        "type": "array",
+        "component": "list",
+        "minItems": 0,
+        "maxItems": 2,
+        "visible": "/insurance.risk?.base7Version?.engine?.id != null && (insurance.risk?.base7Version?.engine?.id==3 || insurance.risk?.base7Version?.engine?.id==11 || insurance.risk?.base7Version?.engine?.id==12 || insurance.risk?.base7Version?.engine?.id==9 || insurance.risk?.base7Version?.engine?.id==10)/",
+        "required": false,
+        "items": {
+            "address": {
+                "section": "/'Cargador '/",
+                "label": "Datos ubicación cargador",
+                "type": "PostalAddress",
+                "component": "AddressEditor",
+                "required": true,
+                "visible": true,
+                "value": null,
+                "fullAddress": false
+            }
+        }
+    }
+}
