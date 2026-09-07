@@ -345,6 +345,27 @@ function checkGenerator(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected_sql_line}`}`);
   }
 
+  // Funciones puras del formato ampliado de "Coberturas opcionales" (07/09).
+  // Un solo bucle para las tres: el caso declara que funcion prueba, para no
+  // repetir tres bloques identicos.
+  const OPTIONAL_SHEET_FNS = {
+    resolveTuningOptionValues: c => generator.resolveTuningOptionValues(c.tuningFieldDef, c.optionText),
+    buildLineTextExpr: c => generator.buildLineTextExpr(c.text, c.tuningKey),
+    runtimeVisibilityFilterExpr: c => generator.runtimeVisibilityFilterExpr(c.tuningFieldDef),
+    buildTuningValueEqualityExpr: c => generator.buildTuningValueEqualityExpr(c.tuningKey, c.optionValues),
+    buildTuningValueInequalityExpr: c => generator.buildTuningValueInequalityExpr(c.tuningKey, c.optionValues),
+    buildOwnContentMarkerFilterExpr: c => generator.buildOwnContentMarkerFilterExpr(c.opcionales),
+    parseOptionalSheetList: c => generator.parseOptionalSheetList(c.text)
+  };
+  for (const c of golden.optional_sheet_format_cases || []) {
+    total++;
+    const fn = OPTIONAL_SHEET_FNS[c.fn];
+    const got = fn ? fn(c) : `FUNCION DESCONOCIDA: ${c.fn}`;
+    const pass = !!fn && JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
   console.log(`--generator: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;
 }
@@ -355,7 +376,14 @@ function checkTuning(golden) {
   let failures = 0;
   let warnings = 0;
   for (const c of golden.cases) {
-    const result = tuningMatcher.matchCoverToTuningKey(c.cover_name, tuningIndex);
+    // Un caso puede traer su PROPIO diccionario (`tuning_dictionary`) en vez
+    // de usar el compartido: los casos de otra compania no deben alterar el
+    // corpus de idf del diccionario de Generali, que es lo que puntuan los
+    // 16 casos originales (anadido 07/09 con el caso de Zurich GD-TUNE-017).
+    const index = c.tuning_dictionary
+      ? tuningMatcher.buildTuningIndex(c.tuning_dictionary)
+      : tuningIndex;
+    const result = tuningMatcher.matchCoverToTuningKey(c.cover_name, index);
     const correct = result.tuning_key === c.expected_tuning_key;
     const isKnownAmbiguousCase = c.expected_confidence !== "alta";
     const pass = correct || isKnownAmbiguousCase;
@@ -467,6 +495,14 @@ function checkExcelFixture(golden) {
     const pass = got === c.expected;
     if (!pass) failures++;
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected}`}`);
+  }
+
+  for (const c of golden.optional_marker_modality_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.optionalMarkerModalityIdsOf(c.modalities);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
   }
 
   console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
@@ -824,8 +860,12 @@ const NODE_SYNC_MAP = [
     // nodo que limpia las celdas, no en el que construye el fixture. La
     // funcion vive en este modulo porque es donde el arnes la prueba
     // (marker_cases). No es una divergencia -- se verifica que el nodo
-    // declarado aqui exista y siga respaldando el concepto.
-    implementedElsewhere: { isCoverNotOfferedMarker: "Clean covers and modalities" }
+    // declarado aqui exista y siga respaldando el concepto. Su vocabulario
+    // (la constante) vive en ese mismo nodo, asi que va declarado igual.
+    implementedElsewhere: {
+      isCoverNotOfferedMarker: "Clean covers and modalities",
+      COVER_NOT_OFFERED_MARKERS_NORMALIZED: "Clean covers and modalities"
+    }
   },
   { module: "review_assembly.js", workflow: "coverage insert generation", node: "Grounding Guardrail" },
   { module: "value_matcher.js", workflow: "coverage insert generation", node: "Translate Dependency Values" },
@@ -863,7 +903,24 @@ function extractTopLevelFunctions(source) {
   let match;
 
   while ((match = declaration.exec(source)) !== null) {
-    const open = source.indexOf("{", match.index);
+    // La llave del CUERPO es la primera despues de cerrar la lista de
+    // parametros, no el primer "{" del texto: con un parametro
+    // desestructurado (`function f(entries, { a, b })`) ese primer "{" es el
+    // de la desestructuracion, y balancear desde ahi cortaba la funcion en la
+    // propia firma. Agujero real del check destapado el 07/09 al propagar los
+    // cambios a los nodos: de buildEntriesForCover (>4.000 caracteres) se
+    // comparaban solo 286 -- su CUERPO nunca se habia comparado.
+    let paren = source.indexOf("(", match.index);
+    let parenDepth = 0;
+    while (paren < source.length) {
+      if (source[paren] === "(") parenDepth++;
+      else if (source[paren] === ")") {
+        parenDepth--;
+        if (parenDepth === 0) break;
+      }
+      paren++;
+    }
+    const open = source.indexOf("{", paren);
     if (open === -1) continue;
 
     let depth = 0;
@@ -877,6 +934,54 @@ function extractTopLevelFunctions(source) {
       cursor++;
     }
     // Camina hacia atras por las lineas de comentario "//" contiguas.
+    let start = match.index;
+    const before = source.slice(0, match.index).split("\n");
+    let line = before.length - 2;
+    while (line >= 0 && before[line].trim().startsWith("//")) {
+      start -= before[line].length + 1;
+      line--;
+    }
+
+    found[match[1]] = source.slice(start, cursor + 1);
+  }
+
+  return found;
+}
+
+// Agujero real del check, destapado el 07/09 al cambiar
+// TUNING_NOT_CONTRACTED_LABELS solo en generator.js: --node-sync daba 0
+// divergencias porque solo comparaba FUNCIONES, y varias reglas de negocio de
+// estos modulos viven en constantes de nivel superior (vocabularios,
+// patrones), no en funciones. Se excluyen los `const ... = require(...)`: el
+// modulo los necesita y el nodo no (todo vive en un ambito plano), asi que
+// esa diferencia es estructural y esperada, no una divergencia.
+function extractTopLevelConstants(source) {
+  const found = {};
+  const declaration = /^const ([A-Z][A-Z0-9_]*)\s*=/gm;
+  let match;
+
+  while ((match = declaration.exec(source)) !== null) {
+    // Avanza hasta el ";" de cierre con profundidad 0, saltando el contenido
+    // de comillas y de literales de expresion regular.
+    let cursor = declaration.lastIndex;
+    let depth = 0;
+    let quote = null;
+    while (cursor < source.length) {
+      const ch = source[cursor];
+      if (quote) {
+        if (ch === "\\") cursor++;
+        else if (ch === quote) quote = null;
+      } else if (ch === '"' || ch === "'" || ch === "`" || ch === "/") {
+        if (ch !== "/" || /[=([,:]\s*$/.test(source.slice(Math.max(0, cursor - 12), cursor))) quote = ch;
+      } else if (ch === "(" || ch === "[" || ch === "{") depth++;
+      else if (ch === ")" || ch === "]" || ch === "}") depth--;
+      else if (ch === ";" && depth === 0) break;
+      cursor++;
+    }
+
+    const body = source.slice(match.index, cursor + 1);
+    if (/\brequire\s*\(/.test(body)) continue;
+
     let start = match.index;
     const before = source.slice(0, match.index).split("\n");
     let line = before.length - 2;
@@ -928,8 +1033,15 @@ function checkNodeSync() {
       continue;
     }
 
-    const fileFunctions = extractTopLevelFunctions(fs.readFileSync(path.join(__dirname, entry.module), "utf8"));
-    const nodeFunctions = extractTopLevelFunctions(nodeCode);
+    const fileSource = fs.readFileSync(path.join(__dirname, entry.module), "utf8");
+    const fileFunctions = {
+      ...extractTopLevelFunctions(fileSource),
+      ...extractTopLevelConstants(fileSource)
+    };
+    const nodeFunctions = {
+      ...extractTopLevelFunctions(nodeCode),
+      ...extractTopLevelConstants(nodeCode)
+    };
 
     const divergentes = [];
     const ausentes = [];
@@ -959,7 +1071,7 @@ function checkNodeSync() {
     const ok = divergentes.length === 0 && ausentes.length === 0;
     if (!ok) failures++;
 
-    let detalle = `${Object.keys(fileFunctions).length} funciones`;
+    let detalle = `${Object.keys(fileFunctions).length} funciones/constantes`;
     if (divergentes.length) detalle += ` | DIVERGEN: ${divergentes.join(", ")}`;
     if (ausentes.length) detalle += ` | FALTAN en el nodo: ${ausentes.join(", ")}`;
 
@@ -979,7 +1091,7 @@ function checkNodeSync() {
     console.log(`  [PASS] todos los modulos estan clasificados (${mapeados.size} con nodo espejo, ${MODULES_WITHOUT_NODE.size} sin nodo a proposito)`);
   }
 
-  console.log(`--node-sync: ${comparadas} funciones comparadas, ${failures === 0 ? "0 divergencias" : failures + " modulo(s) con problemas"}`);
+  console.log(`--node-sync: ${comparadas} funciones/constantes comparadas, ${failures === 0 ? "0 divergencias" : failures + " modulo(s) con problemas"}`);
   return failures === 0 ? 0 : 1;
 }
 

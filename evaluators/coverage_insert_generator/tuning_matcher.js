@@ -46,10 +46,12 @@ function matchCoverToTuningKey(coverName, tuningIndex) {
   const scored = tuningIndex.map(entry => {
     let bestLabelScore = 0;
     let bestLabel = null;
+    let isExactLabelMatch = false;
     for (const label of entry.label_candidates) {
       if (normalize(label) === coverNormalized) {
         bestLabelScore = 1.0;
         bestLabel = label;
+        isExactLabelMatch = true;
         break;
       }
       const score = weightedJaccard(coverTokens, tokenize(label), idf);
@@ -63,7 +65,18 @@ function matchCoverToTuningKey(coverName, tuningIndex) {
     // un campo tipo "cantidad de X" (p. ej. "Numero maximo de perros") gane
     // por solape lexico casual sobre un NOT_FOUND real (caso detectado:
     // "RC perros peligrosos" vs el contador numerico de perros, GD-TUNE-012).
-    const componentPenalty = (entry.component === "number" || entry.component === "input") ? 0.4 : 1.0;
+    //
+    // El penalty NUNCA se aplica sobre una coincidencia EXACTA de etiqueta:
+    // si el label es identico al texto del Excel no hay nada que una
+    // heuristica de tipo tenga que corregir. Bug real (07/09, Zurich): la
+    // fila "Importe privación del permiso" coincide EXACTO con el label de
+    // importeRetiradaCarnet, pero al ser component "number" su 1.0 se
+    // quedaba en 0.40 y perdia contra privacionPermiso (0.465 por simple
+    // solape de palabras), que es un campo distinto -- el importe se
+    // atribuia al interruptor de la cobertura (ver GD-TUNE-017).
+    const componentPenalty = isExactLabelMatch
+      ? 1.0
+      : ((entry.component === "number" || entry.component === "input") ? 0.4 : 1.0);
     return { key: entry.key, matched_label: bestLabel, score: bestLabelScore * componentPenalty };
   });
 

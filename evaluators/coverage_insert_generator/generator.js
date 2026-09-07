@@ -89,6 +89,129 @@ function spelStringLiteral(text) {
   return `'${(text || "").replace(/'/g, "\\'")}'`;
 }
 
+// --- Formato ampliado de la hoja "Coberturas opcionales" (07/09) ---
+//
+// Dos columnas nuevas, las dos con la MISMA semantica de lista: vacia =
+// "todas", rellena = "solo estas".
+//   OPCIÓN DE LA COBERTURA -> a que opciones (nivel o capital) aplica el texto
+//   MODALIDADES            -> a que PRODUCT_COMPANY_MODALITY_ID aplica la fila
+// Se nombran en lenguaje de negocio a proposito: el Excel lo rellena alguien
+// externo de la compania, no vale hablar de "tuning" ni de "$1" (ver
+// prompts/excel_coverage_sheet_builder.md).
+function parseOptionalSheetList(text) {
+  return (text || "")
+    .toString()
+    .split(",")
+    .map(part => part.trim())
+    .filter(part => part.length > 0);
+}
+
+// Resuelve el texto de "OPCIÓN DE LA COBERTURA" a los items reales del
+// desplegable de tuning. Acepta la ETIQUETA (lo natural para quien rellena el
+// Excel: "Esencial", "60.000€") o el valor en crudo, y busca en TODOS los
+// grupos de options[] -- imprescindible en un campo con grupos condicionados
+// por otro campo, donde el mismo valor puede aparecer en dos grupos con
+// etiquetas distintas (caso real capitalAccidenteConductor de Zurich: el valor
+// "3A" es "6.000 Euros MUERTE e INVALIDEZ" en un grupo y el placeholder
+// "Seleccione una opcion" en el otro -- por eso se empareja por etiqueta y no
+// por valor).
+//
+// Devuelve null si el campo no tiene opciones (booleano/numerico: no hay nada
+// que elegir) o si alguna de las opciones nombradas no existe -- nunca
+// adivina, para no generar un FILTER_EXPR sobre un valor inventado.
+function resolveTuningOptionValues(tuningFieldDef, optionText) {
+  const wanted = parseOptionalSheetList(optionText);
+  if (wanted.length === 0) return null;
+
+  const items = [];
+  for (const group of (tuningFieldDef && tuningFieldDef.options) || []) {
+    for (const item of group.items || []) items.push(item);
+  }
+  if (items.length === 0) return null;
+
+  const resolved = [];
+  for (const name of wanted) {
+    const hit = items.find(item => item.value === name)
+      || items.find(item => normalizeTuningLabel(item.label) === normalizeTuningLabel(name));
+    if (!hit) return null;
+    if (!resolved.some(r => r.value === hit.value)) resolved.push({ value: hit.value, label: hit.label });
+  }
+  return resolved;
+}
+
+// Condicion SPEL "el valor contratado es una de estas opciones" y su negacion.
+// La negacion se usa para el texto PROPIO de una cobertura marcada "Garantía
+// Opcional": ese texto explica como conseguirla, asi que solo debe verse
+// mientras NO se haya contratado ninguna de las opciones que si la incluyen
+// (caso real Zurich cover 14, que la legacy resolvia con OVERWRITE=1).
+function buildTuningValueEqualityExpr(tuningKey, optionValues) {
+  if (!tuningKey || tuningKey === "NOT_FOUND" || !optionValues || optionValues.length === 0) return null;
+  const parts = optionValues.map(o => `tuning?.${tuningKey} == ${quoteSpelValue(o.value)}`);
+  return parts.length === 1 ? parts[0] : parts.join(" || ");
+}
+
+function buildTuningValueInequalityExpr(tuningKey, optionValues) {
+  if (!tuningKey || tuningKey === "NOT_FOUND" || !optionValues || optionValues.length === 0) return null;
+  return optionValues.map(o => `tuning?.${tuningKey} != ${quoteSpelValue(o.value)}`).join(" && ");
+}
+
+// Marcador de valor del formato ampliado: CUALQUIER texto entre llaves en la
+// columna de texto significa "aqui va el valor que el cliente eligio para
+// esta cobertura opcional". Sustituye al $1 de RISK_TUNING_COVER (notacion
+// interna de la legacy de ASM, ver USE_TUNNING_VALUE en CoverServiceLegacy).
+// No hay vocabulario que aprender: cada fila tiene UNA sola cobertura
+// opcional, asi que "{importe contratado}", "{el importe}" o "{capital}"
+// significan lo mismo. Se eligieron las llaves porque no aparecen ni una vez
+// en las fuentes reales medidas y porque [[...]] ya significa otra cosa
+// (condicion de riesgo, ver extractBracketMarker).
+const TUNING_VALUE_PLACEHOLDER_PATTERN = /\{[^{}]*\}/;
+
+function hasTuningValuePlaceholder(text) {
+  return TUNING_VALUE_PLACEHOLDER_PATTERN.test(text || "");
+}
+
+// TEXT_EXPR de una LINE: literal SPEL de siempre, o una concatenacion cuando
+// el texto trae el marcador de valor. Sin tuning_key resuelto se deja el
+// texto tal cual (con las llaves visibles) en vez de inventar una expresion:
+// asi el revisor humano ve que ese marcador no se pudo resolver.
+function buildLineTextExpr(text, tuningKey) {
+  if (!hasTuningValuePlaceholder(text) || !tuningKey || tuningKey === "NOT_FOUND") {
+    return spelStringLiteral(text);
+  }
+  const parts = [];
+  let rest = text;
+  let match;
+  while ((match = TUNING_VALUE_PLACEHOLDER_PATTERN.exec(rest)) !== null) {
+    if (match.index > 0) parts.push(spelStringLiteral(rest.slice(0, match.index)));
+    parts.push(`tuning?.${tuningKey}`);
+    rest = rest.slice(match.index + match[0].length);
+  }
+  if (rest.length > 0) parts.push(spelStringLiteral(rest));
+  return parts.join(" + ");
+}
+
+// El `visible` de un campo de tuning es la condicion bajo la que la compania
+// ofrece de verdad esa cobertura opcional, y hasta ahora se ignoraba por
+// completo. Hay que distinguir dos formas, porque se resuelven en momentos
+// distintos:
+//   - `${modalityId}==NNNN`  -> se conoce al GENERAR el INSERT; lo cubre la
+//     columna MODALIDADES, no debe acabar en el FILTER_EXPR (no existe
+//     ${modalityId} en el contexto SPEL de ejecucion).
+//   - cualquier otra (otro campo de tuning o datos del riesgo) -> es una
+//     condicion de EJECUCION y va al FILTER_EXPR. Casos reales de Zurich:
+//     importeRetiradaCarnet visible solo si privacionPermiso (el importe no
+//     significa nada sin la cobertura), y rcCarga visible solo para ciertos
+//     base7Version.typeCode.
+const MODALITY_ID_TUNING_REFERENCE = /\$\{modalityId\}/;
+
+function runtimeVisibilityFilterExpr(tuningFieldDef) {
+  const visible = tuningFieldDef && tuningFieldDef.visible;
+  if (typeof visible !== "string") return null;
+  if (MODALITY_ID_TUNING_REFERENCE.test(visible)) return null;
+  const unwrapped = unwrapTuningSpelExpression(visible);
+  return unwrapped && unwrapped.trim().length > 0 ? unwrapped.trim() : null;
+}
+
 // Simbolos de enumeracion que el texto libre del Excel puede traer ya
 // incluidos (guion, bullet, punto medio, asterisco, la letra "o" usada como
 // viñeta de sub-lista) -- se quitan siempre antes de aplicar el formato de
@@ -209,12 +332,17 @@ function combineTwoFilterExprStrings(a, b) {
 // tanto de "Coberturas por modalidad" como de "Coberturas opcionales") para
 // que aplique en cualquier sitio sin tener que tocar cada función que
 // construye lineas por separado.
-function finalizeLine(text, filterExpr, isHeader) {
+// tuningKey (opcional, formato ampliado 07/09): solo se usa para resolver el
+// marcador de valor {...} del texto; sin el, el texto se emite tal cual.
+function finalizeLine(text, filterExpr, isHeader, tuningKey) {
   const { cleanText, markerText } = extractBracketMarker(text);
   const bracketDependency = resolveBracketDependency(markerText);
   const bracketExpr = bracketDependency ? translateToSpel(bracketDependency) : null;
   const combinedExpr = combineTwoFilterExprStrings(filterExpr, bracketExpr);
-  return { filter_expr: combinedExpr, text_expr: spelStringLiteral(formatLineText(cleanText, isHeader)) };
+  return {
+    filter_expr: combinedExpr,
+    text_expr: buildLineTextExpr(formatLineText(cleanText, isHeader), tuningKey)
+  };
 }
 
 // Trocea el texto libre de una celda del Excel en bullets (una linea por
@@ -326,15 +454,28 @@ function ensureTrailingPeriod(text) {
 function buildOptionalCoverLines(opt) {
   const bodyLines = splitBulletsFromCellText(opt.textContent, opt.coverName);
   if (bodyLines.length === 0) {
-    return [finalizeLine(opt.coverName, null, true)];
+    return [finalizeLine(opt.coverName, null, true, opt.tuningKey)];
   }
   if (bodyLines.length === 1) {
-    return [finalizeLine(`${ensureTrailingPeriod(opt.coverName)} ${bodyLines[0]}`, null, true)];
+    return [finalizeLine(`${ensureTrailingPeriod(opt.coverName)} ${bodyLines[0]}`, null, true, opt.tuningKey)];
   }
   return [
-    finalizeLine(ensureTrailingPeriod(opt.coverName), null, true),
-    ...bodyLines.map(text => finalizeLine(text, null, false))
+    finalizeLine(ensureTrailingPeriod(opt.coverName), null, true, opt.tuningKey),
+    ...bodyLines.map(text => finalizeLine(text, null, false, opt.tuningKey))
   ];
+}
+
+// LINES de una fila con "OPCIÓN DE LA COBERTURA" rellena. A diferencia de
+// buildOptionalCoverLines, NO antepone el nombre de la cobertura opcional: el
+// texto que la compania da para una opcion concreta ya se describe solo (caso
+// real Zurich, "Asistencia en Viaje 24h. Ampliada:" seguido de sus viñetas), y
+// anteponerlo producia cabeceras redundantes del tipo "Asistencia en viaje.
+// Asistencia en Viaje 24h Esencial". Mismo formato que defaultBullets: la
+// primera linea hace de titulo.
+function buildOptionScopedCoverLines(opt) {
+  const bodyLines = splitBulletsFromCellText(opt.textContent, opt.coverName);
+  if (bodyLines.length === 0) return [finalizeLine(opt.coverName, null, true, opt.tuningKey)];
+  return bodyLines.map((text, i) => finalizeLine(text, null, i === 0, opt.tuningKey));
 }
 
 // Compara labels de opciones de tuning ignorando mayusculas/acentos (uso
@@ -354,7 +495,13 @@ function normalizeTuningLabel(text) {
 // "No" (Allianz, solarPanels) -- mismo concepto, distinta redaccion por
 // compania. Ampliar aqui solo cuando aparezca una tercera convencion real,
 // no adivinar variantes hipoteticas.
-const TUNING_NOT_CONTRACTED_LABELS = new Set(["no contratada", "no"]);
+// Redacciones reales del item "apagado" de un desplegable de tuning. Ampliar
+// SOLO cuando aparezca una nueva en el diccionario real de una compania:
+// "no contratada" (Generali: zasihb/zimpac/ztcar), "no" (radios si/no) y
+// "no contrata" (Zurich Autos: rcCarga -- sin esta, resolveTuningSelectConfig
+// devolvia null y los 5 capitales de RC de la carga caian al formato booleano
+// en vez de al de capitales, hallazgo del 07/09).
+const TUNING_NOT_CONTRACTED_LABELS = new Set(["no contratada", "no contrata", "no"]);
 
 // El valor que significa "no contratado" dentro de un grupo de opciones de
 // tuning (item cuyo label normaliza a una de TUNING_NOT_CONTRACTED_LABELS,
@@ -559,6 +706,101 @@ function buildTieredHiringStatusExpr(opt, tuningConfig) {
   return `tuning?.${opt.tuningKey} == null || tuning.${opt.tuningKey} == ${quoteSpelValue(tuningConfig.notContractedValue)} ? "OPTIONAL" : "INCLUDED"`;
 }
 
+// FILTER_EXPR que hay que aplicar al contenido PROPIO de una cobertura
+// marcada "Garantía Opcional": ese texto explica como conseguir la cobertura
+// ("Contratando Asistencia en viaje 24 h Plus..."), asi que deja de tener
+// sentido en cuanto se contrata una de las opciones que SI la incluyen -- se
+// filtra con la negacion de esas opciones. Es lo que la legacy hacia con
+// OVERWRITE=1 (sustituir el texto base), traducido a SPEL.
+//
+// Solo cuentan las filas CON opcion: una fila sin opcion (booleano o importe)
+// AÑADE informacion al texto propio en vez de sustituirlo (OVERWRITE=0 en la
+// legacy), asi que no debe filtrarlo -- caso real Zurich cover 11, donde
+// "Subsidio por pérdida de carné" se ve siempre y el capital se suma al
+// contratar.
+function buildOwnContentMarkerFilterExpr(opcionales) {
+  const replacing = (opcionales || []).filter(
+    o => o.optionValues && o.optionValues.length > 0 && o.tuningKey && o.tuningKey !== "NOT_FOUND"
+  );
+  const parts = replacing
+    .map(o => buildTuningValueInequalityExpr(o.tuningKey, o.optionValues))
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
+}
+
+// Reparte el contenido propio de la cobertura (sources "default" y
+// "modality_bullet") entre las modalidades donde esta INCLUIDA y aquellas
+// donde solo se OFRECE (celda con el marcador "Garantía Opcional").
+//
+// Antes, un bloque que venia de una celda llevaba '"INCLUDED"' fijo, asi que
+// una cobertura marcada como opcional en su celda salia como incluida. Cuando
+// unas modalidades estan marcadas y otras no (caso real Zurich cover 12,
+// marcada solo en la 1360, y cover 13 en 1358/1359) hay que ENUMERAR por
+// modalidad: el estado ya no es el mismo en todas, asi que la regla de
+// optimizacion del modelo ("mismos valores en todas -> modality_id NULL") no
+// aplica. Si TODAS las modalidades estan marcadas (covers 11 y 14) se
+// conserva la entry unica.
+function applyOptionalMarkerToOwnContent(entries, {
+  markerModalityIds = [],
+  presentModalityIds = [],
+  coverTuningKey = null,
+  markerFilterExpr = null
+} = {}) {
+  if (!markerModalityIds || markerModalityIds.length === 0) return entries;
+
+  const marker = new Set(markerModalityIds.map(String));
+  // Con markerFilterExpr, el propio FILTER_EXPR ya acota la entry a la rama
+  // "no contratada" (es la negacion de las opciones que SI incluyen la
+  // cobertura), asi que el estado es OPTIONAL sin necesidad de ternario -- y
+  // sin depender de que el mapeo nombre-de-cobertura -> tuning_key haya
+  // acertado. Sin markerFilterExpr la MISMA entry se ve en los dos estados
+  // (el texto propio se conserva al contratar, OVERWRITE=0 en la legacy), y
+  // ahi si hace falta el ternario sobre el campo de la cobertura.
+  const optionalStatusExpr = markerFilterExpr
+    ? '"OPTIONAL"'
+    : buildOptionalHiringStatusExpr(coverTuningKey);
+  const present = presentModalityIds.map(String);
+  const includedIds = present.filter(id => !marker.has(id));
+  const optionalIds = present.filter(id => marker.has(id));
+
+  const asOptional = entry => ({
+    ...entry,
+    hiring_status_expr: optionalStatusExpr,
+    filter_expr: combineTwoFilterExprStrings(entry.filter_expr, markerFilterExpr)
+  });
+
+  const result = [];
+  for (const entry of entries) {
+    const isOwnContent = entry.source === "default" || entry.source === "modality_bullet";
+    if (!isOwnContent) {
+      result.push(entry);
+      continue;
+    }
+    if (entry.modality_id != null) {
+      result.push(marker.has(String(entry.modality_id)) ? asOptional(entry) : entry);
+      continue;
+    }
+    if (optionalIds.length === 0) {
+      result.push(entry);
+      continue;
+    }
+    if (includedIds.length === 0) {
+      result.push(asOptional(entry));
+      continue;
+    }
+    for (const modalityId of includedIds) result.push({ ...entry, modality_id: modalityId });
+    for (const modalityId of optionalIds) result.push(asOptional({ ...entry, modality_id: modalityId }));
+  }
+  return result;
+}
+
+// optionalMarkerModalityIds: modalidades cuya celda traia el marcador
+// "Garantía Opcional" (la cobertura se ofrece ahi, pero no viene incluida).
+// coverTuningKey: tuning_key mapeado a partir del NOMBRE DE LA COBERTURA (via
+// Build Tuning Context -> Tuning Key Mapping Agent), distinto del tuning_key
+// de cada fila de "Coberturas opcionales" -- es el que decide el
+// HIRING_STATUS_EXPR del contenido propio en esas modalidades.
 function buildEntriesForCover({
   coverId,
   coverName,
@@ -568,7 +810,9 @@ function buildEntriesForCover({
   conditionedBlocks = [],
   opcionales = [],
   presentModalityIds = [],
-  missingModalityIds = []
+  missingModalityIds = [],
+  optionalMarkerModalityIds = [],
+  coverTuningKey = null
 }) {
   const entries = [];
 
@@ -679,6 +923,43 @@ function buildEntriesForCover({
   // normal), se mantiene el comportamiento de siempre: una unica ENTRY sin
   // modalidad.
   for (const opt of opcionales) {
+    // Fila con "OPCIÓN DE LA COBERTURA" rellena (formato ampliado 07/09): 1
+    // ENTRY por fila, con su PROPIO texto y la condicion de esa(s) opcion(es)
+    // en el FILTER_EXPR -- criterio de granularidad del modelo (ENTRY = una
+    // condicion estructural distinta, ver knowledge/Modelo comparativa...).
+    //
+    // Sustituye, para estas filas, al apaño de buildTieredOptionalCoverLines
+    // ("1 LINE por valor, con la etiqueta del desplegable como texto"), que
+    // solo podia variar la ETIQUETA y no el cuerpo. Caso real que lo exigia:
+    // asistenciaViaje de Zurich, donde Esencial es una linea y Ampliada/Plus
+    // son listas de 11 viñetas completamente distintas.
+    const optionSelectionExpr = buildTuningValueEqualityExpr(opt.tuningKey, opt.optionValues);
+    if (optionSelectionExpr) {
+      const optionFilterExpr = combineTwoFilterExprStrings(
+        combineTwoFilterExprStrings(optionSelectionExpr, opt.visibilityFilterExpr ?? null),
+        opt.filterExpr ?? null
+      );
+      const optionLines = buildOptionScopedCoverLines(opt);
+      const targetModalityIds = (opt.modalityIds && opt.modalityIds.length > 0) ? opt.modalityIds : [null];
+      for (const modalityId of targetModalityIds) {
+        entries.push({
+          cover_id: coverId,
+          filter_expr: optionFilterExpr,
+          hiring_status_expr: '"INCLUDED"',
+          value_expr: null,
+          modality_id: modalityId,
+          source: "optional_cover",
+          // Informativo, para el JSON revisable por humano: a que opcion(es)
+          // de la cobertura corresponde esta ENTRY (assembleHumanReviewJson
+          // propaga los campos de la entry tal cual, y validateEntryShape
+          // ignora los que no conoce).
+          cover_option: opt.optionValues.map(o => o.label).join(", "),
+          lines: optionLines
+        });
+      }
+      continue;
+    }
+
     // opt.tieredConfig.byModality (ver resolveTuningSelectConfig): caso real
     // Allianz 28/07 (aestheticDamageToBuilding/aestheticDamageToContent) --
     // los tramos de capital YA vienen resueltos por modalidad en el propio
@@ -710,7 +991,35 @@ function buildEntriesForCover({
     // tieredConfig, se mantiene el comportamiento de siempre.
     const optLines = opt.tieredConfig ? buildTieredOptionalCoverLines(opt, opt.tieredConfig) : buildOptionalCoverLines(opt);
     const optHiringStatusExpr = opt.tieredConfig ? buildTieredHiringStatusExpr(opt, opt.tieredConfig) : (opt.hiringStatusExpr || '"OPTIONAL"');
-    const optFilterExpr = (opt.tieredConfig ? opt.tieredConfig.groupFilterExpr : null) ?? opt.filterExpr ?? null;
+    // opt.visibilityFilterExpr (formato ampliado 07/09): el `visible` del
+    // campo de tuning, o sea la condicion real bajo la que la compania ofrece
+    // esta cobertura opcional (ver runtimeVisibilityFilterExpr). Antes se
+    // ignoraba, asi que el opcional se mostraba tambien donde no aplica --
+    // caso real Zurich rcCarga, visible solo para ciertos base7Version.
+    const optFilterExpr = combineTwoFilterExprStrings(
+      (opt.tieredConfig ? opt.tieredConfig.groupFilterExpr : null) ?? opt.filterExpr ?? null,
+      opt.visibilityFilterExpr ?? null
+    );
+
+    // "MODALIDADES" rellena: la fila aplica SOLO a esas modalidades. No entra
+    // en el reparto present/missing de la cobertura, que responde a otra
+    // pregunta (donde se ofrece la cobertura entera, no el alcance de un
+    // opcional concreto) -- caso real Zurich fenomenosAtmosfericos, ofrecido
+    // solo en las modalidades 1358 y 1359.
+    if (opt.modalityIds && opt.modalityIds.length > 0) {
+      for (const modalityId of opt.modalityIds) {
+        entries.push({
+          cover_id: coverId,
+          filter_expr: optFilterExpr,
+          hiring_status_expr: optHiringStatusExpr,
+          value_expr: null,
+          modality_id: modalityId,
+          source: "optional_cover",
+          lines: optLines
+        });
+      }
+      continue;
+    }
 
     if (missingModalityIds.length === 0) {
       entries.push({
@@ -771,16 +1080,26 @@ function buildEntriesForCover({
     }
   }
 
-  const coverOverride = computeCoverOverride(entries);
+  // El reparto por marcador va ANTES de computeCoverOverride: cambia el
+  // hiring_status_expr y el filter_expr de las entries de contenido propio, y
+  // el override de la cobertura se calcula agregando justamente eso.
+  const withMarker = applyOptionalMarkerToOwnContent(entries, {
+    markerModalityIds: optionalMarkerModalityIds,
+    presentModalityIds,
+    coverTuningKey,
+    markerFilterExpr: buildOwnContentMarkerFilterExpr(opcionales)
+  });
+
+  const coverOverride = computeCoverOverride(withMarker);
   if (coverOverride) {
-    for (const entry of entries) {
+    for (const entry of withMarker) {
       if (entry.filter_expr === coverOverride.sharedCondition) {
         entry.filter_expr = null;
       }
     }
   }
 
-  const sorted = sortEntriesByModality(entries);
+  const sorted = sortEntriesByModality(withMarker);
   sorted.forEach(entry => delete entry._blockIndex);
 
   return {
@@ -918,6 +1237,15 @@ function buildInsertStatements({ coverId, productCompanyId, coverOverride, entri
 
 module.exports = {
   translateToSpel,
+  parseOptionalSheetList,
+  resolveTuningOptionValues,
+  buildTuningValueEqualityExpr,
+  buildTuningValueInequalityExpr,
+  buildLineTextExpr,
+  runtimeVisibilityFilterExpr,
+  buildOwnContentMarkerFilterExpr,
+  buildOptionScopedCoverLines,
+  applyOptionalMarkerToOwnContent,
   combineFilterExpr,
   spelStringLiteral,
   splitBulletsFromCellText,

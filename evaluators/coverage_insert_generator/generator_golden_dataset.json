@@ -2149,6 +2149,271 @@
           }
         ]
       }
+    },
+    {
+      "id": "GEN-ENTRY-017",
+      "description": "Formato ampliado 07/09, fila con OPCION DE LA COBERTURA: 1 ENTRY con el texto PROPIO de esa opcion y la condicion de la opcion en el FILTER_EXPR. Caso real Zurich asistenciaViaje, donde cada nivel trae un cuerpo distinto (Esencial 1 linea, Ampliada/Plus 11 viñetas) -- lo que el mecanismo anterior (1 LINE por valor con la etiqueta del desplegable) no podia expresar. NO se antepone el nombre de la cobertura opcional: el texto ya se describe solo.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "defaultBullets": [],
+        "conditionedBullets": [],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h. Ampliada:\n• Remolque ilimitado.\n• Dobles capitales.",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ]
+          }
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "missingModalityIds": []
+      },
+      "expected": {
+        "entry_count": 1,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 0,
+        "first_entry_hiring_status_expr": "\"INCLUDED\"",
+        "first_entry_lines_count": 3
+      }
+    },
+    {
+      "id": "GEN-ENTRY-018",
+      "description": "Fila con OPCION y MODALIDADES a la vez: 1 ENTRY por modalidad listada, cada una con su PRODUCT_COMPANY_MODALITY_ID. Caso real Zurich: las variantes Green de asistenciaViaje son el mismo nivel con texto distinto en 18 modalidades. Lleva un bullet base para que no se active la optimizacion de condicion compartida (computeCoverOverride), que es lo que se prueba en GEN-ENTRY-003.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "defaultBullets": [
+          "Asistencia en viaje 24h."
+        ],
+        "conditionedBullets": [],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h. Ampliada Green:",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ],
+            "modalityIds": [
+              "2768",
+              "2769"
+            ]
+          }
+        ],
+        "presentModalityIds": [
+          "1358",
+          "2768",
+          "2769"
+        ],
+        "missingModalityIds": []
+      },
+      "expected": {
+        "entry_count": 3,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1
+      }
+    },
+    {
+      "id": "GEN-ENTRY-019",
+      "description": "Cobertura marcada 'Garantia Opcional' en TODAS sus modalidades con una fila de opcion que la INCLUYE (caso real Zurich cover 14): el texto propio de la celda explica como conseguirla, asi que se filtra con la NEGACION de esa opcion y sale OPTIONAL -- equivalente al OVERWRITE=1 de la legacy. El estado es el literal OPTIONAL, no un ternario: el FILTER_EXPR ya acota la entry a la rama no contratada.",
+      "input": {
+        "coverId": 14,
+        "coverName": "Vehículo de sustitución",
+        "defaultBlocks": [
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "• Contratando Asistencia en viaje 24 h Plus",
+                "• Coche de sustitución."
+              ]
+            },
+            "headerDependencies": [],
+            "lineDependencies": []
+          }
+        ],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Vehículo sustitución : contratado",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000467",
+                "label": "Plus"
+              }
+            ]
+          }
+        ],
+        "presentModalityIds": [
+          "1358",
+          "1359"
+        ],
+        "missingModalityIds": [],
+        "optionalMarkerModalityIds": [
+          "1358",
+          "1359"
+        ],
+        "coverTuningKey": "asistenciaViaje"
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 0,
+        "first_entry_hiring_status_expr": "\"OPTIONAL\"",
+        "first_entry_lines_count": 2
+      }
+    },
+    {
+      "id": "GEN-ENTRY-020",
+      "description": "Cobertura marcada 'Garantia Opcional' solo en ALGUNAS modalidades (caso real Zurich cover 12, marcada en la 1360 e incluida en las otras 26): hay que ENUMERAR por modalidad, porque el estado ya no es el mismo en todas y la regla de optimizacion 'mismos valores -> modality_id NULL' deja de aplicar. Sin filas con opcion, el texto propio se conserva en los dos estados (OVERWRITE=0 de la legacy), asi que no lleva FILTER_EXPR y el estado es el ternario del campo de la cobertura.",
+      "input": {
+        "coverId": 12,
+        "coverName": "Grandes daños / Pérdida total",
+        "defaultBlocks": [
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "• Pérdida total 100% valor de nuevo."
+              ]
+            },
+            "headerDependencies": [],
+            "lineDependencies": []
+          }
+        ],
+        "opcionales": [],
+        "presentModalityIds": [
+          "1358",
+          "1360"
+        ],
+        "missingModalityIds": [],
+        "optionalMarkerModalityIds": [
+          "1360"
+        ],
+        "coverTuningKey": "perdidaTotal"
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 2,
+        "full_entries": [
+          {
+            "cover_id": 12,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1358",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Pérdida total 100% valor de nuevo.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 12,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.perdidaTotal != null && tuning.perdidaTotal ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "1360",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Pérdida total 100% valor de nuevo.'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-ENTRY-021",
+      "description": "Cobertura marcada 'Garantia Opcional' con una fila SIN opcion (caso real Zurich cover 11): el importe es un campo numerico dependiente, su `visible` (/tuning?.privacionPermiso/) va al FILTER_EXPR y el marcador {importe contratado} del texto se resuelve a una concatenacion SPEL con el valor del tuning. El texto propio de la cobertura NO se filtra: se ve contratada o no.",
+      "input": {
+        "coverId": 11,
+        "coverName": "Retirada de carné",
+        "defaultBlocks": [
+          {
+            "block": {
+              "kind": "flat",
+              "headerText": null,
+              "lines": [
+                "• Subsidio por pérdida de carné"
+              ]
+            },
+            "headerDependencies": [],
+            "lineDependencies": []
+          }
+        ],
+        "opcionales": [
+          {
+            "coverName": "Importe privación del permiso",
+            "textContent": "Capital para retirada de carnet: {importe contratado}€",
+            "tuningKey": "importeRetiradaCarnet",
+            "hiringStatusExpr": "tuning?.importeRetiradaCarnet != null && tuning.importeRetiradaCarnet ? \"INCLUDED\" : \"OPTIONAL\"",
+            "visibilityFilterExpr": "tuning?.privacionPermiso"
+          }
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "missingModalityIds": [],
+        "optionalMarkerModalityIds": [
+          "1358"
+        ],
+        "coverTuningKey": "privacionPermiso"
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 1,
+        "full_entries": [
+          {
+            "cover_id": 11,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.privacionPermiso != null && tuning.privacionPermiso ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Subsidio por pérdida de carné'"
+              }
+            ]
+          },
+          {
+            "cover_id": 11,
+            "filter_expr": "tuning?.privacionPermiso",
+            "hiring_status_expr": "tuning?.importeRetiradaCarnet != null && tuning.importeRetiradaCarnet ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": null,
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Importe privación del permiso. Capital para retirada de carnet: ' + tuning?.importeRetiradaCarnet + '€'"
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "optional_hiring_status_cases": [
@@ -3004,6 +3269,460 @@
         "filter_expr": "insurance[\"risk\"].use == 'Owner'",
         "text_expr": "'Placas solares. No'"
       }
+    }
+  ],
+  "optional_sheet_format_cases": [
+    {
+      "id": "OSF-LIST-001",
+      "fn": "parseOptionalSheetList",
+      "description": "Lista por comas con espacios sobrantes: se limpia cada elemento.",
+      "text": " Esencial ,  Ampliada ",
+      "expected": [
+        "Esencial",
+        "Ampliada"
+      ]
+    },
+    {
+      "id": "OSF-LIST-002",
+      "fn": "parseOptionalSheetList",
+      "description": "Celda vacia = 'todas': lista vacia, nunca [''].",
+      "text": "",
+      "expected": []
+    },
+    {
+      "id": "OSF-OPT-001",
+      "fn": "resolveTuningOptionValues",
+      "description": "Etiqueta de opcion (lo que escribe quien rellena el Excel) -> item real del desplegable.",
+      "tuningFieldDef": {
+        "type": "string",
+        "component": "select",
+        "label": "Asistencia en viaje",
+        "options": [
+          {
+            "condition": "/x/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              }
+            ]
+          },
+          {
+            "condition": "/y/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              },
+              {
+                "label": "Plus",
+                "value": "0000000467"
+              }
+            ]
+          }
+        ]
+      },
+      "optionText": "Plus",
+      "expected": [
+        {
+          "value": "0000000467",
+          "label": "Plus"
+        }
+      ]
+    },
+    {
+      "id": "OSF-OPT-002",
+      "fn": "resolveTuningOptionValues",
+      "description": "Varias opciones en una celda: se resuelven todas, sin duplicar un valor que aparezca en dos grupos de options[].",
+      "tuningFieldDef": {
+        "type": "string",
+        "component": "select",
+        "label": "Asistencia en viaje",
+        "options": [
+          {
+            "condition": "/x/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              }
+            ]
+          },
+          {
+            "condition": "/y/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              },
+              {
+                "label": "Plus",
+                "value": "0000000467"
+              }
+            ]
+          }
+        ]
+      },
+      "optionText": "Esencial, Ampliada",
+      "expected": [
+        {
+          "value": "0000000465",
+          "label": "Esencial"
+        },
+        {
+          "value": "0000000466",
+          "label": "Ampliada"
+        }
+      ]
+    },
+    {
+      "id": "OSF-OPT-003",
+      "fn": "resolveTuningOptionValues",
+      "description": "Caso real Zurich capitalAccidenteConductor: el valor '3A' existe en DOS grupos, con etiqueta informativa en uno y el placeholder en el otro. Emparejar por ETIQUETA evita la ambiguedad; buscar por valor no podria distinguirlos.",
+      "tuningFieldDef": {
+        "type": "string",
+        "component": "select",
+        "label": "Capital accidente conductor",
+        "options": [
+          {
+            "condition": "/tuning.accidentesConductor == '0000000468'/",
+            "items": [
+              {
+                "label": "6.000 Euros MUERTE e INVALIDEZ",
+                "value": "3A"
+              }
+            ]
+          },
+          {
+            "condition": "/tuning.accidentesConductor != '0000000468'/",
+            "items": [
+              {
+                "label": "Seleccione una opción",
+                "value": "3A"
+              },
+              {
+                "label": "24.000 Euros MUERTE e INVALIDEZ",
+                "value": "3D"
+              }
+            ]
+          }
+        ]
+      },
+      "optionText": "6.000 Euros MUERTE e INVALIDEZ",
+      "expected": [
+        {
+          "value": "3A",
+          "label": "6.000 Euros MUERTE e INVALIDEZ"
+        }
+      ]
+    },
+    {
+      "id": "OSF-OPT-004",
+      "fn": "resolveTuningOptionValues",
+      "description": "Opcion que no existe en el desplegable: devuelve null en vez de inventar un valor, para no generar un FILTER_EXPR sobre algo inexistente.",
+      "tuningFieldDef": {
+        "type": "string",
+        "component": "select",
+        "label": "Asistencia en viaje",
+        "options": [
+          {
+            "condition": "/x/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              }
+            ]
+          },
+          {
+            "condition": "/y/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              },
+              {
+                "label": "Plus",
+                "value": "0000000467"
+              }
+            ]
+          }
+        ]
+      },
+      "optionText": "Premium",
+      "expected": null
+    },
+    {
+      "id": "OSF-OPT-005",
+      "fn": "resolveTuningOptionValues",
+      "description": "Campo booleano (sin options[]): no hay opciones que elegir, celda de opcion irrelevante.",
+      "tuningFieldDef": {
+        "type": "boolean",
+        "component": "radio",
+        "label": "Pérdida total"
+      },
+      "optionText": "Sí",
+      "expected": null
+    },
+    {
+      "id": "OSF-OPT-006",
+      "fn": "resolveTuningOptionValues",
+      "description": "Celda de opcion vacia = todas: null, se sigue el camino de siempre.",
+      "tuningFieldDef": {
+        "type": "string",
+        "component": "select",
+        "label": "Asistencia en viaje",
+        "options": [
+          {
+            "condition": "/x/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              }
+            ]
+          },
+          {
+            "condition": "/y/",
+            "items": [
+              {
+                "label": "Esencial",
+                "value": "0000000465"
+              },
+              {
+                "label": "Ampliada",
+                "value": "0000000466"
+              },
+              {
+                "label": "Plus",
+                "value": "0000000467"
+              }
+            ]
+          }
+        ]
+      },
+      "optionText": "",
+      "expected": null
+    },
+    {
+      "id": "OSF-EXPR-001",
+      "fn": "buildTuningValueEqualityExpr",
+      "description": "Una sola opcion: comparacion simple, sin parentesis ni OR.",
+      "tuningKey": "asistenciaViaje",
+      "optionValues": [
+        {
+          "value": "0000000467",
+          "label": "Plus"
+        }
+      ],
+      "expected": "tuning?.asistenciaViaje == '0000000467'"
+    },
+    {
+      "id": "OSF-EXPR-002",
+      "fn": "buildTuningValueEqualityExpr",
+      "description": "Varias opciones: OR entre ellas.",
+      "tuningKey": "asistenciaViaje",
+      "optionValues": [
+        {
+          "value": "0000000465",
+          "label": "Esencial"
+        },
+        {
+          "value": "0000000466",
+          "label": "Ampliada"
+        }
+      ],
+      "expected": "tuning?.asistenciaViaje == '0000000465' || tuning?.asistenciaViaje == '0000000466'"
+    },
+    {
+      "id": "OSF-EXPR-003",
+      "fn": "buildTuningValueInequalityExpr",
+      "description": "Negacion (texto propio de una cobertura marcada 'Garantia Opcional'): AND de desigualdades.",
+      "tuningKey": "asistenciaViaje",
+      "optionValues": [
+        {
+          "value": "0000000465",
+          "label": "Esencial"
+        },
+        {
+          "value": "0000000467",
+          "label": "Plus"
+        }
+      ],
+      "expected": "tuning?.asistenciaViaje != '0000000465' && tuning?.asistenciaViaje != '0000000467'"
+    },
+    {
+      "id": "OSF-EXPR-004",
+      "fn": "buildTuningValueEqualityExpr",
+      "description": "tuning_key NOT_FOUND: null, nunca una expresion con la cadena literal NOT_FOUND dentro.",
+      "tuningKey": "NOT_FOUND",
+      "optionValues": [
+        {
+          "value": "X",
+          "label": "X"
+        }
+      ],
+      "expected": null
+    },
+    {
+      "id": "OSF-MARK-001",
+      "fn": "buildOwnContentMarkerFilterExpr",
+      "description": "Solo las filas CON opcion sustituyen el texto propio (OVERWRITE=1 de la legacy): una fila sin opcion lo AÑADE y no debe filtrarlo.",
+      "opcionales": [
+        {
+          "tuningKey": "privacionPermiso"
+        },
+        {
+          "tuningKey": "importeRetiradaCarnet"
+        }
+      ],
+      "expected": null
+    },
+    {
+      "id": "OSF-MARK-002",
+      "fn": "buildOwnContentMarkerFilterExpr",
+      "description": "Caso real Zurich cover 14: una fila con opcion Plus -> el texto propio se filtra con la negacion de Plus.",
+      "opcionales": [
+        {
+          "tuningKey": "asistenciaViaje",
+          "optionValues": [
+            {
+              "value": "0000000467",
+              "label": "Plus"
+            }
+          ]
+        }
+      ],
+      "expected": "tuning?.asistenciaViaje != '0000000467'"
+    },
+    {
+      "id": "OSF-PLH-001",
+      "fn": "buildLineTextExpr",
+      "description": "Marcador de valor {…}: el TEXT_EXPR pasa de literal a concatenacion SPEL con el valor del tuning. Sustituye al $1 de RISK_TUNING_COVER.",
+      "text": "Capital para retirada de carnet: {importe contratado}€",
+      "tuningKey": "importeRetiradaCarnet",
+      "expected": "'Capital para retirada de carnet: ' + tuning?.importeRetiradaCarnet + '€'"
+    },
+    {
+      "id": "OSF-PLH-002",
+      "fn": "buildLineTextExpr",
+      "description": "Cualquier texto entre llaves vale (no hay vocabulario que aprender: cada fila tiene una sola cobertura opcional).",
+      "text": "Hasta {capital} por siniestro",
+      "tuningKey": "zasihb",
+      "expected": "'Hasta ' + tuning?.zasihb + ' por siniestro'"
+    },
+    {
+      "id": "OSF-PLH-003",
+      "fn": "buildLineTextExpr",
+      "description": "Sin marcador: literal SPEL de siempre, comportamiento intacto.",
+      "text": "Texto normal.",
+      "tuningKey": "importeRetiradaCarnet",
+      "expected": "'Texto normal.'"
+    },
+    {
+      "id": "OSF-PLH-004",
+      "fn": "buildLineTextExpr",
+      "description": "Marcador pero sin tuning_key resuelto: se deja el texto tal cual (llaves visibles) en vez de inventar una expresion, para que el revisor humano vea que no se pudo resolver.",
+      "text": "Capital: {importe}€",
+      "tuningKey": "NOT_FOUND",
+      "expected": "'Capital: {importe}€'"
+    },
+    {
+      "id": "OSF-PLH-005",
+      "fn": "buildLineTextExpr",
+      "description": "Marcador al principio del texto: no debe generar un literal vacio inicial.",
+      "text": "{importe}€ por siniestro",
+      "tuningKey": "k",
+      "expected": "tuning?.k + '€ por siniestro'"
+    },
+    {
+      "id": "OSF-VIS-001",
+      "fn": "runtimeVisibilityFilterExpr",
+      "description": "Caso real Zurich importeRetiradaCarnet: `visible` que referencia OTRO campo de tuning -> es condicion de ejecucion, va al FILTER_EXPR (el importe no significa nada sin la cobertura contratada).",
+      "tuningFieldDef": {
+        "type": "number",
+        "component": "number",
+        "label": "Importe privación del permiso",
+        "visible": "/tuning?.privacionPermiso/"
+      },
+      "expected": "tuning?.privacionPermiso"
+    },
+    {
+      "id": "OSF-VIS-002",
+      "fn": "runtimeVisibilityFilterExpr",
+      "description": "Caso real Zurich rcCarga: `visible` sobre datos del riesgo -> tambien condicion de ejecucion. Antes se ignoraba, asi que los capitales se mostraban en tipos de vehiculo donde no se ofrecen.",
+      "tuningFieldDef": {
+        "type": "string",
+        "component": "select",
+        "label": "Responsabilidad civil de la carga",
+        "visible": "/insurance.risk?.base7Version?.typeCode == '200'/",
+        "options": [
+          {
+            "items": [
+              {
+                "label": "No contrata",
+                "value": "N"
+              },
+              {
+                "label": "60.000€",
+                "value": "0000000272"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": "insurance.risk?.base7Version?.typeCode == '200'"
+    },
+    {
+      "id": "OSF-VIS-003",
+      "fn": "runtimeVisibilityFilterExpr",
+      "description": "`visible` con ${modalityId}: NO va al FILTER_EXPR (no existe ${modalityId} en el contexto SPEL de ejecucion) -- eso lo resuelve la columna MODALIDADES en tiempo de generacion.",
+      "tuningFieldDef": {
+        "type": "boolean",
+        "component": "radio",
+        "label": "Fenómenos atmosféricos",
+        "visible": "/${modalityId}==1358||${modalityId}==1359/"
+      },
+      "expected": null
+    },
+    {
+      "id": "OSF-VIS-004",
+      "fn": "runtimeVisibilityFilterExpr",
+      "description": "Campo sin `visible`: null, sin condicion añadida.",
+      "tuningFieldDef": {
+        "type": "boolean",
+        "component": "radio",
+        "label": "Pérdida total"
+      },
+      "expected": null
     }
   ]
 }

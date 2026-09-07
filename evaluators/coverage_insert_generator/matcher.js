@@ -128,8 +128,21 @@ function buildCandidateIndex(excelFixture) {
     }
   }
 
+  // Una MISMA cobertura opcional puede ocupar VARIAS filas del Excel desde el
+  // formato ampliado (07/09): una por opcion y/o por grupo de modalidades
+  // (caso real Zurich, "Asistencia en viaje" en 6 filas del epigrafe
+  // "Asistencia en viaje" mas 1 del de "Vehículo de sustitución"). Todas
+  // describen la MISMA cobertura opcional, asi que como candidato es una
+  // sola: sin deduplicar, el Coverage Match Decision Agent recibiria 6
+  // candidatos indistinguibles entre si. El texto de todas ellas sigue
+  // sumandose a cover_full_text (arriba), que es lo que verifica el guardrail
+  // de grounding.
+  const seenOptionalCandidates = new Set();
   for (const opt of excelFixture.coberturas_opcionales || []) {
     const parentCoverId = byCoverName.get(normalize(opt.epigrafe)) ?? null;
+    const dedupeKey = `${parentCoverId}|${normalize(opt.cover_name)}`;
+    if (seenOptionalCandidates.has(dedupeKey)) continue;
+    seenOptionalCandidates.add(dedupeKey);
     index.push({
       cover_id: parentCoverId,
       text: opt.cover_name,

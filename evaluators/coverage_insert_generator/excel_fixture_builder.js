@@ -25,6 +25,23 @@ function isGarantiaOpcionalMarker(bulletText) {
   return normalize(bulletText) === GARANTIA_OPCIONAL_MARKER_NORMALIZED;
 }
 
+// Modalidades cuya celda trae el marcador: ahi la cobertura se OFRECE pero no
+// viene incluida, asi que su contenido propio no puede salir con
+// HIRING_STATUS_EXPR "INCLUDED" (ver
+// generator.applyOptionalMarkerToOwnContent). La celda puede traer el
+// marcador SOLO (Generali covers 79/81) o el marcador MAS el texto propio de
+// la cobertura (Zurich covers 11/12/14, 07/09): en el segundo caso
+// blocksFromCell ya filtra la linea del marcador y el texto sigue su camino
+// normal, asi que lo unico que falta es saber en que modalidades pasa.
+function optionalMarkerModalityIdsOf(modalitiesMap) {
+  const ids = [];
+  for (const [modalityId, cell] of Object.entries(modalitiesMap || {})) {
+    const text = (cell && cell.formattedValue) || "";
+    if (text.split("\n").some(line => isGarantiaOpcionalMarker(line))) ids.push(modalityId);
+  }
+  return ids;
+}
+
 // Frases reales, una por compania, para senalar que una cobertura NO se
 // ofrece en absoluto en una modalidad concreta (celda de "Coberturas por
 // modalidad") -- equivalen a "modalidad ausente" para esa cobertura (nodo
@@ -369,5 +386,6 @@ module.exports = {
   matchDependenciesToDefaultBlocks,
   matchDependenciesToBlockGroups,
   isGarantiaOpcionalMarker,
+  optionalMarkerModalityIdsOf,
   isCoverNotOfferedMarker
 };

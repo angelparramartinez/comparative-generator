@@ -21,9 +21,42 @@ Generali) con dos pestañas:
   `PRODUCT_COMPANY_MODALITY_ID`, un entero). Cada celda de modalidad contiene
   texto libre con los bullets ("• ...") de lo que cubre esa cobertura en esa
   modalidad concreta.
-- **"Coberturas opcionales"**: columna `COVER_ID` (a qué cobertura ya
-  existente se añade el texto), columna "Cobertura opcional" (nombre visible
-  de ese texto adicional), columna de texto libre.
+- **"Coberturas opcionales"**: cinco columnas, con estas cabeceras exactas:
+
+  | Columna | Contenido |
+  |---|---|
+  | `COBERTURA OPCIONAL` | nombre de la cobertura opcional que el cliente puede contratar |
+  | `TEXTO QUE SE DEBE INCLUIR` | el texto a mostrar |
+  | `EPÍGRAFE EN EL QUE SE DEBE INCLUIR` | nombre de la cobertura (de la otra pestaña) donde entra ese texto |
+  | `OPCIÓN DE LA COBERTURA` | a qué opción aplica el texto. Vacío = a todas |
+  | `MODALIDADES` | a qué modalidades aplica la fila. Vacío = a todas |
+
+  Las dos últimas se añadieron el 07/09 y tienen la **misma semántica de
+  lista**: una o varias entradas separadas por comas, y **vacía significa
+  "todas"**. Un Excel sin esas dos columnas se sigue leyendo igual que antes.
+
+  - **`OPCIÓN DE LA COBERTURA`** es para las coberturas opcionales que no son
+    un simple sí/no, sino que se contratan **por nivel o por capital** (p. ej.
+    Esencial / Ampliada / Plus, o 60.000€ / 150.000€ / 300.000€). Cuando el
+    texto es distinto para cada opción, se pone **una fila por opción** con su
+    propio texto. Escribe la opción tal y como la ve el usuario al contratar
+    ("Plus", "60.000€"), no un código interno.
+  - **`MODALIDADES`** lleva `PRODUCT_COMPANY_MODALITY_ID` (los mismos enteros
+    que encabezan las columnas de la otra pestaña). Se usan los IDs y no los
+    nombres porque una compañía puede tener **varias modalidades con el mismo
+    nombre** (caso real Zurich Autos: 38 modalidades donde los nombres se
+    repiten en cuatro bloques).
+  - **El orden de las filas importa**: si una cobertura opcional solo tiene
+    sentido cuando se ha contratado otra (p. ej. el *importe* de una
+    cobertura), su fila va **después** de la fila de la cobertura de la que
+    depende. Ese orden se conserva tal cual en la comparativa final.
+  - **Marcador de valor `{...}`**: cualquier texto entre llaves significa
+    "aquí va el valor que el cliente eligió para esta cobertura opcional".
+    Ejemplo: `Capital para retirada de carnet: {importe contratado}€`. No hay
+    vocabulario que aprender — cada fila tiene una sola cobertura opcional, así
+    que `{importe contratado}`, `{el importe}` o `{capital}` significan lo
+    mismo. Úsalo solo cuando el texto tenga que mostrar la cifra concreta que
+    contrató el cliente.
 
 Te voy a pasar el Excel bruto de una compañía nueva con esta misma
 información, pero en el formato propio de esa compañía (nombres de pestaña,
@@ -161,8 +194,37 @@ copiar y pegar en Google Sheets:
 **Coberturas opcionales** (solo si el Excel de la compañía trae algo
 equivalente)
 
-| COVER_ID | Cobertura opcional | Texto |
-|---|---|---|
+| COBERTURA OPCIONAL | TEXTO QUE SE DEBE INCLUIR | EPÍGRAFE EN EL QUE SE DEBE INCLUIR | OPCIÓN DE LA COBERTURA | MODALIDADES |
+|---|---|---|---|---|
+
+Deja vacías las dos últimas columnas salvo que hagan falta de verdad (ver
+arriba): vacío significa "todas".
+
+## Convenciones de forma del texto de las celdas
+
+El troceo del texto en líneas de la comparativa se hace **por saltos de
+línea**, así que estas cuatro reglas no son cosmética — cambian el resultado:
+
+1. **Una viñeta `•` por línea.** Varias viñetas seguidas en la misma línea se
+   quedan pegadas en un único párrafo ilegible.
+2. **Ningún otro marcador de lista.** Nada de `-` ni `*` para abrir un punto:
+   siempre `•`. Mezclar `•` con `-` en la misma celda hace que el sistema
+   interprete los `-` como subapartados y descoloque el resto.
+3. **Ninguna línea de continuación.** Una frase no se parte en dos líneas; si
+   es larga, ocupa una sola línea aunque se vea envuelta en la celda.
+4. **Un encabezado temático va en su propia línea** (p. ej. `GREEN:` seguido
+   de sus viñetas debajo), no pegado al primer punto de su lista.
+
+Y para la pestaña "Coberturas por modalidad", dos marcadores exactos:
+
+- **`No contratable`** como único contenido de la celda: esa cobertura no se
+  ofrece en absoluto en esa modalidad. Todas las coberturas del catálogo del
+  ramo deben aparecer siempre en la pestaña; las que la compañía no ofrezca se
+  marcan así.
+- **`Garantía Opcional`** (con tilde, tal cual): en esa modalidad la cobertura
+  **se ofrece pero no viene incluida**. La celda puede llevar solo el marcador,
+  o el marcador y debajo el texto propio de la cobertura — el que explica qué
+  se consigue al contratarla.
 
 Si algo queda sin resolver, añade al final una sección "Pendiente de
 revisión" listando cada caso con el motivo, en vez de forzar una respuesta.

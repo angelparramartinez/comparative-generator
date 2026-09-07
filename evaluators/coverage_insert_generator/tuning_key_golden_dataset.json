@@ -6,7 +6,8 @@
   "source_excel": "examples/hogar/Plantilla Comparativa Hogar.xlsx (hoja Coberturas opcionales)",
   "schema_notes": {
     "expected_tuning_key": "key real del diccionario de tuning, o \"NOT_FOUND\" si no existe ningun campo relacionado.",
-    "expected_confidence": "alta | media -- alta = deberia acertar siempre; media = casos con variacion lexica real (preposicion, sufijo, envoltorio) donde el heuristico puede necesitar mas contexto/LLM."
+    "expected_confidence": "alta | media -- alta = deberia acertar siempre; media = casos con variacion lexica real (preposicion, sufijo, envoltorio) donde el heuristico puede necesitar mas contexto/LLM.",
+    "tuning_dictionary": "diccionario compartido por los casos que no traen uno propio (Generali Hogar). Un caso puede definir su propio `tuning_dictionary` para no alterar el corpus de idf de los demas -- imprescindible al mezclar companias."
   },
   "cases": [
     {
@@ -120,6 +121,70 @@
       "expected_tuning_key": "znclas",
       "expected_confidence": "alta",
       "notes": "label identico salvo mayusculas (Control de Plagas)"
+    },
+    {
+      "id": "GD-TUNE-017",
+      "cover_name": "Importe privación del permiso",
+      "expected_tuning_key": "importeRetiradaCarnet",
+      "expected_confidence": "alta",
+      "notes": "Bug real 07/09 (Zurich Autos): el label coincide EXACTO con importeRetiradaCarnet, pero al ser component 'number' el componentPenalty de 0.4 hundia su 1.0 a 0.40 y ganaba privacionPermiso con 0.465 por simple solape de palabras ('privacion del permiso'). Una coincidencia exacta de etiqueta no debe poder ser tumbada por el penalty de tipo.",
+      "tuning_dictionary": {
+        "privacionPermiso": {
+          "section": "section.covers",
+          "label": "Privación del permiso de conducir",
+          "type": "boolean",
+          "component": "radio",
+          "required": true,
+          "value": false,
+          "allowSavedTuning": true
+        },
+        "importeRetiradaCarnet": {
+          "section": "section.covers",
+          "label": "Importe privación del permiso",
+          "type": "number",
+          "component": "number",
+          "step": 100,
+          "visible": "/tuning?.privacionPermiso/",
+          "enabled": "/tuning?.privacionPermiso/",
+          "required": false,
+          "min": 0,
+          "max": 3000,
+          "value": 0,
+          "allowSavedTuning": true
+        }
+      }
+    },
+    {
+      "id": "GD-TUNE-018",
+      "cover_name": "Privación del permiso de conducir",
+      "expected_tuning_key": "privacionPermiso",
+      "expected_confidence": "alta",
+      "notes": "Pareja de no regresion de GD-TUNE-017: el interruptor de la MISMA cobertura, que tambien coincide exacto con su label. Los dos campos comparten las palabras 'privacion del permiso', asi que cada texto debe seguir cayendo en su campo y no intercambiarse.",
+      "tuning_dictionary": {
+        "privacionPermiso": {
+          "section": "section.covers",
+          "label": "Privación del permiso de conducir",
+          "type": "boolean",
+          "component": "radio",
+          "required": true,
+          "value": false,
+          "allowSavedTuning": true
+        },
+        "importeRetiradaCarnet": {
+          "section": "section.covers",
+          "label": "Importe privación del permiso",
+          "type": "number",
+          "component": "number",
+          "step": 100,
+          "visible": "/tuning?.privacionPermiso/",
+          "enabled": "/tuning?.privacionPermiso/",
+          "required": false,
+          "min": 0,
+          "max": 3000,
+          "value": 0,
+          "allowSavedTuning": true
+        }
+      }
     }
   ],
   "tuning_dictionary": {
