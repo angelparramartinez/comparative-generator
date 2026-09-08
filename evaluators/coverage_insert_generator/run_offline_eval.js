@@ -277,6 +277,35 @@ function checkSuppressionMarksInSync() {
   return pass;
 }
 
+// generator.normalizeLineForDependencyMatch tiene que dar el MISMO resultado
+// que matcher.normalize: el primero empareja las lineas de la hoja de
+// opcionales con la cita de una dependencia, el segundo hace lo mismo con las
+// de la hoja de modalidades (via excel_fixture_builder.findDependenciesForText).
+// Si divergen, la misma frase recibe condicion en una hoja y no en la otra --
+// que es justo el hueco que se cerro el 08/09. Estan duplicados porque
+// generator.js es autocontenido a proposito (se copia entero al Code node).
+const NORMALIZE_SYNC_SAMPLES = [
+  "  • Remolque vehículos eléctricos.Hasta el punto de recarga para la batería",
+  "Remolque vehículos eléctricos.Hasta el punto de recarga para la batería",
+  "3.2. Asistencia en km 0 al vehículo/personas",
+  "a) Rescate",
+  "Artículo 8º Robo con franquicia",
+  "  Green: -Asesoramiento sobre el cuadro de mandos (mensajes de error)",
+  "Pérdida total 100% valor de nuevo en vehículos de hasta 3 años",
+  "",
+  "   ",
+  "ÁÉÍÓÚñÑ  ---  ***"
+];
+
+function checkNormalizeSync() {
+  const diffs = NORMALIZE_SYNC_SAMPLES.filter(
+    sample => matcher.normalize(sample) !== generator.normalizeLineForDependencyMatch(sample)
+  );
+  const pass = diffs.length === 0;
+  console.log(`  [${pass ? "PASS" : "FAIL"}] NORMALIZE-SYNC (matcher.normalize vs generator.normalizeLineForDependencyMatch)${pass ? `: ${NORMALIZE_SYNC_SAMPLES.length} muestras` : ` -- divergen en: ${diffs.map(d => JSON.stringify(d)).join(", ")}`}`);
+  return pass;
+}
+
 function checkGenerator(golden) {
   console.log("\n=== --generator ===");
   let failures = 0;
@@ -309,11 +338,40 @@ function checkGenerator(golden) {
   for (const c of golden.entry_building_cases || []) {
     total++;
     const { entries, coverOverride } = generator.buildEntriesForCover(c.input);
-    const checks = [
-      ["entry_count", entries.length, c.expected.entry_count],
-      ["cover_override_present", coverOverride != null, c.expected.cover_override_present],
-      ["entries_with_null_filter_expr_count", entries.filter(e => e.filter_expr === null).length, c.expected.entries_with_null_filter_expr_count]
-    ];
+    // Los tres primeros solo se comprueban si el caso los declara: los casos
+    // del 08/09 miran una cosa concreta (el filtro del contenido propio, o el
+    // de cada LINE de una opcional) y declarar de mas los haria fragiles a
+    // cualquier cambio no relacionado en el numero de entries.
+    const checks = [];
+    if (c.expected.entry_count !== undefined) {
+      checks.push(["entry_count", entries.length, c.expected.entry_count]);
+    }
+    if (c.expected.cover_override_present !== undefined) {
+      checks.push(["cover_override_present", coverOverride != null, c.expected.cover_override_present]);
+    }
+    if (c.expected.entries_with_null_filter_expr_count !== undefined) {
+      checks.push(["entries_with_null_filter_expr_count", entries.filter(e => e.filter_expr === null).length, c.expected.entries_with_null_filter_expr_count]);
+    }
+    // FILTER_EXPR del contenido propio (sources default/modality_bullet): con
+    // el fix de tramos del 08/09 todas esas entries comparten el mismo.
+    if (c.expected.own_content_filter_expr !== undefined) {
+      const own = entries.filter(e => generator.OWN_CONTENT_SOURCES.has(e.source));
+      const distinct = [...new Set(own.map(e => JSON.stringify(e.filter_expr)))];
+      checks.push([
+        "own_content_filter_expr",
+        distinct.length === 1 ? JSON.parse(distinct[0]) : `(${distinct.length} distintos: ${distinct.join(" | ")})`,
+        c.expected.own_content_filter_expr
+      ]);
+    }
+    // filter_expr de cada LINE de la entry de source optional_cover.
+    if (c.expected.optional_line_filter_exprs !== undefined) {
+      const opt = entries.find(e => e.source === "optional_cover");
+      checks.push([
+        "optional_line_filter_exprs",
+        JSON.stringify(opt ? opt.lines.map(l => l.filter_expr) : null),
+        JSON.stringify(c.expected.optional_line_filter_exprs)
+      ]);
+    }
     if (c.expected.first_entry_hiring_status_expr !== undefined) {
       checks.push(["first_entry_hiring_status_expr", entries[0] ? entries[0].hiring_status_expr : undefined, c.expected.first_entry_hiring_status_expr]);
     }
@@ -438,6 +496,9 @@ function checkGenerator(golden) {
 
   total++;
   if (!checkSuppressionMarksInSync()) failures++;
+
+  total++;
+  if (!checkNormalizeSync()) failures++;
 
   console.log(`--generator: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;

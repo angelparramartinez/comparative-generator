@@ -2610,6 +2610,184 @@
           }
         ]
       }
+    },
+    {
+      "id": "GEN-ENTRY-101",
+      "description": "FIX 2 (revision manual 08/09, Zurich cover 3 'Asistencia en viaje'): cobertura SIEMPRE INCLUIDA cuyo campo de tuning elige entre tramos sin estado 'no contratada'. El texto de la celda base ES el tramo por defecto (Esencial), asi que se filtra con la negacion de los tramos que SI tienen fila global -- sin eso, al elegir Ampliada se renderizaban las dos entries y la comparativa decia a la vez 'hasta 200 km' e 'ilimitada'. El HIRING_STATUS no cambia: sigue INCLUDED.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "defaultBullets": [
+          "Asistencia en viaje 24h Esencial.",
+          "Remolque del vehículo/conductor.Hasta 200km desde lugar siniestro."
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h. Ampliada:\n• Remolque ilimitado.",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ]
+          },
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24 h Plus.\n• Vehículo de sustitución.",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000467",
+                "label": "Plus"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "own_content_filter_expr": "(tuning?.asistenciaViaje != '0000000466') && (tuning?.asistenciaViaje != '0000000467')"
+      }
+    },
+    {
+      "id": "GEN-ENTRY-102",
+      "description": "FIX 2, CONTRA-PRUEBA: una fila acotada por MODALIDADES no niega nada. Es lo que salva el caso real de Zurich: la fila de 'Esencial' existe pero solo para las 18 modalidades Green, asi que el tramo Esencial de las otras 20 vive unicamente en la celda base. Negarla dejaria el texto base sin verse NUNCA.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "defaultBullets": [
+          "Asistencia en viaje 24h Esencial."
+        ],
+        "presentModalityIds": [
+          "2768"
+        ],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h Esencial Green:\n• Asistencia por descarga de batería.",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000465",
+                "label": "Esencial"
+              }
+            ],
+            "modalityIds": [
+              "2768"
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "own_content_filter_expr": null
+      }
+    },
+    {
+      "id": "GEN-ENTRY-103",
+      "description": "FIX 2, CONTRA-PRUEBA: una fila SIN opcion (booleano o importe) tampoco niega -- AÑADE informacion al texto base en vez de sustituirlo (OVERWRITE=0 en la legacy). Caso real cover 11, donde 'Subsidio por pérdida de carné' se ve siempre y el capital se suma al contratar.",
+      "input": {
+        "coverId": 11,
+        "coverName": "Retirada de carné",
+        "defaultBullets": [
+          "Subsidio por pérdida de carné"
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "opcionales": [
+          {
+            "coverName": "Importe privación del permiso",
+            "textContent": "Capital: {importe}€",
+            "tuningKey": "importeRetiradaCarnet"
+          }
+        ]
+      },
+      "expected": {
+        "own_content_filter_expr": null
+      }
+    },
+    {
+      "id": "GEN-ENTRY-104",
+      "description": "FIX 1 (revision manual 08/09): una linea de la hoja de OPCIONALES recibe la dependencia de riesgo igual que la misma frase en la hoja de modalidades. Antes llegaba con la dependencia fijada a null, asi que 'Remolque vehiculos electricos...' llevaba {3,13}.contains(base7Engine.id) en el texto base y no la llevaba en Ampliada ni en Plus (12 entries afectadas en Zurich).",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "presentModalityIds": [
+          "1358"
+        ],
+        "dependencyMatches": [
+          {
+            "cover_id": 3,
+            "decision": "match",
+            "excel_quote": "Remolque vehículos eléctricos.Hasta el punto de recarga para la batería",
+            "dependencies_translated": [
+              {
+                "risk_field": "base7Version.base7Engine.id",
+                "operator": "IN",
+                "value": [
+                  3,
+                  13
+                ]
+              }
+            ]
+          }
+        ],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h. Ampliada:\n• Remolque vehículos eléctricos.Hasta el punto de recarga para la batería\n• Error de combustible.",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "optional_line_filter_exprs": [
+          null,
+          "{3,13}.contains(insurance[\"risk\"].base7Version.base7Engine.id)",
+          null
+        ]
+      }
+    },
+    {
+      "id": "GEN-ENTRY-105",
+      "description": "FIX 1, CONTRA-PRUEBA: sin dependencias que emparejar, las lineas de la hoja de opcionales siguen saliendo sin filtro -- el cambio no puede inventar condiciones.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "presentModalityIds": [
+          "1358"
+        ],
+        "dependencyMatches": [],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h. Ampliada:\n• Remolque vehículos eléctricos.Hasta el punto de recarga para la batería",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "optional_line_filter_exprs": [
+          null,
+          null
+        ]
+      }
     }
   ],
   "optional_hiring_status_cases": [
@@ -2656,7 +2834,8 @@
   "schema_notes": {
     "block_entry_cases": "Casos de entry_building_cases que usan defaultBlocks/conditionedBlocks (buildEntriesForCover, integracion 22/07 de rich_text_block_parser.js) en vez de defaultBullets/conditionedBullets -- verifica que la dependencia real (housingRegime=Tenant) aterriza en la LINE concreta que la cita, no en el FILTER_EXPR del ENTRY completo (ver excel_fixture_builder.matchDependenciesToBlockGroups).",
     "entry_ordering_cases": "Verifica que buildEntriesForCover ordena las ENTRY finales: primero modality_id null (comunes), despues agrupadas por modality_id -- peticion del usuario 22/07 para poder revisar facilmente si una modalidad tiene todo su contenido (antes quedaban dispersas por familia/bloque, no por modalidad).",
-    "missing_modality_cases": "Casos de entry_building_cases que usan presentModalityIds/missingModalityIds -- bug real 22/07 (covers 79/81): una cobertura opcional no tiene por que ofrecerse en las 11 modalidades; las modalidades marcadas \"Sin cobertura\" en Coberturas por modalidad deben salir NOT_INCLUDED explicito para esa cobertura opcional, no la formula de tuning aplicada por igual a todas."
+    "missing_modality_cases": "Casos de entry_building_cases que usan presentModalityIds/missingModalityIds -- bug real 22/07 (covers 79/81): una cobertura opcional no tiene por que ofrecerse en las 11 modalidades; las modalidades marcadas \"Sin cobertura\" en Coberturas por modalidad deben salir NOT_INCLUDED explicito para esa cobertura opcional, no la formula de tuning aplicada por igual a todas.",
+    "entry_building_cases": "Los casos con `expected_own_content_filter_expr` comprueban el FILTER_EXPR de las entries de contenido propio (source default/modality_bullet); los con `expected_optional_line_filter_exprs`, el filter_expr de cada LINE de la entry de source optional_cover."
   },
   "entry_ordering_cases": [
     {

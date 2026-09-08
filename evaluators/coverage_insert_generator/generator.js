@@ -545,17 +545,66 @@ function ensureTrailingPeriod(text) {
 // ver finalizeLine). Se le pasa coverName a splitBulletsFromCellText para no
 // duplicar la cabecera si el propio textContent ya repite el nombre como
 // primera linea.
-function buildOptionalCoverLines(opt) {
+// Normaliza una linea para emparejarla con la cita literal de una
+// dependencia. Tiene que dar el MISMO resultado que matcher.normalize, que es
+// lo que usa excel_fixture_builder.findDependenciesForText para las lineas de
+// la hoja de modalidades: si los dos normalizadores divergen, la misma frase
+// recibiria condicion en una hoja y no en la otra. Se duplica porque
+// generator.js es autocontenido a proposito (se copia entero al Code node, sin
+// requires -- ver la cabecera y normalizeTuningLabel, misma razon); el arnes
+// comprueba que las dos versiones coinciden (--generator, caso NORMALIZE-SYNC).
+function normalizeLineForDependencyMatch(str) {
+  return (str || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar acentos
+    .replace(/^[\d]+(\.[\d]+)*\.?\s*/, "") // quitar numeracion inicial "3.2. "
+    .replace(/^[a-z]\)\s*/, "") // quitar numeracion tipo "a) "
+    .replace(/^articulo\s+[\wº.]+\s*/, "") // quitar "Articulo 8º "
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Dependencias que aplican a una linea concreta de la hoja "Coberturas
+// opcionales", emparejando por cita literal igual que se hace con las lineas
+// de la hoja de modalidades.
+//
+// Hueco real que cierra (revision manual del usuario, 08/09): las lineas de la
+// hoja de opcionales llamaban a finalizeLine con la dependencia fijada a null,
+// asi que la MISMA clausula llevaba su condicion en el texto base y no la
+// llevaba en las opciones. Caso concreto, Zurich cover 3: "Remolque vehiculos
+// electricos.Hasta el punto de recarga para la bateria" salia con
+// {3,13}.contains(base7Engine.id) en la celda de modalidad y sin condicion en
+// Ampliada y Plus (12 entries afectadas).
+//
+// Se empareja contra el texto del cuerpo ANTES de que formatLineText le ponga
+// la viñeta: los dos lados llegan sin marcador, asi que el emparejamiento no
+// depende de como se decore la linea despues.
+function findDependenciesForLineText(text, matches, coverId) {
+  if (!text || !matches || matches.length === 0) return null;
+  const normalized = normalizeLineForDependencyMatch(text);
+  if (!normalized) return null;
+  const hit = matches.find(
+    m => m.cover_id === coverId
+      && normalizeLineForDependencyMatch(m.excel_quote || m.bullet_match || "") === normalized
+  );
+  return hit ? (hit.dependencies_translated || []) : null;
+}
+
+function buildOptionalCoverLines(opt, matches, coverId) {
   const bodyLines = splitBulletsFromCellText(opt.textContent, opt.coverName);
+  const depsOf = text => combineFilterExpr(findDependenciesForLineText(text, matches, coverId));
   if (bodyLines.length === 0) {
     return [finalizeLine(opt.coverName, null, true, opt.tuningKey)];
   }
   if (bodyLines.length === 1) {
-    return [finalizeLine(`${ensureTrailingPeriod(opt.coverName)} ${bodyLines[0]}`, null, true, opt.tuningKey)];
+    return [finalizeLine(`${ensureTrailingPeriod(opt.coverName)} ${bodyLines[0]}`, depsOf(bodyLines[0]), true, opt.tuningKey)];
   }
   return [
     finalizeLine(ensureTrailingPeriod(opt.coverName), null, true, opt.tuningKey),
-    ...bodyLines.map(text => finalizeLine(text, null, false, opt.tuningKey))
+    ...bodyLines.map(text => finalizeLine(text, depsOf(text), false, opt.tuningKey))
   ];
 }
 
@@ -566,10 +615,15 @@ function buildOptionalCoverLines(opt) {
 // anteponerlo producia cabeceras redundantes del tipo "Asistencia en viaje.
 // Asistencia en Viaje 24h Esencial". Mismo formato que defaultBullets: la
 // primera linea hace de titulo.
-function buildOptionScopedCoverLines(opt) {
+function buildOptionScopedCoverLines(opt, matches, coverId) {
   const bodyLines = splitBulletsFromCellText(opt.textContent, opt.coverName);
   if (bodyLines.length === 0) return [finalizeLine(opt.coverName, null, true, opt.tuningKey)];
-  return bodyLines.map((text, i) => finalizeLine(text, null, i === 0, opt.tuningKey));
+  return bodyLines.map((text, i) => finalizeLine(
+    text,
+    combineFilterExpr(findDependenciesForLineText(text, matches, coverId)),
+    i === 0,
+    opt.tuningKey
+  ));
 }
 
 // Compara labels de opciones de tuning ignorando mayusculas/acentos (uso
@@ -823,6 +877,65 @@ function buildOwnContentMarkerFilterExpr(opcionales) {
   return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
 }
 
+// FILTER_EXPR del contenido propio de una cobertura que esta SIEMPRE INCLUIDA
+// pero cuyo campo de tuning elige entre TRAMOS (sin estado "no contratada").
+//
+// El texto de la celda de "Coberturas por modalidad" no es entonces un
+// "cómo conseguir la cobertura" -- es UNO de los tramos, el que queda cuando
+// no se elige ninguno de los que tienen fila propia. Sin filtrarlo se
+// renderiza a la vez que el tramo elegido y la comparativa se contradice.
+//
+// Caso real que lo motivo (Zurich cover 3 "Asistencia en viaje", revision
+// manual del usuario 08/09): `asistenciaViaje` tiene tres opciones y ninguna
+// "no contratada" (465 Esencial por defecto, 466 Ampliada, 467 Plus), y la
+// celda base contiene justo el texto de Esencial -- de hecho el usuario borro
+// la fila "Esencial" sin modalidades el 07/09 precisamente porque duplicaba
+// esa celda. Al elegir Ampliada salian las DOS entries con "INCLUDED", y el
+// resultado decia a la vez "Remolque hasta 200 km" y "Remolque ilimitada".
+//
+// Se niegan SOLO las opciones cuya fila aplica a TODAS las modalidades
+// (columna MODALIDADES vacia). Las filas acotadas por modalidad son extras
+// ADITIVOS de esas modalidades -- los "Green" de Zurich -- y negarlas dejaria
+// el texto base sin verse nunca: la fila de Esencial existe, pero solo para
+// las 18 Green, asi que el tramo Esencial de las otras 20 modalidades vive
+// unicamente en la celda base.
+//
+// Distinto de buildOwnContentMarkerFilterExpr, que niega TODAS las opciones
+// con fila: ahi el texto base es el "contratando X..." de una cobertura
+// marcada "Garantía Opcional" y debe desaparecer en cuanto se contrate
+// cualquiera de ellas. Aqui el texto base ES un tramo.
+//
+// Limite conocido y aceptado: si una compañia acotara por modalidad TODOS sus
+// tramos, no se negaria nada y la duplicacion volveria. Haria falta que el
+// Excel dijera explicitamente a que opcion corresponde la celda base; no se
+// inventa el mecanismo hasta que aparezca un caso real.
+function buildTierOwnContentFilterExpr(opcionales) {
+  const globalTierRows = (opcionales || []).filter(
+    o => o.optionValues && o.optionValues.length > 0
+      && o.tuningKey && o.tuningKey !== "NOT_FOUND"
+      && (!o.modalityIds || o.modalityIds.length === 0)
+  );
+  const parts = globalTierRows
+    .map(o => buildTuningValueInequalityExpr(o.tuningKey, o.optionValues))
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
+}
+
+// Aplica ese filtro a las entries de contenido propio, conservando su
+// HIRING_STATUS: la cobertura sigue INCLUIDA, solo se acota QUE texto se ve.
+// No toca las entries de la hoja de opcionales ni los NOT_INCLUDED.
+const OWN_CONTENT_SOURCES = new Set(["default", "modality_bullet"]);
+
+function applyTierFilterToOwnContent(entries, tierFilterExpr) {
+  if (!tierFilterExpr) return entries;
+  return entries.map(entry =>
+    OWN_CONTENT_SOURCES.has(entry.source)
+      ? { ...entry, filter_expr: combineTwoFilterExprStrings(entry.filter_expr, tierFilterExpr) }
+      : entry
+  );
+}
+
 // Reparte el contenido propio de la cobertura (sources "default" y
 // "modality_bullet") entre las modalidades donde esta INCLUIDA y aquellas
 // donde solo se OFRECE (celda con el marcador "Garantía Opcional").
@@ -906,7 +1019,8 @@ function buildEntriesForCover({
   presentModalityIds = [],
   missingModalityIds = [],
   optionalMarkerModalityIds = [],
-  coverTuningKey = null
+  coverTuningKey = null,
+  dependencyMatches = []
 }) {
   const entries = [];
 
@@ -1033,7 +1147,7 @@ function buildEntriesForCover({
         combineTwoFilterExprStrings(optionSelectionExpr, opt.visibilityFilterExpr ?? null),
         opt.filterExpr ?? null
       );
-      const optionLines = buildOptionScopedCoverLines(opt);
+      const optionLines = buildOptionScopedCoverLines(opt, dependencyMatches, coverId);
       const targetModalityIds = (opt.modalityIds && opt.modalityIds.length > 0) ? opt.modalityIds : [null];
       for (const modalityId of targetModalityIds) {
         entries.push({
@@ -1083,7 +1197,7 @@ function buildEntriesForCover({
     // valor posible) como el HIRING_STATUS_EXPR (comparacion de valor, no
     // truthy) y puede anadir un FILTER_EXPR de grupo (yvig24). Sin
     // tieredConfig, se mantiene el comportamiento de siempre.
-    const optLines = opt.tieredConfig ? buildTieredOptionalCoverLines(opt, opt.tieredConfig) : buildOptionalCoverLines(opt);
+    const optLines = opt.tieredConfig ? buildTieredOptionalCoverLines(opt, opt.tieredConfig) : buildOptionalCoverLines(opt, dependencyMatches, coverId);
     const optHiringStatusExpr = opt.tieredConfig ? buildTieredHiringStatusExpr(opt, opt.tieredConfig) : (opt.hiringStatusExpr || '"OPTIONAL"');
     // opt.visibilityFilterExpr (formato ampliado 07/09): el `visible` del
     // campo de tuning, o sea la condicion real bajo la que la compania ofrece
@@ -1184,16 +1298,23 @@ function buildEntriesForCover({
     markerFilterExpr: buildOwnContentMarkerFilterExpr(opcionales)
   });
 
-  const coverOverride = computeCoverOverride(withMarker);
+  // Solo cuando la cobertura NO esta marcada "Garantía Opcional": ese camino
+  // ya ha aplicado su propia negacion (la de TODAS las opciones), y aplicar
+  // las dos dejaria el texto base sin verse nunca.
+  const withTierFilter = optionalMarkerModalityIds.length > 0
+    ? withMarker
+    : applyTierFilterToOwnContent(withMarker, buildTierOwnContentFilterExpr(opcionales));
+
+  const coverOverride = computeCoverOverride(withTierFilter);
   if (coverOverride) {
-    for (const entry of withMarker) {
+    for (const entry of withTierFilter) {
       if (entry.filter_expr === coverOverride.sharedCondition) {
         entry.filter_expr = null;
       }
     }
   }
 
-  const sorted = sortEntriesByModality(withMarker);
+  const sorted = sortEntriesByModality(withTierFilter);
   sorted.forEach(entry => delete entry._blockIndex);
 
   return {
@@ -1330,6 +1451,11 @@ function buildInsertStatements({ coverId, productCompanyId, coverOverride, entri
 }
 
 module.exports = {
+  normalizeLineForDependencyMatch,
+  findDependenciesForLineText,
+  OWN_CONTENT_SOURCES,
+  buildTierOwnContentFilterExpr,
+  applyTierFilterToOwnContent,
   POSITIVE_MEMBERSHIP_OPERATORS,
   NEGATIVE_MEMBERSHIP_OPERATORS,
   mergeSameFieldMembership,
