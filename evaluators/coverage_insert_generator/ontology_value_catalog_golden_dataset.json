@@ -1,0 +1,536 @@
+{
+  "version": "1.0",
+  "dataset_name": "coverage_insert_generator_ontology_value_catalog_golden_set",
+  "description": "Golden set del parser que construye el catalogo de valores de enum desde la ontologia del ramo (ontology_value_catalog.js). Sustituye a la constante ENUM_VALUE_CATALOG que vivia hardcodeada en value_matcher.js -- ver la cabecera de ontology_value_catalog.js para el hallazgo real (08/09, ejecucion 402 con Zurich Autos) que lo motivo.",
+  "schema_notes": {
+    "catalog_entry_cases": "Se ejecutan contra los ficheros .md REALES de knowledge/ontologies/ (no contra texto inline), asi que este golden set tambien es un test de regresion del DATO: si alguien rompe un bloque value_aliases/known_limitations/value_context_overrides de una ontologia, el arnes falla. `expected` a null significa que ese risk_field no debe existir en el catalogo del ramo. `values` es una LISTA de {value, aliases} y no un objeto: las claves de objeto de JS son siempre cadenas y eso perderia el tipo real de un id numerico, que es justo lo que hace falta para que salga sin comillas al SPEL.",
+    "catalog_shape_cases": "Invariantes del catalogo completo de un ramo (recuentos y presencia/ausencia de claves), no de una entrada concreta. Cubren la composicion de risk_field de campos importados, que es la parte que mas facil se desalinea de `Merge Shared Texts Into Ramo`.",
+    "parser_unit_cases": "Casos de parseo sobre texto inline, para las trampas de formato que los ficheros reales solo ejercitan una vez (continuacion de linea indentada en value_context_overrides, `field:` frente a `risk_field:`, values: ignorado)."
+  },
+  "catalog_entry_cases": [
+    {
+      "id": "OVC-ENTRY-001",
+      "ramo": "Hogar",
+      "risk_field": "occupancy",
+      "description": "Uso de la vivienda: los 3 valores y sus alias, mas las 4 known_limitations. Contenido identico al que tenia ENUM_VALUE_CATALOG -- este caso es la prueba de que migrar a la ontologia no cambio nada en Hogar.",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "MainResidence",
+            "aliases": [
+              "vivienda principal",
+              "residencia principal",
+              "domicilio habitual",
+              "vivienda habitual"
+            ]
+          },
+          {
+            "value": "SecondHome",
+            "aliases": [
+              "vivienda secundaria",
+              "segunda residencia",
+              "vivienda de temporada"
+            ]
+          },
+          {
+            "value": "UnoccupiedProperty",
+            "aliases": [
+              "vivienda vacía",
+              "vivienda desocupada",
+              "sin ocupación"
+            ]
+          }
+        ],
+        "knownLimitations": [
+          "alquiler vacacional",
+          "uso turístico",
+          "otros usos",
+          "arrendada"
+        ],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-002",
+      "ramo": "Hogar",
+      "risk_field": "use",
+      "description": "Regimen de tenencia, con el value_context_overrides real (Owner -> Rental). La regla vive partida en DOS lineas en el .md y su continuacion empieza por 'contiene:', que casa con la regex de corte del extractor simple -- si se parsea con extractSectionList en vez de la version multilinea, esta regla llega truncada y sin sus cues.",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "Owner",
+            "aliases": [
+              "propietario"
+            ]
+          },
+          {
+            "value": "Rental",
+            "aliases": [
+              "arrendada",
+              "vivienda alquilada"
+            ]
+          },
+          {
+            "value": "Tenant",
+            "aliases": [
+              "inquilino",
+              "arrendatario"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": [
+          {
+            "from": "Owner",
+            "to": "Rental",
+            "whenEvidenceContainsAny": [
+              "arrendada",
+              "arrendador",
+              "alquilada",
+              "alquiler"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "OVC-ENTRY-003",
+      "ramo": "Hogar",
+      "risk_field": "capitalInsuranceType",
+      "description": "Tercer campo que tenia ENUM_VALUE_CATALOG. Mismo contenido.",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "FirstRisk",
+            "aliases": [
+              "primer riesgo",
+              "primer_riesgo"
+            ]
+          },
+          {
+            "value": "VReplacementValue",
+            "aliases": [
+              "valor de reposición",
+              "valor de reposicion"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-004",
+      "ramo": "Hogar",
+      "risk_field": "buildingType",
+      "description": "Campo que la ontologia SI tenia con vocabulario y el catalogo hardcodeado no -- se gana gratis al leer de la ontologia. Y es el caso que demuestra que el uno-a-muchos no es una necesidad nueva de Autos: 'vivienda unifamiliar' esta declarado como alias de DOS valores (TerracedHouse, adosado, y DetachedHouse, chalet) desde el principio, con la decision razonada en el propio bloque. Hasta el 08/09 el motor indexaba alias->valor en un Map y ganaba el ultimo, asi que el adosado se perdia EN SILENCIO; ahora resuelve a los dos y el operador se promueve a IN.",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "GroundFloor",
+            "aliases": [
+              "planta baja"
+            ]
+          },
+          {
+            "value": "MiddleFloor",
+            "aliases": [
+              "piso"
+            ]
+          },
+          {
+            "value": "TopFloor",
+            "aliases": [
+              "ático"
+            ]
+          },
+          {
+            "value": "TerracedHouse",
+            "aliases": [
+              "adosado",
+              "vivienda unifamiliar"
+            ]
+          },
+          {
+            "value": "DetachedHouse",
+            "aliases": [
+              "chalet",
+              "vivienda unifamiliar"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-005",
+      "ramo": "Hogar",
+      "risk_field": "continent",
+      "description": "Campo NO enum: esta en el catalogo (para poder distinguir 'no necesita traduccion' de 'no se sabe traducir') pero sin vocabulario de valores. Es el campo del bug real del 22/07.",
+      "expected": {
+        "dataType": "integer",
+        "values": [],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-006",
+      "ramo": "Autos",
+      "risk_field": "garageType",
+      "description": "Primer campo de Autos con vocabulario de valores. Prueba que el catalogo no es especifico de Hogar sin tocar una linea de codigo.",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "PrivateGarage",
+            "aliases": [
+              "garaje individual"
+            ]
+          },
+          {
+            "value": "CommunalParking",
+            "aliases": [
+              "garaje colectivo"
+            ]
+          },
+          {
+            "value": "NoGarage",
+            "aliases": [
+              "vía pública"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-007",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Engine.id",
+      "description": "EL CAMPO DEL BUG (ejecucion 402, 08/09), ya con su vocabulario declarado en shared/base7version.md. Las dos agrupaciones son decision del usuario: 'electrico' incluye el 13 (pila de combustible/hidrogeno) y no solo el 3; 'hibrido' son los tres (7 no enchufable, 11 gasolina enchufable, 12 diesel enchufable). El alias se REPITE en cada id -- es el mecanismo del uno-a-muchos, sin sintaxis nueva, el mismo que 'vivienda unifamiliar' en Hogar. El orden de la lista es el de DECLARACION en el .md (3, 13, 7, 11, 12), no el numerico: es el orden en que saldran los ids dentro del IN del SPEL, y con la forma anterior de objeto no era ni observable.",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": 3,
+            "aliases": [
+              "vehículo eléctrico",
+              "motor eléctrico",
+              "eléctrico"
+            ]
+          },
+          {
+            "value": 13,
+            "aliases": [
+              "vehículo eléctrico",
+              "motor eléctrico",
+              "eléctrico"
+            ]
+          },
+          {
+            "value": 7,
+            "aliases": [
+              "vehículo híbrido",
+              "motor híbrido",
+              "híbrido"
+            ]
+          },
+          {
+            "value": 11,
+            "aliases": [
+              "vehículo híbrido",
+              "motor híbrido",
+              "híbrido"
+            ]
+          },
+          {
+            "value": 12,
+            "aliases": [
+              "vehículo híbrido",
+              "motor híbrido",
+              "híbrido"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-011",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.id",
+      "description": "Vocabulario corto y medido. 'furgoneta'/'furgón' van a los DOS ids (6 y 7): la BBDD solo los separa por habilitacion a pasajeros, distincion que ningun condicionado hace -- otro uno-a-muchos. Los plurales aparte porque normalize quita mayusculas y acentos pero no pluraliza. El 5 fuera del grupo: los textos reales dicen 'derivados del turismo' como termino distinto de 'furgonetas', en la misma frase. Y lo que NO esta: 'furgoneta de transporte propio', el compuesto, que añade un USO (carga propia frente a de terceros por remuneracion) que este enum no expresa -- eso vive en el tuning de la compañia (usoVehiculo de Zurich: 210 propios / 220 terceros) y no existe como risk_field (comprobado en avant-back y avant-front el 08/09).",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": 1,
+            "aliases": [
+              "turismo"
+            ]
+          },
+          {
+            "value": 5,
+            "aliases": [
+              "derivado de turismo"
+            ]
+          },
+          {
+            "value": 6,
+            "aliases": [
+              "furgoneta",
+              "furgonetas",
+              "furgón",
+              "furgones"
+            ]
+          },
+          {
+            "value": 7,
+            "aliases": [
+              "furgoneta",
+              "furgonetas",
+              "furgón",
+              "furgones"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-012",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.base7Category.id",
+      "description": "Sigue SIN vocabulario a proposito, y no es un hueco por rellenar: los textos observados ('primera categoria', 'tercera categoria') no son valores de este enum (son AUTOS/CAMIONES/MOTOS/VMP), y precisamente por eso el guardrail de extraccion los marca vacuous_for_ramo. Mapearlos seria inventar semantica. Las dependencias vacuas ni se traducen (salida temprana de translateDependencyValue) ni llegan al FILTER_EXPR (combineFilterExpr las filtra).",
+      "expected": {
+        "dataType": "enum",
+        "values": [],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-008",
+      "ramo": "Autos",
+      "risk_field": "registrationYears",
+      "description": "Campo no-enum de Autos: aparece en dependencias reales (su_00077/082/086 del artefacto de Zurich) y no necesita traduccion.",
+      "expected": {
+        "dataType": "integer",
+        "values": [],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-ENTRY-009",
+      "ramo": "Hogar",
+      "risk_field": "base7Version.base7Engine.id",
+      "description": "Aislamiento por ramo: Hogar no importa base7version, asi que ese campo NO debe existir en su catalogo. Si apareciera, el catalogo estaria mezclando ramos igual que hacia la constante hardcodeada.",
+      "expected": null
+    },
+    {
+      "id": "OVC-ENTRY-010",
+      "ramo": "Hogar",
+      "risk_field": "property_use",
+      "description": "risk_field inventado por el LLM (caso real, ver CLAUDE.md 5.2): no existe en ninguna ontologia. Debe estar ausente del catalogo para que value_matcher lo reporte como risk_field_not_in_ontology.",
+      "expected": null
+    }
+  ],
+  "catalog_shape_cases": [
+    {
+      "id": "OVC-SHAPE-001",
+      "ramo": "Autos",
+      "description": "Los 3 campos de base7version llegan con el risk_field COMPUESTO por la figura que los importa (`## base7Version` con `imports: base7version`), exactamente como los emite `Merge Shared Texts Into Ramo` y como llegan en la dependencia real del artefacto de Zurich. Si esta composicion se desalinea, el catalogo se indexa con claves que ninguna dependencia usa y la traduccion vuelve a fallar en silencio.",
+      "must_contain_keys": [
+        "base7Version.base7Engine.id",
+        "base7Version.base7Type.id",
+        "base7Version.base7Type.base7Category.id"
+      ],
+      "must_not_contain_keys": [
+        "base7Engine.id",
+        "base7Type.id",
+        "base7Type.base7Category.id"
+      ]
+    },
+    {
+      "id": "OVC-SHAPE-002",
+      "ramo": "Autos",
+      "description": "Los campos de person.md se expanden por figura (owner/primaryDriver/secondaryDriver) con prefijo, y la figura `holder` NO prefija -- misma regla que la indexacion.",
+      "must_contain_keys": [
+        "primaryDriver.age",
+        "owner.identificationType",
+        "secondaryDriver.licenseType"
+      ],
+      "must_not_contain_keys": [
+        "holder.identificationType"
+      ]
+    },
+    {
+      "id": "OVC-SHAPE-003",
+      "ramo": "Autos",
+      "description": "ExcludeImportedFields del ramo se respeta tambien en el catalogo: un campo que el ramo excluye del import no debe catalogarse (si no, se cataloga un campo que Qdrant no indexa). Caso real: `sport` se excluyo de Autos porque no existe en ese riesgo.",
+      "must_not_contain_keys": [
+        "primaryDriver.sport",
+        "owner.sport",
+        "secondaryDriver.sport"
+      ]
+    },
+    {
+      "id": "OVC-SHAPE-004",
+      "ramo": "Hogar",
+      "description": "Todo risk_field que aparece en el golden set de dependencias de Hogar tiene entrada en el catalogo -- ninguna dependencia real debe resolverse como risk_field_not_in_ontology. Ojo con `rooms`: es el nombre del CONCEPTO, el risk_field real es `roomsNumber` (corregido 24/07, mismo motivo que housingUse -> occupancy).",
+      "must_contain_keys": [
+        "occupancy",
+        "use",
+        "capitalInsuranceType",
+        "continent",
+        "content",
+        "roomsNumber",
+        "specialValueObjects"
+      ],
+      "must_not_contain_keys": [
+        "rooms",
+        "housingUse",
+        "housingRegime"
+      ]
+    },
+    {
+      "id": "OVC-SHAPE-005",
+      "ramo": "Hogar",
+      "description": "El catalogo cubre EXACTAMENTE los mismos risk_field que valid_risk_fields.json, la lista contra la que el guardrail de `coverage rules extraction GGCC` valida cada dependencia. Es la prueba de que las dos mitades del pipeline leen el mismo universo de campos: si una dependencia pasa el guardrail de extraccion, aqui tiene entrada. Medido el 08/09: 50 y 50, sin diferencias en ninguno de los dos sentidos.",
+      "must_equal_valid_risk_fields": "evaluators/coverage_dependency_extractor/valid_risk_fields.json"
+    }
+  ],
+  "parser_unit_cases": [
+    {
+      "id": "OVC-UNIT-001",
+      "description": "`values:` NO se lee como vocabulario. Un bloque que solo declara values: (catalogo de BBDD, la forma de shared/*.md) llega con values vacio, no con alias fabricados partiendo la etiqueta por comas. Es la trampa medida que hizo descartar el fallback: 'A1: moto, edad mínima 15, hasta 125cc' y sus hermanas harian que el alias 'moto' apuntara a A1, A2, A y AM a la vez.",
+      "ontology_text": "OntologyType: test\n\n## motor\nrisk_field: engineKind\ndata_type: enum\nvalues:\n- 3: ELÉCTRICO\n- 2: COMBUSTIÓN INTERNA DIESEL, COMBUSTIBLE GASOIL (Diesel)\ninterpretation:\nCatalogo de BBDD, no vocabulario.\n",
+      "risk_field": "engineKind",
+      "expected": {
+        "dataType": "enum",
+        "values": [],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-UNIT-002",
+      "description": "`value_aliases:` conviviendo con `values:` en el mismo bloque: se lee el primero y se ignora el segundo. Es la forma a la que hay que llevar shared/base7version.md.",
+      "ontology_text": "OntologyType: test\n\n## motor\nrisk_field: engineKind\ndata_type: enum\nvalues:\n- 3: ELÉCTRICO\n- 7: MOTOR HIBRIDO G+E\nvalue_aliases:\n- 3: vehículo eléctrico, motor eléctrico\n- 7: vehículo híbrido\ninterpretation:\nAmbas claves a la vez.\n",
+      "risk_field": "engineKind",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": 3,
+            "aliases": [
+              "vehículo eléctrico",
+              "motor eléctrico"
+            ]
+          },
+          {
+            "value": 7,
+            "aliases": [
+              "vehículo híbrido"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-UNIT-003",
+      "description": "Continuacion de linea indentada en value_context_overrides cuya primera palabra acaba en ':' -- exactamente la forma del .md real. El extractor no debe cortar ahi ni perder los cues.",
+      "ontology_text": "OntologyType: test\n\n## tenencia\nrisk_field: tenure\ndata_type: enum\nvalue_aliases:\n- Owner: propietario\n- Rental: arrendada\nvalue_context_overrides:\n- Owner -> Rental cuando la evidencia de la MISMA dependencia tambien\n  contiene: arrendada, arrendador, alquilada\ninterpretation:\nRegla partida en dos lineas.\n",
+      "risk_field": "tenure",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "Owner",
+            "aliases": [
+              "propietario"
+            ]
+          },
+          {
+            "value": "Rental",
+            "aliases": [
+              "arrendada"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": [
+          {
+            "from": "Owner",
+            "to": "Rental",
+            "whenEvidenceContainsAny": [
+              "arrendada",
+              "arrendador",
+              "alquilada"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "OVC-UNIT-004",
+      "description": "`field:` (clave de los ficheros compartidos) vale igual que `risk_field:` (clave de los de ramo) -- medido: ontology-home 25 risk_field / 0 field, shared/base7version 0 / 3.",
+      "ontology_text": "SharedOntology: test\n\n## motor\nfield: base7Engine.id\ndata_type: enum\nvalue_aliases:\n- 3: vehículo eléctrico\ninterpretation:\nClave field.\n",
+      "risk_field": "base7Engine.id",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": 3,
+            "aliases": [
+              "vehículo eléctrico"
+            ]
+          }
+        ],
+        "knownLimitations": [],
+        "contextOverrides": []
+      }
+    },
+    {
+      "id": "OVC-UNIT-005",
+      "description": "Dos conceptos de negocio sobre el MISMO risk_field se fusionan en vez de sobreescribirse. Caso real: housingUse e isMainResidence se consolidaron sobre occupancy (CLAUDE.md 5.3); quedarse con el ultimo bloque perderia en silencio los alias del otro.",
+      "ontology_text": "OntologyType: test\n\n## usoVivienda\nrisk_field: occupancy\ndata_type: enum\nvalue_aliases:\n- MainResidence: vivienda principal\nknown_limitations:\n- otros usos\ninterpretation:\nBloque uno.\n\n---\n\n## esViviendaHabitual\nrisk_field: occupancy\ndata_type: enum\nvalue_aliases:\n- MainResidence: vivienda habitual\n- SecondHome: vivienda secundaria\nknown_limitations:\n- uso turístico\ninterpretation:\nBloque dos.\n",
+      "risk_field": "occupancy",
+      "expected": {
+        "dataType": "enum",
+        "values": [
+          {
+            "value": "MainResidence",
+            "aliases": [
+              "vivienda principal",
+              "vivienda habitual"
+            ]
+          },
+          {
+            "value": "SecondHome",
+            "aliases": [
+              "vivienda secundaria"
+            ]
+          }
+        ],
+        "knownLimitations": [
+          "otros usos",
+          "uso turístico"
+        ],
+        "contextOverrides": []
+      }
+    }
+  ]
+}

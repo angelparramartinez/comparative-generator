@@ -102,16 +102,22 @@ aliases:
 - primer riesgo
 - valor de reposición
 - modalidad de aseguramiento
-values:
+value_aliases:
 - FirstRisk: primer riesgo, primer_riesgo
 - VReplacementValue: valor de reposición, valor de reposicion
 interpretation:
 Catalogo de valores confirmado por el usuario (20/07): el valor real
 comparable en SPEL es el texto en ingles del enum (no el codigo numerico de
 datos_riesgo_hogar.json ni el texto en español que extrae el flujo 2).
-Mantenido tambien en evaluators/coverage_insert_generator/value_matcher.js
-(ENUM_VALUE_CATALOG) como fuente de verdad ejecutable -- regenerar/revisar a
-mano si cambia esta seccion, igual que valid_risk_fields.json.
+El vocabulario vive en `value_aliases:` y ESTE FICHERO es su unica fuente de
+verdad: `ontology_value_catalog.js` lo lee en ejecucion y se lo pasa al motor
+(`value_matcher.js`), que ya no contiene ningun vocabulario. Hasta el 08/09
+habia una copia hardcodeada en aquel modulo con una nota que pedia
+"regenerar/revisar a mano si cambia esta seccion" -- ese "a mano" fallo al
+llegar Autos y el resultado fue texto español colandose literal a un
+FILTER_EXPR (ver la cabecera de ontology_value_catalog.js). La clave se
+llamaba `values:` hasta ese dia; se renombro para no confundirla con la
+`values:` de shared/*.md, que es catalogo de BBDD y no vocabulario.
 
 ---
 
@@ -141,7 +147,7 @@ contractual_examples:
 - cuando se trate de residencia principal
 - cuando se trate de Vivienda principal o Vivienda secundaria
 - esta cobertura solo se aplica cuando se trate de vivienda principal
-values:
+value_aliases:
 - MainResidence: vivienda principal, residencia principal, domicilio habitual, vivienda habitual
 - SecondHome: vivienda secundaria, segunda residencia, vivienda de temporada
 - UnoccupiedProperty: vivienda vacía, vivienda desocupada, sin ocupación
@@ -159,9 +165,9 @@ frases reales "vivienda principal"/"vivienda secundaria" del condicionado
 no tenian alias literal, lo que provocaba que el LLM extractor inventara
 risk_field como "property_use"/"property_type" o reutilizara "content" de
 forma incorrecta (casos su_00059, su_00080, su_00064, su_00071).
-`values`: catalogo de valores confirmado por el usuario (20/07), mismo
-criterio de fuente de verdad ejecutable que en `capitalInsuranceType` (ver
-value_matcher.js). `known_limitations`: frases reales ya vistas en
+`value_aliases`: catalogo de valores confirmado por el usuario (20/07), mismo
+criterio de fuente de verdad unica que en `capitalInsuranceType` (lo lee
+`ontology_value_catalog.js`). `known_limitations`: frases reales ya vistas en
 dependencias extraidas (golden set GD-REF-004/GD-HALLUC-006/GD-EVID-002) que
 NO encajan de forma obvia en ninguno de los 3 valores de
 datos_riesgo_hogar.json -- decision explicita del usuario de dejarlas sin
@@ -193,7 +199,7 @@ negative_aliases:
 - comunidad de propietarios
 - junta de propietarios
 - junta de copropietarios
-values:
+value_aliases:
 - Owner: propietario
 - Rental: arrendada, vivienda alquilada
 - Tenant: inquilino, arrendatario
@@ -205,11 +211,11 @@ Los negative_aliases excluyen el uso mas frecuente de "propietario" en el
 condicionado de Hogar: pertenencia a la comunidad de vecinos del edificio,
 que no tiene relacion con el regimen de tenencia de la vivienda del
 asegurado. Ver caso real su_00161 (CLAUDE.md §5.1).
-`values`: catalogo confirmado por el usuario (20/07), sin limitaciones
+`value_aliases`: catalogo confirmado por el usuario (20/07), sin limitaciones
 conocidas -- los 3 valores reales extraidos en el golden set ("propietario",
 "arrendada", "inquilino") encajan limpio en Owner/Rental/Tenant. Mismo
-criterio de fuente de verdad ejecutable que en `capitalInsuranceType` (ver
-value_matcher.js).
+criterio de fuente de verdad unica que en `capitalInsuranceType` (lo lee
+`ontology_value_catalog.js`).
 `value_context_overrides`: caso real 23/07, su_00127 -- "propietario" en
 Hogar es AMBIGUO entre Owner (ocupa la vivienda) y Rental (la tiene
 arrendada), algo que ASM distingue en su enum pero que el condicionado no
@@ -311,7 +317,7 @@ aliases:
 - ático
 - planta baja
 - piso
-values:
+value_aliases:
 - GroundFloor: planta baja
 - MiddleFloor: piso
 - TopFloor: ático
@@ -409,12 +415,14 @@ interpretation:
 (`@JsonView({V1, COMPARATIVE_REQUEST})`) es `secondaryDoorsType`, que
 ADEMAS cambia de tipo: ya no es booleano, es un enum de texto (`SECURITY` /
 `REINFORCED`, via `CrmEnumJsonSerializer`) -- no basta con renombrar,
-cualquier dependencia real que use este campo necesita `values:` con la
-correspondencia semantica (aprox. `true` -> `REINFORCED`, `false` ->
-`SECURITY`, a falta de un caso real que lo confirme). Sin `values:` todavia
-porque no hay ninguna dependencia real extraida sobre este campo (mismo
-criterio YAGNI que el resto de enums en `value_matcher.js`) -- si aparece
-una, resolver el mapeo con el usuario antes de traducir, no asumir.
+cualquier dependencia real que use este campo necesita `value_aliases:` con
+la correspondencia semantica (aprox. `true` -> `REINFORCED`, `false` ->
+`SECURITY`, a falta de un caso real que lo confirme). Sin `value_aliases:`
+todavia porque no hay ninguna dependencia real extraida sobre este campo -- si
+aparece una, resolver el mapeo con el usuario antes de traducir, no asumir.
+Mientras no lo tenga, una dependencia sobre este campo se resuelve como
+`enum_without_value_catalog` y se EXCLUYE del FILTER_EXPR reportandolo, en vez
+de traducirse a medias.
 
 ---
 

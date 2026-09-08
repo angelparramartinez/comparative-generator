@@ -170,6 +170,202 @@
         }
       ],
       "expected_spel": "insurance[\"risk\"].base7Version.base7Type.base7Category.id == 'primera categoria'"
+    },
+    {
+      "id": "GEN-COMBINE-006",
+      "description": "unica dependencia con category_expressed_as_type (v29a) -> sin FILTER_EXPR. Caso real Zurich su_00071 ('5-. Robo'): la frase 'Para turismos de uso particular o furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg' delimita la categoria AUTOS entera, y la enumeracion de subtipos es artefacto de la extraccion. Traducirla daria un filtro RESTRICTIVO Y FALSO: ocultaria la linea para un monovolumen o un todo terreno, que la frase si cubre.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            1,
+            6,
+            7
+          ],
+          "category_expressed_as_type": true
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-007",
+      "description": "LAS DOS dependencias reales de su_00071, que salen de la MISMA frase: los subtipos (v29a) y la categoria (vacua). Ninguna debe producir FILTER_EXPR -- y el resultado correcto es precisamente ninguno, porque la condicion bien expresada cubre todo el ramo.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            1,
+            6,
+            7
+          ],
+          "category_expressed_as_type": true
+        },
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": 1,
+          "vacuous_for_ramo": true
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-008",
+      "description": "una v29a + una real -> solo la real. La marca suprime SU dependencia, no el ENTRY entero: si en la misma unidad hay una condicion legitima, esa sigue mandando.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            1,
+            6,
+            7
+          ],
+          "category_expressed_as_type": true
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "IN",
+          "value": [
+            3,
+            13
+          ]
+        }
+      ],
+      "expected_spel": "{3,13}.contains(insurance[\"risk\"].base7Version.base7Engine.id)"
+    },
+    {
+      "id": "GEN-COMBINE-009",
+      "description": "CONTRA-PRUEBA: category_expressed_as_type ausente o false no filtra nada. Una enumeracion de tipos SIN la marca es una condicion legitima y tiene que generar su IN -- caso real de esa forma: 'El vehiculo del que procede el Bonus ha de ser un Turismo, Todo Terreno, Furgoneta o Furgon'.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            1,
+            6,
+            7
+          ],
+          "category_expressed_as_type": false
+        }
+      ],
+      "expected_spel": "{1,6,7}.contains(insurance[\"risk\"].base7Version.base7Type.id)"
+    },
+    {
+      "id": "GEN-COMBINE-010",
+      "description": "DOS dependencias del mismo campo con '=' se funden en un IN con la union, no se combinan con AND. Caso real Zurich su_00066 ('3-. Asistencia en viaje', 'Para el caso de vehiculos electricos/hibridos...'): flujo 2 emite una dependencia por valor y el esquema no puede expresar el OR. Con AND saldria '{3,13}.contains(c) && {7,11,12}.contains(c)', insatisfacible -- un campo escalar no puede valer dos cosas a la vez.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "IN",
+          "value": [
+            3,
+            13
+          ]
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "IN",
+          "value": [
+            7,
+            11,
+            12
+          ]
+        }
+      ],
+      "expected_spel": "{3,13,7,11,12}.contains(insurance[\"risk\"].base7Version.base7Engine.id)"
+    },
+    {
+      "id": "GEN-COMBINE-011",
+      "description": "La fusion deduplica y, si la union queda en UN solo valor, vuelve a '=' escalar en vez de un IN de un elemento.",
+      "dependencies": [
+        {
+          "risk_field": "occupancy",
+          "operator": "=",
+          "value": "MainResidence"
+        },
+        {
+          "risk_field": "occupancy",
+          "operator": "=",
+          "value": "MainResidence"
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].occupancy == 'MainResidence'"
+    },
+    {
+      "id": "GEN-COMBINE-012",
+      "description": "Grupo NEGATIVO homogeneo: no estar en A y no estar en B es no estar en la union, asi que tambien se funde.",
+      "dependencies": [
+        {
+          "risk_field": "occupancy",
+          "operator": "!=",
+          "value": "MainResidence"
+        },
+        {
+          "risk_field": "occupancy",
+          "operator": "NOT_IN",
+          "value": [
+            "SecondHome"
+          ]
+        }
+      ],
+      "expected_spel": "!{'MainResidence','SecondHome'}.contains(insurance[\"risk\"].occupancy)"
+    },
+    {
+      "id": "GEN-COMBINE-013",
+      "description": "CONTRA-PRUEBA 1: signos MEZCLADOS sobre el mismo campo NO se funden -- '= A && != B' es satisfacible y el AND es correcto.",
+      "dependencies": [
+        {
+          "risk_field": "occupancy",
+          "operator": "=",
+          "value": "MainResidence"
+        },
+        {
+          "risk_field": "occupancy",
+          "operator": "!=",
+          "value": "SecondHome"
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].occupancy == 'MainResidence') && (insurance[\"risk\"].occupancy != 'SecondHome')"
+    },
+    {
+      "id": "GEN-COMBINE-014",
+      "description": "CONTRA-PRUEBA 2: las COMPARACIONES de rango sobre el mismo campo no se tocan -- ahi el AND es justo el combinador que se quiere ('registrationYears >= 2 && <= 5' es un rango valido). Si la fusion se aplicara a cualquier operador, un rango se convertiria en un IN sin sentido.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 2
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].registrationYears >= 2) && (insurance[\"risk\"].registrationYears <= 5)"
+    },
+    {
+      "id": "GEN-COMBINE-015",
+      "description": "CONTRA-PRUEBA 3: dependencias de campos DISTINTOS siguen combinandose con AND, que es lo correcto -- la fusion solo agrupa por risk_field.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "IN",
+          "value": [
+            3,
+            13
+          ]
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5
+        }
+      ],
+      "expected_spel": "({3,13}.contains(insurance[\"risk\"].base7Version.base7Engine.id)) && (insurance[\"risk\"].registrationYears <= 5)"
     }
   ],
   "entry_building_cases": [

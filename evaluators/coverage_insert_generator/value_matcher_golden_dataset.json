@@ -1,13 +1,14 @@
 {
   "version": "1.0",
   "dataset_name": "coverage_insert_generator_value_matcher_golden_set",
-  "description": "Golden set del matcher espanol->ingles de VALORES de enum (housingUse, housingRegime, capitalInsuranceType), paso previo a generator.translateToSpel. Casos reales extraidos de evaluators/coverage_dependency_extractor/golden_dataset.json (actual_coverage_dependencies), mas casos sinteticos para cubrir cada alias del catalogo de value_matcher.js.",
+  "description": "Golden set del matcher español->valor real de VALORES de enum, paso previo a generator.translateToSpel. El catalogo ya NO vive en el modulo: llega como parametro, construido desde la ontologia del ramo por ontology_value_catalog.js (ver su cabecera para el hallazgo del 08/09 que lo motivo). Cada caso declara su `ramo`; si lo omite, Hogar.",
   "source_dependency_golden_set": "evaluators/coverage_dependency_extractor/golden_dataset.json",
   "schema_notes": {
-    "value_match_cases": "Un caso por VALOR individual (matchEnumValue). expected_reason en alias_match | known_limitation | no_alias_match | risk_field_not_cataloged. Cubre todos los alias de ENUM_VALUE_CATALOG para que un refactor no rompa nada en silencio.",
-    "dependency_translation_cases": "Un caso por DEPENDENCIA completa (translateDependencyValue), incluye operator IN/NOT_IN con arrays mixtos matched/known_limitation (ver GD-HALLUC-006). source_case_refs apunta a los casos reales de coverage_dependency_extractor/golden_dataset.json de los que sale cada caso.",
-    "pipeline_integration_cases": "Encadena translateDependencyValue -> generator.translateToSpel. SOLO para casos con expected_fully_translated=true en dependency_translation_cases -- que SPEL/SQL generar cuando una dependencia queda parcialmente traducida es una decision de negocio todavia sin tomar (Fase 4, nodo n8n real), no se inventa aqui.",
-    "dependency_set_translation_cases": "Casos de translateDependencies(dependencies) (adaptador real del nodo Translate Dependency Values, A15) -- confirma que dependencies_translated EXCLUYE por completo una dependencia con fallo real (nunca la incluye con su value ya vaciado, bug real 22/07 que producia FILTER_EXPR con lista vacia), pero SI incluye las de campo no-enum (nunca deberian excluirse solo por no ser enum)."
+    "value_match_cases": "Un caso por VALOR individual (matchEnumValue). expected_reason en alias_match | known_limitation | no_alias_match | no_translation_needed | enum_without_value_catalog | risk_field_not_in_ontology. Los tres ultimos son nuevos del 08/09: antes habia un unico `risk_field_not_cataloged` que mezclaba \"no necesita traduccion\" (inofensivo) con \"no se sabe traducir\" (el bug de Autos). Cubre todos los alias del catalogo real para que un refactor no rompa nada en silencio. `expected_values` (opcional) es la lista COMPLETA de valores: un alias puede resolver a varios y entonces `expected_value` es null a proposito.",
+    "dependency_translation_cases": "Un caso por DEPENDENCIA completa (translateDependencyValue), incluye operator IN/NOT_IN con arrays mixtos matched/known_limitation (ver GD-HALLUC-006). source_case_refs apunta a los casos reales de coverage_dependency_extractor/golden_dataset.json de los que sale cada caso. Desde el 08/09 tambien se comprueba el OPERADOR resultante: un alias que resuelve a varios valores promueve = -> IN y != -> NOT_IN. Si el caso no declara expected_operator, se exige que no haya cambiado.",
+    "pipeline_integration_cases": "Encadena translateDependencyValue -> generator.translateToSpel. SOLO para casos con expected_fully_translated=true en dependency_translation_cases -- que SPEL/SQL generar cuando una dependencia queda parcialmente traducida es una decision de negocio todavia sin tomar (Fase 4, nodo n8n real), no se inventa aqui. Los ids de Base7 salen al SPEL SIN comillas (`{3,13}` y no `{'3','13'}`): el campo es numerico en ejecucion, y generator.quoteSpelValue entrecomilla toda cadena de JS, asi que un id que viajara como texto produciria String.equals(Integer) -- siempre false. Es el mismo bug que motivo el rediseño, detectado por segunda vez el 08/09 al revisar el SPEL de VM-PIPE-004 antes de desplegar; lo evita ontology_value_catalog.coerceEnumValue.",
+    "dependency_set_translation_cases": "Casos de translateDependencies(dependencies) (adaptador real del nodo Translate Dependency Values, A15) -- confirma que dependencies_translated EXCLUYE por completo una dependencia con fallo real (nunca la incluye con su value ya vaciado, bug real 22/07 que producia FILTER_EXPR con lista vacia), pero SI incluye las de campo no-enum (nunca deberian excluirse solo por no ser enum).",
+    "catalog_guard_cases": "Comprobaciones de que translateDependencies ROMPE con un catalogo vacio en vez de degradar en silencio: sin catalogo toda dependencia de campo enum seria un fallo real y se caerian todas a la vez, que es indistinguible de un condicionado sin dependencias."
   },
   "value_match_cases": [
     {
@@ -232,10 +233,155 @@
       "id": "VM-VALUE-051",
       "risk_field": "buildingType",
       "spanish_value": "chalet",
+      "expected_matched": true,
+      "expected_value": "DetachedHouse",
+      "expected_reason": "alias_match",
+      "notes": "Cambio de comportamiento del 08/09, a mejor: la ontologia SIEMPRE declaro el vocabulario de buildingType, y el catalogo hardcodeado no lo tenia (decision YAGNI de entonces). Al leer de la ontologia se gana sin tocar codigo. Sigue sin haber dependencia real que use este campo."
+    },
+    {
+      "id": "VM-VALUE-060",
+      "ramo": "Autos",
+      "risk_field": "garageType",
+      "spanish_value": "garaje individual",
+      "expected_matched": true,
+      "expected_value": "PrivateGarage",
+      "expected_reason": "alias_match",
+      "notes": "Primer caso de Autos del motor: el mismo codigo traduce otro ramo sin tocar una linea."
+    },
+    {
+      "id": "VM-VALUE-061",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Engine.id",
+      "spanish_value": "vehículo eléctrico",
+      "expected_matched": true,
+      "expected_value": null,
+      "expected_reason": "alias_match",
+      "notes": "EL BUG DEL 08/09, ya resuelto (ejecucion 402, su_00038/su_00066 de Zurich). Antes devolvia risk_field_not_cataloged, que NO era fallo, y el texto español se colaba literal al FILTER_EXPR contra un .id numerico: condicion siempre falsa, 27 LINE afectadas, y el nodo informando fully_translated: true. Ahora resuelve a los DOS ids que decidio el usuario -- el 3 y el 13 (pila de combustible/hidrogeno) -- y `value` es null a proposito, para que nadie confunda 'un valor' con 'el primero de varios'.",
+      "expected_values": [
+        3,
+        13
+      ]
+    },
+    {
+      "id": "VM-VALUE-062",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.id",
+      "spanish_value": "turismo",
+      "expected_matched": true,
+      "expected_value": 1,
+      "expected_reason": "alias_match",
+      "notes": "'turismo' SI es un tipo, y unico: id 1. Contrasta con el otro valor de la misma dependencia real (su_00071, cobertura 6 Robo), 'furgoneta de transporte propio', que NO es un tipo sino un uso y por eso no tiene alias -- ver VM-VALUE-067.",
+      "expected_values": [
+        1
+      ]
+    },
+    {
+      "id": "VM-VALUE-063",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.base7Category.id",
+      "spanish_value": "primera categoría",
       "expected_matched": false,
       "expected_value": null,
-      "expected_reason": "risk_field_not_cataloged",
-      "notes": "buildingType es enum de la ontologia pero SIN dependencias reales extraidas todavia -- YAGNI, confirma que el modulo no inventa catalogo para enums no exercised en produccion"
+      "expected_reason": "enum_without_value_catalog",
+      "notes": "Tercer campo del bug. Ojo: 'primera categoría' no es ni siquiera un valor de ese enum (son AUTOS/CAMIONES/MOTOS/VMP), coherente con que el guardrail de extraccion la marque vacuous_for_ramo."
+    },
+    {
+      "id": "VM-VALUE-064",
+      "ramo": "Autos",
+      "risk_field": "registrationYears",
+      "spanish_value": 2,
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "no_translation_needed",
+      "notes": "Campo integer real de Autos (su_00077/082/086 de Zurich). Conserva su valor y NO es fallo -- misma garantia que continent>0 en Hogar, ahora tambien cubierta en el otro ramo."
+    },
+    {
+      "id": "VM-VALUE-065",
+      "ramo": "Hogar",
+      "risk_field": "property_use",
+      "spanish_value": "vivienda principal",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "risk_field_not_in_ontology",
+      "notes": "risk_field inventado por el LLM (caso real, CLAUDE.md 5.2). El guardrail de extraccion ya lo rechaza aguas arriba, asi que no deberia llegar; si llega, es fallo real y no pasa como texto crudo."
+    },
+    {
+      "id": "VM-VALUE-066",
+      "ramo": "Hogar",
+      "risk_field": "base7Version.base7Engine.id",
+      "spanish_value": "vehículo eléctrico",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_reason": "risk_field_not_in_ontology",
+      "notes": "Aislamiento por ramo: un campo de Autos no existe para Hogar. La constante hardcodeada no podia expresar esto."
+    },
+    {
+      "id": "VM-VALUE-067",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.id",
+      "spanish_value": "furgoneta de transporte propio",
+      "expected_matched": false,
+      "expected_value": null,
+      "expected_values": [],
+      "expected_reason": "no_alias_match",
+      "notes": "Caso real su_00071 (Zurich). El COMPUESTO no casa aunque 'furgoneta' a secas SI tenga alias desde el 08/09: el emparejamiento es exacto sobre el valor completo normalizado, y este añade un USO (carga propia frente a de terceros por remuneracion) que base7Type no expresa -- ese enum separa furgones por carroceria/habilitacion (6 frente a 7), nunca por servicio propio o ajeno. La distincion existe en el tuning de la compañia (usoVehiculo de Zurich: 210 / 220) y no hay risk_field de uso (comprobado 08/09 en avant-back: ningun getUse*/getUso* en los DTO de riesgo de motor; y en avant-front: usoVehiculo no aparece). Ojo -- que esta dependencia no llegue al FILTER_EXPR NO depende de este fallo: depende de su marca category_expressed_as_type, ver GEN-COMBINE-006/007. Antes del 08/09 se caia solo por falta de vocabulario, o sea acertaba por accidente."
+    },
+    {
+      "id": "VM-VALUE-068",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Engine.id",
+      "spanish_value": "vehículo híbrido",
+      "expected_matched": true,
+      "expected_value": null,
+      "expected_values": [
+        7,
+        11,
+        12
+      ],
+      "expected_reason": "alias_match",
+      "notes": "Uno-a-muchos de tres (su_00066 de Zurich: 'vehículos eléctricos/híbridos'). Los tres ids que decidio el usuario: 7 no enchufable, 11 gasolina enchufable, 12 diesel enchufable. El orden es el de declaracion en el .md."
+    },
+    {
+      "id": "VM-VALUE-069",
+      "ramo": "Hogar",
+      "risk_field": "buildingType",
+      "spanish_value": "vivienda unifamiliar",
+      "expected_matched": true,
+      "expected_value": null,
+      "expected_values": [
+        "TerracedHouse",
+        "DetachedHouse"
+      ],
+      "expected_reason": "alias_match",
+      "notes": "BUG PREEXISTENTE ARREGLADO, no una feature nueva de Autos: este alias esta declarado en DOS valores en ontology-home.md desde el principio (decision razonada en el propio bloque), y hasta el 08/09 el Map alias->valor se quedaba con el ultimo (DetachedHouse), perdiendo el adosado sin que nadie se enterase. Sigue sin haber dependencia real sobre este campo."
+    },
+    {
+      "id": "VM-VALUE-070",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.id",
+      "spanish_value": "furgoneta",
+      "expected_matched": true,
+      "expected_value": null,
+      "expected_values": [
+        6,
+        7
+      ],
+      "expected_reason": "alias_match",
+      "notes": "'furgoneta' a secas SI es una condicion de tipo, y aparece asi en dependencias reales de varias compañias -- p. ej. 'El vehiculo del que procede el Bonus ha de ser un Turismo, Todo Terreno, Furgoneta o Furgon'. Resuelve a los dos ids de furgon."
+    },
+    {
+      "id": "VM-VALUE-071",
+      "ramo": "Autos",
+      "risk_field": "base7Version.base7Type.id",
+      "spanish_value": "Furgonetas",
+      "expected_matched": true,
+      "expected_value": null,
+      "expected_values": [
+        6,
+        7
+      ],
+      "expected_reason": "alias_match",
+      "notes": "Plural y mayuscula, las dos formas vistas en artefactos reales ('Furgoneta', 'furgonetas'). La mayuscula la resuelve normalize; el PLURAL no, hay que declararlo -- por eso el alias lleva las cuatro formas."
     }
   ],
   "dependency_translation_cases": [
@@ -468,7 +614,148 @@
       "expected_translated_value": 0,
       "expected_fully_translated": true,
       "expected_unmatched_raw_values": [],
-      "notes": "Bug real 22/07: risk_field no cataloged (no es enum) NO debe contar como fallo de traduccion -- antes fullyTranslated salia false para la inmensa mayoria de dependencias reales (5 de 6 en una ejecucion muestreada) que ni siquiera son enums."
+      "notes": "Bug real 22/07: un campo que NO es enum (continent, integer) no debe contar como fallo de traduccion -- antes fullyTranslated salia false para la inmensa mayoria de dependencias reales (5 de 6 en una ejecucion muestreada). Desde el 08/09 su motivo es `no_translation_needed`, el unico que no es fallo."
+    },
+    {
+      "id": "VM-DEP-020",
+      "ramo": "Hogar",
+      "dependency": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "propietario",
+        "evidence": "el propietario de una vivienda arrendada a terceros"
+      },
+      "expected_translated_value": "Rental",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "source_case_refs": [
+        "su_00127"
+      ],
+      "notes": "Primer caso de value_context_overrides del arnes (antes no habia ninguno: applyContextOverrides estaba sin cubrir). Prueba de punta a punta que la regla se PARSEA bien desde el .md -- su continuacion de linea empieza por 'contiene:', que casa con la regex de corte del extractor simple -- y que el motor la aplica: 'propietario' es ambiguo en Hogar entre Owner y Rental, y la evidencia desempata."
+    },
+    {
+      "id": "VM-DEP-021",
+      "ramo": "Autos",
+      "dependency": {
+        "risk_field": "base7Version.base7Engine.id",
+        "operator": "=",
+        "value": "vehículo eléctrico",
+        "evidence": "Para el caso de vehículos eléctricos/híbridos, se ofrece asistencia tecnológica remota"
+      },
+      "expected_translated_value": [
+        3,
+        13
+      ],
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "source_case_refs": [
+        "su_00066-zurich-exec-402"
+      ],
+      "notes": "La dependencia REAL de la ejecucion 402, ahora traducida. Es el caso central de la promocion de operador: entra como `= 'vehículo eléctrico'` y sale como `IN ['3','13']`, porque una igualdad contra dos ids no se puede expresar. generator.translateToSpel ya emitia IN con .contains(), asi que la promocion no le exige nada nuevo.",
+      "expected_operator": "IN"
+    },
+    {
+      "id": "VM-DEP-022",
+      "ramo": "Autos",
+      "dependency": {
+        "risk_field": "registrationYears",
+        "operator": "<=",
+        "value": 2,
+        "evidence": "hasta el segundo año de antigüedad del vehículo, se indemnizará por el valor a nuevo"
+      },
+      "expected_translated_value": 2,
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "source_case_refs": [
+        "su_00077-zurich-exec-402"
+      ],
+      "notes": "Dependencia real no-enum de Autos: pasa intacta y sin marcar fallo."
+    },
+    {
+      "id": "VM-DEP-023",
+      "ramo": "Autos",
+      "dependency": {
+        "risk_field": "base7Version.base7Engine.id",
+        "operator": "!=",
+        "value": "vehículo híbrido",
+        "evidence": "queda excluido cuando el vehículo sea híbrido"
+      },
+      "expected_translated_value": [
+        7,
+        11,
+        12
+      ],
+      "expected_operator": "NOT_IN",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "notes": "La otra mitad de la promocion: la negacion de un conjunto es NOT_IN, no una desigualdad contra una lista. Sintetico -- no hay condicionado real que lo diga asi todavia -- pero es la unica forma de fijar que != no se traduce mal el dia que aparezca."
+    },
+    {
+      "id": "VM-DEP-024",
+      "ramo": "Autos",
+      "dependency": {
+        "risk_field": "base7Version.base7Engine.id",
+        "operator": "IN",
+        "value": [
+          "vehículo eléctrico",
+          "vehículo híbrido"
+        ],
+        "evidence": "Para el caso de vehículos eléctricos/híbridos"
+      },
+      "expected_translated_value": [
+        3,
+        13,
+        7,
+        11,
+        12
+      ],
+      "expected_operator": "IN",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "notes": "IN cuyos DOS elementos son uno-a-muchos: se aplanan los cinco ids y el operador se queda como estaba (ya era de conjunto). Es la forma que tendria su_00066 si el extractor emitiera una sola dependencia IN en vez de dos con =."
+    },
+    {
+      "id": "VM-DEP-025",
+      "ramo": "Autos",
+      "dependency": {
+        "risk_field": "base7Version.base7Engine.id",
+        "operator": "IN",
+        "value": [
+          "vehículo eléctrico",
+          "eléctrico"
+        ],
+        "evidence": "vehículos eléctricos"
+      },
+      "expected_translated_value": [
+        3,
+        13
+      ],
+      "expected_operator": "IN",
+      "expected_fully_translated": true,
+      "expected_unmatched_raw_values": [],
+      "notes": "Deduplicacion: dos alias distintos del MISMO grupo no deben producir {3,13,3,13}. Sin dedupe, el SPEL saldria con ids repetidos dentro del .contains()."
+    },
+    {
+      "id": "VM-DEP-026",
+      "ramo": "Autos",
+      "dependency": {
+        "risk_field": "base7Version.base7Type.id",
+        "operator": "IN",
+        "value": [
+          "turismo",
+          "furgoneta de transporte propio"
+        ],
+        "evidence": "Para turismos de uso particular o furgonetas de transporte propio"
+      },
+      "expected_translated_value": [
+        1
+      ],
+      "expected_operator": "IN",
+      "expected_fully_translated": false,
+      "expected_unmatched_raw_values": [
+        "furgoneta de transporte propio"
+      ],
+      "notes": "La dependencia REAL de su_00071 tal cual llega. Un elemento traduce ('turismo' -> 1) y el otro no (es un uso, no un tipo). El valor queda PARCIAL a proposito -- mismo contrato que VM-DEP-004/005/009: la lista traducida sirve de diagnostico de que caso a que valor. Es seguro porque la exclusion vive una capa mas arriba: fully_translated es false, asi que translateDependencies descarta la dependencia ENTERA y nunca se emite un IN a medias con solo el turismo, que diria algo distinto de lo que dice el condicionado (es la leccion del bug del 22/07, housingUse NOT_IN []). Ver VM-SET-003, que lo comprueba a nivel de conjunto."
     }
   ],
   "pipeline_integration_cases": [
@@ -515,6 +802,51 @@
         ]
       },
       "expected_final_spel": "!{'FirstRisk'}.contains(insurance[\"risk\"].capitalInsuranceType)"
+    },
+    {
+      "id": "VM-PIPE-004",
+      "ramo": "Autos",
+      "source_case_refs": [
+        "su_00066-zurich-exec-402"
+      ],
+      "dependency": {
+        "risk_field": "base7Version.base7Engine.id",
+        "operator": "=",
+        "value": "vehículo eléctrico",
+        "evidence": "Para el caso de vehículos eléctricos/híbridos"
+      },
+      "expected_final_spel": "{3,13}.contains(insurance[\"risk\"].base7Version.base7Engine.id)",
+      "notes": "El SPEL final de la promocion de operador, que es lo unico que ASM ve. Comparar con lo que produjo la ejecucion 402 antes del arreglo: insurance[\"risk\"].base7Version.base7Engine.id == 'vehículo eléctrico' -- sintacticamente valido y siempre falso, porque el campo es numerico en ejecucion."
+    },
+    {
+      "id": "VM-PIPE-005",
+      "ramo": "Autos",
+      "source_case_refs": [
+        "sintetico-negacion"
+      ],
+      "dependency": {
+        "risk_field": "base7Version.base7Engine.id",
+        "operator": "!=",
+        "value": "vehículo híbrido",
+        "evidence": "queda excluido cuando el vehículo sea híbrido"
+      },
+      "expected_final_spel": "!{7,11,12}.contains(insurance[\"risk\"].base7Version.base7Engine.id)",
+      "notes": "La negacion del conjunto, ya en SPEL: != promovido a NOT_IN sale como !{...}.contains(campo)."
+    },
+    {
+      "id": "VM-PIPE-006",
+      "ramo": "Hogar",
+      "source_case_refs": [
+        "su_00127"
+      ],
+      "dependency": {
+        "risk_field": "use",
+        "operator": "=",
+        "value": "propietario",
+        "evidence": "el propietario de una vivienda arrendada a terceros"
+      },
+      "expected_final_spel": "insurance[\"risk\"].use == 'Rental'",
+      "notes": "Un value_context_override llegando hasta el SPEL: 'propietario' es ambiguo en Hogar y la evidencia lo desempata a Rental. Un solo valor, asi que NO se promueve operador -- sigue siendo igualdad escalar."
     }
   ],
   "dependency_set_translation_cases": [
@@ -559,6 +891,129 @@
         }
       ],
       "expected_fully_translated": false
+    },
+    {
+      "id": "VM-SET-002",
+      "ramo": "Autos",
+      "description": "Las DOS dependencias reales de su_00038 (Zurich, ejecucion 402, cobertura 3 Asistencia en viaje). Cubre las dos salidas a la vez: la de base7Category viene marcada vacuous_for_ramo y sale INTACTA sin intentar traducirse (su valor nunca llega a SPEL, porque combineFilterExpr la filtra), y la de base7Engine traduce a {3,13} promoviendo el operador. Las dos quedan en dependencies_translated y fully_translated es true, asi que estas 6 coberturas no se marcan needs_review por algo que no es un problema. En produccion el 08/09 esto genero \"base7Engine.id == 'vehículo eléctrico'\" en 1 LINE real.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoría",
+          "vacuous_for_ramo": true
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": "vehículo eléctrico"
+        }
+      ],
+      "expected_dependencies_translated": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoría",
+          "vacuous_for_ramo": true
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "IN",
+          "value": [
+            3,
+            13
+          ]
+        }
+      ],
+      "expected_fully_translated": true
+    },
+    {
+      "id": "VM-SET-003",
+      "ramo": "Autos",
+      "description": "La otra dependencia real de Zurich (su_00071, cobertura 6 Robo) a nivel de conjunto: base7Type IN ['turismo','furgoneta de transporte propio'] traduce solo a medias, asi que se EXCLUYE entera de dependencies_translated -- nunca llega al FILTER_EXPR un IN con solo el turismo. La vacua que la acompaña en la misma unidad sale intacta. Resultado: dependencies_translated con 1 elemento (la vacua, que combineFilterExpr filtrara despues) y fully_translated false, que es lo que hace que esta cobertura SI se marque needs_review -- y debe, porque hay algo real que revisar.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "turismo",
+            "furgoneta de transporte propio"
+          ],
+          "evidence": "Para turismos de uso particular o furgonetas de transporte propio"
+        },
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoría",
+          "vacuous_for_ramo": true
+        }
+      ],
+      "expected_dependencies_translated": [
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoría",
+          "vacuous_for_ramo": true
+        }
+      ],
+      "expected_fully_translated": false
+    },
+    {
+      "id": "VM-SET-004",
+      "ramo": "Autos",
+      "description": "su_00071 tal y como llega DE VERDAD del artefacto, con sus marcas. Las dos dependencias salen de la misma frase y las dos estan exoneradas de traducir (v29a y vacua), asi que pasan intactas y fully_translated es true -- nada de needs_review por algo que no es un problema. Que ninguna acabe en el FILTER_EXPR lo garantiza combineFilterExpr, no este modulo: ver GEN-COMBINE-007.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "turismo",
+            "furgoneta de transporte propio"
+          ],
+          "category_expressed_as_type": true,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoría",
+          "vacuous_for_ramo": true
+        }
+      ],
+      "expected_dependencies_translated": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            "turismo",
+            "furgoneta de transporte propio"
+          ],
+          "category_expressed_as_type": true,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoría",
+          "vacuous_for_ramo": true
+        }
+      ],
+      "expected_fully_translated": true
+    }
+  ],
+  "catalog_guard_cases": [
+    {
+      "id": "VM-GUARD-001",
+      "description": "translateDependencies con catalogo vacio debe LANZAR. Sin catalogo, toda dependencia de campo enum seria fallo real y se caerian todas juntas: un .md de ontologia que no se pudo leer o un Imports: mal escrito se manifestaria como \"esta compañia no tiene condiciones\", indistinguible de un condicionado sin dependencias. Mejor romper donde esta la causa.",
+      "catalog": {},
+      "dependencies": [
+        {
+          "risk_field": "occupancy",
+          "operator": "=",
+          "value": "vivienda principal"
+        }
+      ],
+      "expected_throws": true
     }
   ]
 }

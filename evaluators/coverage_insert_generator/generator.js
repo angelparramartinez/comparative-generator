@@ -73,14 +73,108 @@ function translateToSpel(dependency) {
 // 2 entries con diferente value_expr, porque para autos y motos el valor de
 // 900 EUR no se daria nunca").
 //
+// Segunda marca que suprime el FILTER_EXPR, "category_expressed_as_type"
+// (Guardrail v29a, cableada aqui el 08/09): la dependencia enumera SUBTIPOS
+// donde el texto delimitaba una categoria entera, asi que la enumeracion es un
+// artefacto de la extraccion, no la condicion. Traducirla produce un filtro
+// RESTRICTIVO Y FALSO: mas estrecho que lo que dice el condicionado.
+//
+// Caso real que lo motivo (Zurich su_00071, "5-. Robo"): la frase es "Para
+// turismos de uso particular o furgonetas de transporte propio, cuyo PMA sea
+// menor de 3.500 kg", que delimita la categoria AUTOS completa. De esa MISMA
+// frase, flujo 2 saca dos dependencias: los subtipos (marcada v29a) y la
+// categoria (marcada vacuous_for_ramo). Filtrar por los subtipos ocultaria la
+// linea para un monovolumen o un todo terreno, que la frase si cubre. La
+// hermana bien expresada -- la categoria -- es la que debe mandar, y resulta
+// que es vacua, asi que no hay FILTER_EXPR y eso es correcto.
+//
+// Por que hacia falta cablearla y no bastaba con no tener vocabulario para
+// "furgoneta": hasta el 08/09 esa dependencia se caia sola porque
+// `base7Type.id` no tenia `value_aliases`, o sea acertaba por accidente. Al
+// dar de alta el alias de "furgoneta" (que SI es un tipo real y aparece a
+// secas en dependencias de varias companias) el accidente desaparece y el
+// filtro falso apareceria. Es el patron que ya advierte CLAUDE.md 4.2: una
+// marca que nadie lee no hace nada.
+//
 // Solo se filtra la generacion de SPEL: la dependencia sigue viajando intacta
 // en el JSON revisable, con su marca, para que quien revise entienda por que
 // el FILTER_EXPR esta vacio.
+//
+// MANTENER EN SINCRONIA con MARKS_EXEMPT_FROM_TRANSLATION de value_matcher.js:
+// una dependencia cuyo valor no llega nunca al SPEL tampoco debe exigir
+// traduccion (si no, marca needs_review por algo que no es un problema). Son
+// dos modulos y dos nodos distintos, asi que no se puede compartir la
+// constante; el arnes comprueba que las dos listas coincidan (--generator).
+const MARKS_SUPPRESSING_FILTER_EXPR = ["vacuous_for_ramo", "category_expressed_as_type"];
+
+function suppressesFilterExpr(dependency) {
+  return MARKS_SUPPRESSING_FILTER_EXPR.some(mark => dependency[mark] === true);
+}
+
+// Varias dependencias del MISMO campo con operador de pertenencia se funden en
+// una sola, uniendo sus valores -- no se pueden combinar con AND.
+//
+// Motivo, y es aritmetico antes que semantico: un campo escalar no puede valer
+// dos cosas a la vez, asi que "campo = A && campo = B" es INSATISFACIBLE. Y
+// cuando el condicionado enumera alternativas ("vehiculos electricos/hibridos")
+// lo que dice es un OR, aunque la extraccion lo parta en dos dependencias con
+// "=" -- flujo 2 emite una por valor y no tiene forma de expresar el OR en el
+// esquema actual (decision de alcance, ver CLAUDE.md 5.8).
+//
+// Caso real que lo motivo (Zurich su_00066, "3-. Asistencia en viaje", frase
+// "Para el caso de vehiculos electricos/hibridos, se ofrece asistencia
+// tecnologica remota"): dos dependencias sobre base7Engine.id, una a
+// "vehiculo electrico" y otra a "vehiculo hibrido". Sin fundirlas sale
+// "{3,13}.contains(campo) && {7,11,12}.contains(campo)", siempre falso -- otra
+// condicion sintacticamente valida e imposible de cumplir, la misma clase de
+// fallo que motivo el rediseño del catalogo de valores el 08/09. Antes no se
+// veia porque ninguno de los dos valores traducia.
+//
+// Solo se funden grupos HOMOGENEOS en signo: todos de pertenencia positiva
+// (=/IN) -> un IN con la union; todos negativos (!=/NOT_IN) -> un NOT_IN con
+// la union (que es el equivalente correcto: no estar en A y no estar en B es
+// no estar en la union). Cualquier otra mezcla se deja como estaba y se
+// combina con AND, porque ahi el AND SI es lo correcto: "= A && != B" es
+// satisfacible, y con comparaciones de rango ("registrationYears >= 2 &&
+// <= 5") el AND es justamente el combinador que se quiere.
+const POSITIVE_MEMBERSHIP_OPERATORS = new Set(["=", "IN"]);
+const NEGATIVE_MEMBERSHIP_OPERATORS = new Set(["!=", "NOT_IN"]);
+
+function mergeSameFieldMembership(dependencies) {
+  const groups = new Map();
+  for (const dep of dependencies) {
+    if (!groups.has(dep.risk_field)) groups.set(dep.risk_field, []);
+    groups.get(dep.risk_field).push(dep);
+  }
+
+  const merged = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) { merged.push(group[0]); continue; }
+
+    const allPositive = group.every(dep => POSITIVE_MEMBERSHIP_OPERATORS.has(dep.operator));
+    const allNegative = group.every(dep => NEGATIVE_MEMBERSHIP_OPERATORS.has(dep.operator));
+    if (!allPositive && !allNegative) { merged.push(...group); continue; }
+
+    const values = [];
+    for (const dep of group) {
+      for (const value of Array.isArray(dep.value) ? dep.value : [dep.value]) {
+        if (!values.includes(value)) values.push(value);
+      }
+    }
+    merged.push({
+      ...group[0],
+      operator: values.length === 1 ? (allPositive ? "=" : "!=") : (allPositive ? "IN" : "NOT_IN"),
+      value: values.length === 1 ? values[0] : values
+    });
+  }
+  return merged;
+}
+
 function combineFilterExpr(dependencies) {
   if (!dependencies || dependencies.length === 0) return null;
-  const effective = dependencies.filter(dep => dep && dep.vacuous_for_ramo !== true);
+  const effective = dependencies.filter(dep => dep && !suppressesFilterExpr(dep));
   if (effective.length === 0) return null;
-  const parts = effective.map(translateToSpel);
+  const parts = mergeSameFieldMembership(effective).map(translateToSpel);
   return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
 }
 
@@ -1236,6 +1330,11 @@ function buildInsertStatements({ coverId, productCompanyId, coverOverride, entri
 }
 
 module.exports = {
+  POSITIVE_MEMBERSHIP_OPERATORS,
+  NEGATIVE_MEMBERSHIP_OPERATORS,
+  mergeSameFieldMembership,
+  MARKS_SUPPRESSING_FILTER_EXPR,
+  suppressesFilterExpr,
   translateToSpel,
   parseOptionalSheetList,
   resolveTuningOptionValues,

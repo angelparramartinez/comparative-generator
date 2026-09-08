@@ -62,9 +62,24 @@ string (a diferencia de `maritalStatus`/`housingUse`, que sí llevan
 `@JsonSerialize(CrmEnumJsonSerializer)`) — el `id` numérico es la
 comparación estable en el `FILTER_EXPR`/`VALUE_EXPR` real; el texto
 (`description`/`name`) queda solo como vocabulario de matching para
-flujo 2, con la traducción texto→id delegada a flujo 3
-(`value_matcher.js`), mismo mecanismo que ya existe para
-`housingUse`/`capitalInsuranceType` en Hogar.
+`coverage rules extraction GGCC`, con la traducción texto→id delegada a
+`coverage insert generation` (`value_matcher.js`), mismo mecanismo que ya
+existe para `occupancy`/`capitalInsuranceType` en Hogar.
+
+**PENDIENTE, y es un bug real medido (08/09, ejecución 402 con Zurich)**: esa
+traducción delegada **nunca se implementó** para estos tres campos. El
+catálogo vivía hardcodeado con los tres campos de Hogar, así que
+`base7Engine.id == 'vehículo eléctrico'` salió literal a 27 LINE — condición
+siempre falsa, porque el `id` real es numérico. Desde ese día el catálogo se
+lee de este fichero, pero `shared/base7version.md` sigue **sin declarar
+`value_aliases:`**, así que una dependencia sobre estos campos se excluye
+ruidosamente (`enum_without_value_catalog`) en vez de generar SPEL erróneo.
+Para cerrarlo hay que añadir allí el vocabulario del condicionado, y eso
+necesita dos decisiones de negocio: si "vehículo eléctrico" incluye el `13`
+(ELÉCTRICO de pila de combustible/hidrógeno), y qué `id` es "furgoneta de
+transporte propio" (`6` furgones y camiones ligeros, o `7` habilitados a
+pasajeros). Ojo también con el uno-a-muchos: "vehículo híbrido" son `7`, `11`
+y `12`, y el catálogo mapea hoy un alias a UN valor.
 
 **AVISO (21/08, actualizado tras cruzar condicionados reales)**:
 `risk_field`, `data_type` y los valores de `garageType` están confirmados
@@ -319,7 +334,7 @@ aliases:
 - tipo de garaje
 - plaza de garaje
 - vehículo guardado habitualmente en
-values:
+value_aliases:
 - PrivateGarage: garaje individual
 - CommunalParking: garaje colectivo
 - NoGarage: vía pública

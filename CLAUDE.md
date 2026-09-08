@@ -266,9 +266,26 @@ artefacto, con su contador `total_<marca>_dependencies` en el contrato.
 **Quién lee las marcas**: el `Coverage Match Decision Agent` de
 `coverage insert generation` lee las 11. Su esquema de salida es cerrado
 (`additionalProperties: false`), así que solo puede reaccionar vía `confidence`
-y `reasoning`. Y `vacuous_for_ramo` es la única que además **cambia el SQL**:
-`combineFilterExpr` (en `generator.js` y en su nodo espejo) omite las
-dependencias vacuas del `FILTER_EXPR`.
+y `reasoning`. Y **dos** de ellas además **cambian el SQL**:
+`combineFilterExpr` (en `generator.js` y en su nodo espejo) omite del
+`FILTER_EXPR` las dependencias marcadas con cualquiera de las marcas de
+`MARKS_SUPPRESSING_FILTER_EXPR`:
+
+- `vacuous_for_ramo` (v29b, desde el 04/09): la condición es cierta para todo
+  el ramo, así que el filtro no discrimina nada.
+- `category_expressed_as_type` (v29a, desde el 08/09): la dependencia enumera
+  subtipos donde el texto delimitaba una categoría entera, así que el filtro
+  sería **restrictivo y falso** — más estrecho que el condicionado. Caso real:
+  Zurich `su_00071`, donde de la misma frase ("turismos de uso particular o
+  furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg", que es la
+  categoría AUTOS completa) salen las dos marcas, una en cada dependencia.
+
+Esas mismas dos marcas exoneran de traducir el valor en
+`value_matcher.js` (`MARKS_EXEMPT_FROM_TRANSLATION`): si el valor no llega
+nunca al SPEL, exigirle vocabulario solo produce `needs_review` falsos. Las dos
+listas viven en módulos (y nodos) distintos porque n8n no permite compartir una
+constante entre nodos, así que el arnés comprueba que coincidan (`--generator`,
+caso `MARKS-SYNC`).
 
 > **Trampa a recordar** (ver 5.11): *una marca que nadie lee no hace nada.*
 > `transversal_chapter` estuvo semanas sin efecto porque
@@ -276,6 +293,15 @@ dependencias vacuas del `FILTER_EXPR`.
 > `vacuous_for_ramo`/`category_expressed_as_type` repitieron el patrón el
 > 04/09. **Al crear una marca nueva, cablearla en
 > `coverage insert generation` en el mismo trabajo.**
+>
+> Corolario descubierto el 08/09, y peor de detectar: *una marca sin cablear
+> puede estar acertando por accidente.* `category_expressed_as_type` parecía
+> inofensiva porque su dependencia se caía sola — `base7Type.id` no tenía
+> `value_aliases`, así que el valor no traducía. Al dar de alta ese vocabulario
+> (legítimo: "furgoneta" es un tipo real y aparece a secas en dependencias de
+> varias compañías) el accidente desaparece y el filtro falso aparecería.
+> **Antes de añadir vocabulario a una ontología, mirar qué marcas traen las
+> dependencias que empezarán a traducir.**
 
 **Dos incoherencias estructurales reales, para no tropezar:**
 

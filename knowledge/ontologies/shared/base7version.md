@@ -87,7 +87,37 @@ values:
 - 8: OTROS
 - 9: DESCONOCIDO
 - 10: DESCONOCIDO
+value_aliases:
+- 3: vehículo eléctrico, motor eléctrico, eléctrico
+- 13: vehículo eléctrico, motor eléctrico, eléctrico
+- 7: vehículo híbrido, motor híbrido, híbrido
+- 11: vehículo híbrido, motor híbrido, híbrido
+- 12: vehículo híbrido, motor híbrido, híbrido
 interpretation:
+`value_aliases` (08/09): vocabulario del condicionado -> `id` real, que es
+lo que `coverage insert generation` compara en el `FILTER_EXPR`. Añadido a
+raíz de un bug real medido (ejecución 402 con Zurich): sin esta clave, el
+texto español salía LITERAL contra un `id` numérico
+(`base7Engine.id == 'vehículo eléctrico'`), condición imposible de cumplir,
+en 27 LINE.
+
+**Un mismo término se repite en varios `id` a propósito** — es el mecanismo
+para el uno-a-muchos, el mismo que usa "vivienda unifamiliar" en
+`ontology-home.md`. Cuando un alias resuelve a más de un valor,
+`value_matcher.js` promueve el operador (`=` -> `IN`, `!=` -> `NOT_IN`), así
+que "eléctrico" genera `{'3','13'}.contains(...)`.
+
+Las dos agrupaciones las decidió el usuario el 08/09:
+- **"eléctrico" incluye el `13`** (ELÉCTRICO de pila de combustible /
+  hidrógeno), no solo el `3`.
+- **"híbrido" son los tres**: `7` (no enchufable), `11` (gasolina
+  enchufable) y `12` (diésel enchufable).
+
+Sin alias para diésel/gasolina a propósito: solo se cataloga el vocabulario
+que ha aparecido de verdad en condicionados (los `aliases` de arriba lo
+atestiguan), y "gasolina" además aparece dentro de las etiquetas de híbrido,
+donde un alias suelto arriesgaría un match equivocado.
+
 Ruta completa: `getBase7Version()` (`MotorRisk`, `@JsonView({ASM,
 COMPARATIVE_REQUEST})`, clave `base7Version`) → `getBase7Engine()`
 (`Base7Version`, **sin ninguna `@JsonView`** -- visible en todas las
@@ -155,7 +185,49 @@ values:
 - 17: BICICLETAS S-PEDELEC (SPEED-PEDELEC) (categoría MOTOS)
 - 18: PERSONAL (categoría VMP)
 - 19: SERVICIOS (categoría VMP)
+value_aliases:
+- 1: turismo
+- 5: derivado de turismo
+- 6: furgoneta, furgonetas, furgón, furgones
+- 7: furgoneta, furgonetas, furgón, furgones
 interpretation:
+`value_aliases` (08/09): solo los tipos que han aparecido en condicionados
+reales y son inequívocos. Deliberadamente cortos:
+
+- **"furgoneta"/"furgón" van a los DOS ids** (`6` y `7`): la BBDD solo los
+  separa por habilitación a pasajeros, distinción que ningún condicionado
+  hace. Uno-a-muchos, así que el operador se promueve a `IN`. Los plurales
+  van declarados aparte porque `normalize` quita mayúsculas y acentos pero
+  no pluraliza. El `5` queda fuera del grupo: los textos reales dicen
+  "derivados del turismo" como término DISTINTO de "furgonetas", en la misma
+  frase.
+- Vocabulario confirmado sobre ejecuciones reales de varias compañías, donde
+  "furgoneta" aparece a secas y como condición legítima de tipo — p. ej.
+  *"El vehículo del que procede el Bonus ha de ser un Turismo, Todo Terreno,
+  Furgoneta o Furgón"*.
+
+- **Nada de la categoría CAMIONES/MOTOS/VMP** (`8`-`19`): fuera del alcance
+  del ramo que se procesa, y el guardrail de extracción ya rechaza esos
+  casos (`vehicle_category_out_of_ramo_scope`).
+- **"derivado de comercial" no se cataloga** aunque esté en `aliases`: es
+  ambiguo entre `4` (COMERCIAL DERIVADO DE TT) y `5` (COMERCIAL DERIVADO DE
+  TURISMO). Como alias de matching sirve; como valor a traducir, no.
+- **"furgoneta de transporte propio" NO es un valor de este campo**, y por
+  eso no está aquí. Caso real: la dependencia de Zurich `su_00071` llega
+  como `base7Type.id IN ["turismo", "furgoneta de transporte propio"]`,
+  mezclando un tipo con un USO. Este enum separa furgones por carrocería /
+  habilitación de pasajeros (`6` frente a `7`), nunca por servicio propio o
+  ajeno. Esa distinción existe, pero en el **tuning** de la compañía:
+  `usoVehiculo` de Zurich tiene `210` "Furgoneta particular y transportes
+  propios" frente a `220` "...transportes terceros". Y no hay `risk_field`
+  de uso del vehículo: comprobado el 08/09 en `avant-back` (ningún
+  `getUse*`/`getUso*` en los DTO de riesgo de motor) y en `avant-front`
+  (`usoVehiculo` no aparece, es campo de tuning por compañía). Consecuencia
+  buscada: esa dependencia se resuelve como `no_alias_match`, se EXCLUYE del
+  `FILTER_EXPR` y se reporta, en vez de traducirse mal. Es un caso del punto
+  7 del backlog de `CLAUDE.md` ("campo equivocado"), ahora con un ejemplo
+  real de Autos.
+
 **Sustituye al antiguo concepto `vehicleType` de `ontology-auto.md`
 (eliminado 26/08)**, que usaba `type.baseType.name` -- un objeto
 envoltorio (`VehicleType`/`VehicleBaseType`) construido a mano en
