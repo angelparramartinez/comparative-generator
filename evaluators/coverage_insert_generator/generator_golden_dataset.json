@@ -2613,7 +2613,7 @@
     },
     {
       "id": "GEN-ENTRY-101",
-      "description": "FIX 2 (revision manual 08/09, Zurich cover 3 'Asistencia en viaje'): cobertura SIEMPRE INCLUIDA cuyo campo de tuning elige entre tramos sin estado 'no contratada'. El texto de la celda base ES el tramo por defecto (Esencial), asi que se filtra con la negacion de los tramos que SI tienen fila global -- sin eso, al elegir Ampliada se renderizaban las dos entries y la comparativa decia a la vez 'hasta 200 km' e 'ilimitada'. El HIRING_STATUS no cambia: sigue INCLUDED.",
+      "description": "FIX 2 (revision manual 08/09, Zurich cover 3 'Asistencia en viaje'): cobertura SIEMPRE INCLUIDA cuyo campo de tuning elige entre tramos sin estado 'no contratada'. El texto de la celda base ES el tramo por defecto (Esencial), asi que se filtra con la negacion de los tramos que SI tienen fila global -- sin eso, al elegir Ampliada se renderizaban las dos entries y la comparativa decia a la vez 'hasta 200 km' e 'ilimitada'. El HIRING_STATUS no cambia: sigue INCLUDED. Las dos opciones del mismo campo salen en UNA sola expresion (se agrupa por tuningKey, porque la decision de negar es del campo y no de la fila), asi que no lleva parentesis de mas.",
       "input": {
         "coverId": 3,
         "coverName": "Asistencia en viaje",
@@ -2647,10 +2647,71 @@
               }
             ]
           }
-        ]
+        ],
+        "tuningDictionary": {
+          "asistenciaViaje": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000465",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000466",
+                    "label": "Ampliada"
+                  },
+                  {
+                    "value": "0000000467",
+                    "label": "Plus"
+                  }
+                ]
+              }
+            ]
+          },
+          "rcCarga": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "N",
+                    "label": "No contrata"
+                  },
+                  {
+                    "value": "0000000272",
+                    "label": "60.000€"
+                  },
+                  {
+                    "value": "0000000273",
+                    "label": "150.000€"
+                  }
+                ]
+              }
+            ]
+          },
+          "accidentesConductor": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000468",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000469",
+                    "label": "Ampliada"
+                  }
+                ]
+              }
+            ]
+          }
+        }
       },
       "expected": {
-        "own_content_filter_expr": "(tuning?.asistenciaViaje != '0000000466') && (tuning?.asistenciaViaje != '0000000467')"
+        "own_content_filter_expr": "tuning?.asistenciaViaje != '0000000466' && tuning?.asistenciaViaje != '0000000467'"
       }
     },
     {
@@ -2680,7 +2741,68 @@
               "2768"
             ]
           }
-        ]
+        ],
+        "tuningDictionary": {
+          "asistenciaViaje": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000465",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000466",
+                    "label": "Ampliada"
+                  },
+                  {
+                    "value": "0000000467",
+                    "label": "Plus"
+                  }
+                ]
+              }
+            ]
+          },
+          "rcCarga": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "N",
+                    "label": "No contrata"
+                  },
+                  {
+                    "value": "0000000272",
+                    "label": "60.000€"
+                  },
+                  {
+                    "value": "0000000273",
+                    "label": "150.000€"
+                  }
+                ]
+              }
+            ]
+          },
+          "accidentesConductor": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000468",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000469",
+                    "label": "Ampliada"
+                  }
+                ]
+              }
+            ]
+          }
+        }
       },
       "expected": {
         "own_content_filter_expr": null
@@ -2704,7 +2826,68 @@
             "textContent": "Capital: {importe}€",
             "tuningKey": "importeRetiradaCarnet"
           }
-        ]
+        ],
+        "tuningDictionary": {
+          "asistenciaViaje": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000465",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000466",
+                    "label": "Ampliada"
+                  },
+                  {
+                    "value": "0000000467",
+                    "label": "Plus"
+                  }
+                ]
+              }
+            ]
+          },
+          "rcCarga": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "N",
+                    "label": "No contrata"
+                  },
+                  {
+                    "value": "0000000272",
+                    "label": "60.000€"
+                  },
+                  {
+                    "value": "0000000273",
+                    "label": "150.000€"
+                  }
+                ]
+              }
+            ]
+          },
+          "accidentesConductor": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000468",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000469",
+                    "label": "Ampliada"
+                  }
+                ]
+              }
+            ]
+          }
+        }
       },
       "expected": {
         "own_content_filter_expr": null
@@ -2787,6 +2970,240 @@
           null,
           null
         ]
+      }
+    },
+    {
+      "id": "GEN-ENTRY-106",
+      "description": "FIX 2, REGRESION REAL detectada en la ejecucion 406 (Zurich cover 2 'Responsabilidad civil voluntaria'): un campo con estado 'no contratada' NO es un selector de tramos. `rcCarga` tiene 'No contrata' mas 5 capitales, y sus filas AÑADEN contenido al texto base en vez de sustituirlo (OVERWRITE=0 en la legacy) -- negarlas escondia el texto propio de la RC voluntaria en cuanto se contrataba RC de la carga. La primera version del fix no comprobaba esto.",
+      "input": {
+        "coverId": 2,
+        "coverName": "Responsabilidad civil voluntaria",
+        "defaultBullets": [
+          "Por caída de equipajes/objetos/mercancías"
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "tuningDictionary": {
+          "asistenciaViaje": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000465",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000466",
+                    "label": "Ampliada"
+                  },
+                  {
+                    "value": "0000000467",
+                    "label": "Plus"
+                  }
+                ]
+              }
+            ]
+          },
+          "rcCarga": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "N",
+                    "label": "No contrata"
+                  },
+                  {
+                    "value": "0000000272",
+                    "label": "60.000€"
+                  },
+                  {
+                    "value": "0000000273",
+                    "label": "150.000€"
+                  }
+                ]
+              }
+            ]
+          },
+          "accidentesConductor": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000468",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000469",
+                    "label": "Ampliada"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "opcionales": [
+          {
+            "coverName": "Responsabilidad civil de la carga",
+            "textContent": "RC de la carga: 60.000€",
+            "tuningKey": "rcCarga",
+            "optionValues": [
+              {
+                "value": "0000000272",
+                "label": "60.000€"
+              }
+            ]
+          },
+          {
+            "coverName": "Responsabilidad civil de la carga",
+            "textContent": "RC de la carga: 150.000€",
+            "tuningKey": "rcCarga",
+            "optionValues": [
+              {
+                "value": "0000000273",
+                "label": "150.000€"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "own_content_filter_expr": null
+      }
+    },
+    {
+      "id": "GEN-ENTRY-107",
+      "description": "FIX 2, SEGUNDA REGRESION de la 406 (Zurich cover 4 'Seguro del conductor'): cuando las filas globales cubren TODOS los valores del campo no queda ningun tramo para el texto base, asi que negarlas lo haria invisible SIEMPRE. `accidentesConductor` tiene 2 valores (Esencial, Ampliada) y las dos tienen fila. Contrasta con asistenciaViaje, donde el tramo por defecto NO tiene fila global -- la suya esta acotada a las modalidades Green -- y por eso ahi la negacion si es correcta. La comprobacion es autoverificable: si tras negar no queda valor posible, la negacion esta mal por construccion.",
+      "input": {
+        "coverId": 4,
+        "coverName": "Seguro del conductor",
+        "defaultBullets": [
+          "Accidentes del conductor Esencial"
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "tuningDictionary": {
+          "asistenciaViaje": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000465",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000466",
+                    "label": "Ampliada"
+                  },
+                  {
+                    "value": "0000000467",
+                    "label": "Plus"
+                  }
+                ]
+              }
+            ]
+          },
+          "rcCarga": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "N",
+                    "label": "No contrata"
+                  },
+                  {
+                    "value": "0000000272",
+                    "label": "60.000€"
+                  },
+                  {
+                    "value": "0000000273",
+                    "label": "150.000€"
+                  }
+                ]
+              }
+            ]
+          },
+          "accidentesConductor": {
+            "type": "string",
+            "options": [
+              {
+                "items": [
+                  {
+                    "value": "0000000468",
+                    "label": "Esencial"
+                  },
+                  {
+                    "value": "0000000469",
+                    "label": "Ampliada"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "opcionales": [
+          {
+            "coverName": "Accidentes del conductor",
+            "textContent": "Esencial",
+            "tuningKey": "accidentesConductor",
+            "optionValues": [
+              {
+                "value": "0000000468",
+                "label": "Esencial"
+              }
+            ]
+          },
+          {
+            "coverName": "Accidentes del conductor",
+            "textContent": "Ampliada",
+            "tuningKey": "accidentesConductor",
+            "optionValues": [
+              {
+                "value": "0000000469",
+                "label": "Ampliada"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "own_content_filter_expr": null
+      }
+    },
+    {
+      "id": "GEN-ENTRY-108",
+      "description": "FIX 2: sin diccionario de tuning no se niega nada. Es la salida segura por defecto -- la decision de negar depende de datos del campo (estado 'no contratada' y universo de valores) que sin diccionario no se pueden comprobar, y negar a ciegas es lo que produjo las dos regresiones.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "defaultBullets": [
+          "Asistencia en viaje 24h Esencial."
+        ],
+        "presentModalityIds": [
+          "1358"
+        ],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Ampliada",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ]
+          }
+        ]
+      },
+      "expected": {
+        "own_content_filter_expr": null
       }
     }
   ],

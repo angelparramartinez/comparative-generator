@@ -909,15 +909,75 @@ function buildOwnContentMarkerFilterExpr(opcionales) {
 // tramos, no se negaria nada y la duplicacion volveria. Haria falta que el
 // Excel dijera explicitamente a que opcion corresponde la celda base; no se
 // inventa el mecanismo hasta que aparezca un caso real.
-function buildTierOwnContentFilterExpr(opcionales) {
-  const globalTierRows = (opcionales || []).filter(
+// Todos los valores distintos que puede tomar un campo de tuning, y si entre
+// ellos hay un estado "no contratada". Recorre TODOS los grupos de options[]
+// (un campo puede traer varios, condicionados por modalidad o por etiqueta) --
+// a diferencia de resolveTuningSelectConfig, que elige UN grupo: aqui interesa
+// el universo completo de valores posibles.
+function tuningFieldValueUniverse(tuningFieldDef) {
+  const groups = (tuningFieldDef && tuningFieldDef.options) || [];
+  const values = new Set();
+  let hasNotContracted = false;
+  for (const group of groups) {
+    for (const item of (group && group.items) || []) {
+      if (item == null || item.value == null) continue;
+      values.add(item.value);
+      if (TUNING_NOT_CONTRACTED_LABELS.has(normalizeTuningLabel(item.label))) hasNotContracted = true;
+    }
+  }
+  return { values, hasNotContracted };
+}
+
+function buildTierOwnContentFilterExpr(opcionales, tuningDictionary) {
+  const globalRows = (opcionales || []).filter(
     o => o.optionValues && o.optionValues.length > 0
       && o.tuningKey && o.tuningKey !== "NOT_FOUND"
       && (!o.modalityIds || o.modalityIds.length === 0)
   );
-  const parts = globalTierRows
-    .map(o => buildTuningValueInequalityExpr(o.tuningKey, o.optionValues))
-    .filter(Boolean);
+
+  // Se agrupa por campo: la decision de negar o no es del CAMPO, no de la fila.
+  const rowsByKey = new Map();
+  for (const row of globalRows) {
+    if (!rowsByKey.has(row.tuningKey)) rowsByKey.set(row.tuningKey, []);
+    rowsByKey.get(row.tuningKey).push(row);
+  }
+
+  const parts = [];
+  for (const [tuningKey, rows] of rowsByKey) {
+    const { values, hasNotContracted } = tuningFieldValueUniverse((tuningDictionary || {})[tuningKey]);
+
+    // Con estado "no contratada", el campo NO es un selector de tramos: sus
+    // filas AÑADEN contenido al texto base en vez de sustituirlo (OVERWRITE=0
+    // en la legacy), asi que negarlas ocultaria el texto base en cuanto se
+    // contrate algo. Caso real que lo destapo (Zurich cover 2
+    // "Responsabilidad civil voluntaria", revision de la ejecucion 406):
+    // `rcCarga` tiene "No contrata" y 5 capitales, y negar los 5 escondia el
+    // texto propio de la RC voluntaria al contratar RC de la carga.
+    if (hasNotContracted) continue;
+
+    // Si las filas globales cubren TODOS los valores del campo, no queda
+    // ningun tramo para el texto base y negarlas lo haria invisible SIEMPRE.
+    // Es la comprobacion que de verdad discrimina, y es autoverificable: si
+    // tras negar no queda valor posible, la negacion es incorrecta por
+    // construccion. Casos reales de la misma ejecucion 406:
+    // `accidentesConductor` (2 valores, 2 filas) y `capitalAccidenteConductor`
+    // (8 valores, 8 filas) -- frente a `asistenciaViaje`, donde el tramo por
+    // defecto (Esencial) no tiene fila global porque la suya esta acotada a
+    // las modalidades Green, y por eso ahi la negacion SI es correcta.
+    // Sin universo de valores conocido no se niega: la decision depende de
+    // datos del campo que no se pueden comprobar, y negar a ciegas es
+    // exactamente lo que produjo las dos regresiones de la ejecucion 406.
+    if (values.size === 0) continue;
+
+    const covered = new Set();
+    for (const row of rows) for (const o of row.optionValues) covered.add(o.value);
+    const uncovered = [...values].filter(v => !covered.has(v));
+    if (uncovered.length === 0) continue;
+
+    const expr = buildTuningValueInequalityExpr(tuningKey, rows.flatMap(r => r.optionValues));
+    if (expr) parts.push(expr);
+  }
+
   if (parts.length === 0) return null;
   return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
 }
@@ -1020,7 +1080,8 @@ function buildEntriesForCover({
   missingModalityIds = [],
   optionalMarkerModalityIds = [],
   coverTuningKey = null,
-  dependencyMatches = []
+  dependencyMatches = [],
+  tuningDictionary = {}
 }) {
   const entries = [];
 
@@ -1303,7 +1364,7 @@ function buildEntriesForCover({
   // las dos dejaria el texto base sin verse nunca.
   const withTierFilter = optionalMarkerModalityIds.length > 0
     ? withMarker
-    : applyTierFilterToOwnContent(withMarker, buildTierOwnContentFilterExpr(opcionales));
+    : applyTierFilterToOwnContent(withMarker, buildTierOwnContentFilterExpr(opcionales, tuningDictionary));
 
   const coverOverride = computeCoverOverride(withTierFilter);
   if (coverOverride) {
@@ -1451,6 +1512,7 @@ function buildInsertStatements({ coverId, productCompanyId, coverOverride, entri
 }
 
 module.exports = {
+  tuningFieldValueUniverse,
   normalizeLineForDependencyMatch,
   findDependenciesForLineText,
   OWN_CONTENT_SOURCES,
