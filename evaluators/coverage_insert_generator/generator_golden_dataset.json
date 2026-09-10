@@ -366,6 +366,296 @@
         }
       ],
       "expected_spel": "({3,13}.contains(insurance[\"risk\"].base7Version.base7Engine.id)) && (insurance[\"risk\"].registrationYears <= 5)"
+    },
+    {
+      "id": "GEN-COMBINE-016",
+      "description": "unica dependencia con percentage_indemnification (v17/v24) -> sin FILTER_EXPR. Sale de una escala de valoracion: decide el IMPORTE, no la inclusion.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "percentage_indemnification": true
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-017",
+      "description": "LAS CINCO dependencias de la escala de antiguedad de Zurich su_00092 ('hasta el 2o año', 'del 3o al 5o'...). Combinadas con AND daban 'registrationYears <= 2 && >= 3 && <= 5 && <= 3 && >= 4', INSATISFACIBLE: en la ejecucion 407 dos LINES de la cobertura 13 dejaron de renderizarse.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 4,
+          "percentage_indemnification": true
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-018",
+      "description": "El caso completo de su_00092 tal cual viene del artefacto: los subtipos (v29a), la categoria (v29b) y los cinco umbrales (v17). Las tres marcas suprimen, asi que no queda FILTER_EXPR -- y eso es lo correcto, el texto es descriptivo.",
+      "dependencies": [
+        {
+          "risk_field": "base7Version.base7Type.id",
+          "operator": "IN",
+          "value": [
+            1,
+            6
+          ],
+          "category_expressed_as_type": true,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "base7Version.base7Type.base7Category.id",
+          "operator": "=",
+          "value": "primera categoria",
+          "vacuous_for_ramo": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 4,
+          "percentage_indemnification": true
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-019",
+      "description": "una percentage_indemnification + una real de OTRO campo -> solo la real. La marca suprime SU dependencia, no el ENTRY entero.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "percentage_indemnification": true
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": 3
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].base7Version.base7Engine.id == 3"
+    },
+    {
+      "id": "GEN-COMBINE-020",
+      "description": "CONTRA-PRUEBA: percentage_indemnification ausente o false no filtra nada. Un umbral de antiguedad SIN la marca es una condicion legitima y tiene que generar su comparacion.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2,
+          "percentage_indemnification": false
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].registrationYears <= 2"
+    },
+    {
+      "id": "GEN-COMBINE-021",
+      "description": "RED DE SEGURIDAD, independiente de las marcas: los mismos cinco umbrales SIN marca alguna tampoco se emiten, porque su interseccion es vacia. Es el caso que la marca no cubre: cualquier unidad futura que enumere umbrales del mismo campo sin traer marca.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 4
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-022",
+      "description": "La red de seguridad descarta SOLO el grupo contradictorio, no el FILTER_EXPR entero: la condicion sobre otro campo sobrevive.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 2
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3
+        },
+        {
+          "risk_field": "base7Version.base7Engine.id",
+          "operator": "=",
+          "value": 3
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].base7Version.base7Engine.id == 3"
+    },
+    {
+      "id": "GEN-COMBINE-023",
+      "description": "CONTRA-PRUEBA red 1: un rango satisfacible de TRES terminos se deja intacto ('>= 2 && <= 5 && <= 4' es el rango 2..4).",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 2
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 5
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 4
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].registrationYears >= 2) && (insurance[\"risk\"].registrationYears <= 5) && (insurance[\"risk\"].registrationYears <= 4)"
+    },
+    {
+      "id": "GEN-COMBINE-024",
+      "description": "CONTRA-PRUEBA red 2: limites que se TOCAN con operadores no estrictos son satisfacibles ('>= 3 && <= 3' vale exactamente 3) y no se tocan.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].registrationYears >= 3) && (insurance[\"risk\"].registrationYears <= 3)"
+    },
+    {
+      "id": "GEN-COMBINE-025",
+      "description": "El mismo limite con uno de los dos ESTRICTO si es insatisfacible ('> 3 && <= 3' no admite ningun valor) y se descarta.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": ">",
+          "value": 3
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": 3
+        }
+      ],
+      "expected_spel": null
+    },
+    {
+      "id": "GEN-COMBINE-026",
+      "description": "CONTRA-PRUEBA red 3: con valor NO numerico la red no opina -- la satisfacibilidad ya no es un intervalo y no se puede decidir con esta aritmetica. Se deja pasar tal cual (que ese SPEL compare String con numero es otro problema, no de este chequeo).",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": "3"
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": "<=",
+          "value": "2"
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].registrationYears >= '3') && (insurance[\"risk\"].registrationYears <= '2')"
+    },
+    {
+      "id": "GEN-COMBINE-027",
+      "description": "CONTRA-PRUEBA red 4: basta un '=' en el grupo para que la red no opine. Aqui el AND es satisfacible ('= 3 && >= 2') y sale intacto.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": "=",
+          "value": 3
+        },
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 2
+        }
+      ],
+      "expected_spel": "(insurance[\"risk\"].registrationYears == 3) && (insurance[\"risk\"].registrationYears >= 2)"
+    },
+    {
+      "id": "GEN-COMBINE-028",
+      "description": "CONTRA-PRUEBA red 5: una sola comparacion nunca es insatisfacible, aunque el grupo tenga un unico elemento.",
+      "dependencies": [
+        {
+          "risk_field": "registrationYears",
+          "operator": ">=",
+          "value": 3
+        }
+      ],
+      "expected_spel": "insurance[\"risk\"].registrationYears >= 3"
     }
   ],
   "entry_building_cases": [

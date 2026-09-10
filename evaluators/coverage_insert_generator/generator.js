@@ -96,6 +96,28 @@ function translateToSpel(dependency) {
 // filtro falso apareceria. Es el patron que ya advierte CLAUDE.md 4.2: una
 // marca que nadie lee no hace nada.
 //
+// Tercera marca que suprime el FILTER_EXPR, "percentage_indemnification"
+// (Guardrail v17/v24, cableada aqui el 10/09): la dependencia sale de una
+// ESCALA DE VALORACION -- decide el IMPORTE de la indemnizacion, no si la
+// cobertura esta incluida. Es su propia definicion (ver CLAUDE.md 4.2), asi
+// que por construccion nunca deberia haber producido un FILTER_EXPR.
+//
+// Caso real que lo destapo (Zurich su_00092, "10-. Daños por fenomenos
+// atmosfericos y animales", ejecucion 407): el texto es una tabla de tramos de
+// antiguedad ("hasta el 2o año...", "del 3o al 5o..."), y flujo 2 saca UNA
+// dependencia por umbral. Las cinco caen sobre el mismo campo y se combinan
+// con AND, que aqui es lo correcto para rangos pero produce
+// "registrationYears <= 2 && >= 3 && <= 5 && <= 3 && >= 4": INSATISFACIBLE.
+// Efecto observado: dos LINES de la cobertura 13 que dejaban de renderizarse.
+//
+// La exposicion real era 5 veces mayor de lo que se veia: hay CINCO unidades
+// con esta forma (su_00071/77/82/86/92, los "Criterios para la valoracion de
+// siniestros" de Robo, Incendio, Perdida total, Daños propios y Fenomenos
+// atmosfericos), cada una con las mismas cinco dependencias. En la 407 solo
+// una llego a matchear -- el `Coverage Match Decision Agent` no es
+// determinista, y en la 406 la misma unidad habia quedado en unmatched. Otra
+// vez el patron de CLAUDE.md 4.2, y otra vez tapado por un acierto accidental.
+//
 // Solo se filtra la generacion de SPEL: la dependencia sigue viajando intacta
 // en el JSON revisable, con su marca, para que quien revise entienda por que
 // el FILTER_EXPR esta vacio.
@@ -105,7 +127,7 @@ function translateToSpel(dependency) {
 // traduccion (si no, marca needs_review por algo que no es un problema). Son
 // dos modulos y dos nodos distintos, asi que no se puede compartir la
 // constante; el arnes comprueba que las dos listas coincidan (--generator).
-const MARKS_SUPPRESSING_FILTER_EXPR = ["vacuous_for_ramo", "category_expressed_as_type"];
+const MARKS_SUPPRESSING_FILTER_EXPR = ["vacuous_for_ramo", "category_expressed_as_type", "percentage_indemnification"];
 
 function suppressesFilterExpr(dependency) {
   return MARKS_SUPPRESSING_FILTER_EXPR.some(mark => dependency[mark] === true);
@@ -170,9 +192,84 @@ function mergeSameFieldMembership(dependencies) {
   return merged;
 }
 
+// Red de seguridad independiente de las marcas: un grupo de comparaciones
+// numericas sobre el MISMO campo cuya interseccion esta vacia se descarta del
+// FILTER_EXPR en vez de emitirse.
+//
+// Es el mismo razonamiento autoverificable que la regla de negacion de tramos
+// del 08/09 (si tras negar no queda ningun valor posible, esta mal por
+// construccion): un AND insatisfacible no expresa ninguna condicion real, y
+// emitirlo es el PEOR resultado posible -- la linea desaparece de la
+// comparativa en silencio, que es mas dificil de detectar que una linea que
+// sobra.
+//
+// Existe porque la marca no puede ser la unica defensa. `percentage_indemnification`
+// tapa el caso conocido (las tablas de antiguedad de Zurich), pero cualquier
+// unidad futura que enumere umbrales del mismo campo sin traer marca cae en lo
+// mismo, y flujo 2 no tiene forma de expresar un OR en el esquema actual
+// (decision de alcance, ver CLAUDE.md 5.8). Este chequeo no depende de que
+// nadie acierte con la marca.
+//
+// Deliberadamente estrecho, para no tocar nada que hoy funcione:
+//   - solo grupos de 2+ dependencias sobre el mismo campo,
+//   - solo si TODAS usan comparacion numerica (>, >=, <, <=) con valor
+//     numerico. Basta un "=", un "IN" o un valor no numerico para dejar el
+//     grupo intacto: ahi la satisfacibilidad ya no es un intervalo y no se
+//     puede decidir con esta aritmetica.
+// Un rango legitimo ("registrationYears >= 2 && <= 5") tiene interseccion no
+// vacia, asi que pasa sin tocarse.
+//
+// Solo se descarta el grupo contradictorio, NO el FILTER_EXPR entero: las
+// condiciones sobre otros campos de la misma unidad pueden ser perfectamente
+// buenas y no hay motivo para perderlas.
+const COMPARISON_OPERATORS = new Set([">", ">=", "<", "<="]);
+
+function isUnsatisfiableComparisonGroup(group) {
+  if (group.length < 2) return false;
+  if (!group.every(dep => COMPARISON_OPERATORS.has(dep.operator) && typeof dep.value === "number")) return false;
+
+  let lower = -Infinity;
+  let lowerStrict = false;
+  let upper = Infinity;
+  let upperStrict = false;
+
+  for (const dep of group) {
+    if (dep.operator === ">" || dep.operator === ">=") {
+      if (dep.value > lower || (dep.value === lower && dep.operator === ">")) {
+        lower = dep.value;
+        lowerStrict = dep.operator === ">";
+      }
+    } else {
+      if (dep.value < upper || (dep.value === upper && dep.operator === "<")) {
+        upper = dep.value;
+        upperStrict = dep.operator === "<";
+      }
+    }
+  }
+
+  if (lower > upper) return true;
+  return lower === upper && (lowerStrict || upperStrict);
+}
+
+function dropUnsatisfiableComparisonGroups(dependencies) {
+  const groups = new Map();
+  for (const dep of dependencies) {
+    if (!groups.has(dep.risk_field)) groups.set(dep.risk_field, []);
+    groups.get(dep.risk_field).push(dep);
+  }
+
+  const kept = [];
+  for (const group of groups.values()) {
+    if (!isUnsatisfiableComparisonGroup(group)) kept.push(...group);
+  }
+  return kept;
+}
+
 function combineFilterExpr(dependencies) {
   if (!dependencies || dependencies.length === 0) return null;
-  const effective = dependencies.filter(dep => dep && !suppressesFilterExpr(dep));
+  const effective = dropUnsatisfiableComparisonGroups(
+    dependencies.filter(dep => dep && !suppressesFilterExpr(dep))
+  );
   if (effective.length === 0) return null;
   const parts = mergeSameFieldMembership(effective).map(translateToSpel);
   return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
@@ -1523,6 +1620,9 @@ module.exports = {
   mergeSameFieldMembership,
   MARKS_SUPPRESSING_FILTER_EXPR,
   suppressesFilterExpr,
+  COMPARISON_OPERATORS,
+  isUnsatisfiableComparisonGroup,
+  dropUnsatisfiableComparisonGroups,
   translateToSpel,
   parseOptionalSheetList,
   resolveTuningOptionValues,

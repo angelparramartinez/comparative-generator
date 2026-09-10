@@ -164,6 +164,15 @@ function isRealFailure(result) {
 //     delimitaba una categoria entera; la enumeracion es artefacto de la
 //     extraccion, no la condicion.
 //
+// Tercera marca (v17/v24, añadida el 10/09): percentage_indemnification. Sale
+// de una escala de valoracion, o sea decide el IMPORTE y no la inclusion, asi
+// que generator la suprime igual que las otras dos. Hoy sus dependencias caen
+// todas sobre campos numericos (los umbrales de `registrationYears` de las
+// tablas de antiguedad de Zurich), asi que la exoneracion no cambia nada
+// observable; se declara porque MARKS-SYNC exige que las dos listas digan lo
+// mismo, y esa exigencia es el propio invariante: lo que no llega al SPEL no
+// se traduce.
+//
 // Sin esta salida temprana, las 7 dependencias vacuas del artefacto de Zurich
 // se contarian como fallo de traduccion y marcarian needs_review en 6
 // coberturas correctas.
@@ -171,7 +180,7 @@ function isRealFailure(result) {
 // MANTENER EN SINCRONIA con MARKS_SUPPRESSING_FILTER_EXPR de generator.js. Son
 // dos modulos y dos nodos distintos, asi que no se puede compartir la
 // constante; el arnes comprueba que las dos listas coincidan (--generator).
-const MARKS_EXEMPT_FROM_TRANSLATION = ["vacuous_for_ramo", "category_expressed_as_type"];
+const MARKS_EXEMPT_FROM_TRANSLATION = ["vacuous_for_ramo", "category_expressed_as_type", "percentage_indemnification"];
 
 function isExemptFromTranslation(dependency) {
   return MARKS_EXEMPT_FROM_TRANSLATION.some(mark => dependency[mark] === true);

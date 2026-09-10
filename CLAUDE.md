@@ -266,7 +266,7 @@ artefacto, con su contador `total_<marca>_dependencies` en el contrato.
 **Quién lee las marcas**: el `Coverage Match Decision Agent` de
 `coverage insert generation` lee las 11. Su esquema de salida es cerrado
 (`additionalProperties: false`), así que solo puede reaccionar vía `confidence`
-y `reasoning`. Y **dos** de ellas además **cambian el SQL**:
+y `reasoning`. Y **tres** de ellas además **cambian el SQL**:
 `combineFilterExpr` (en `generator.js` y en su nodo espejo) omite del
 `FILTER_EXPR` las dependencias marcadas con cualquiera de las marcas de
 `MARKS_SUPPRESSING_FILTER_EXPR`:
@@ -279,20 +279,46 @@ y `reasoning`. Y **dos** de ellas además **cambian el SQL**:
   Zurich `su_00071`, donde de la misma frase ("turismos de uso particular o
   furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg", que es la
   categoría AUTOS completa) salen las dos marcas, una en cada dependencia.
+- `percentage_indemnification` (v17/v24, desde el 10/09): la dependencia sale
+  de una **escala de valoración** — decide el importe, no la inclusión, que es
+  su propia definición. Caso real: Zurich `su_00092`, una tabla de tramos de
+  antigüedad de la que salen 5 dependencias sobre el mismo campo; el AND
+  (correcto para rangos) daba `registrationYears <= 2 && >= 3 && <= 5 && <= 3
+  && >= 4`, **insatisfiable**, y dos LINES de la cobertura 13 dejaban de
+  renderizarse. Hay 5 unidades con esa forma (`su_00071`/`77`/`82`/`86`/`92`),
+  así que la exposición era 5 veces la observada: en la ejecución 407 solo una
+  llegó a matchear, y en la 406 ninguna — el `Coverage Match Decision Agent`
+  no es determinista.
 
-Esas mismas dos marcas exoneran de traducir el valor en
+Esas mismas tres marcas exoneran de traducir el valor en
 `value_matcher.js` (`MARKS_EXEMPT_FROM_TRANSLATION`): si el valor no llega
 nunca al SPEL, exigirle vocabulario solo produce `needs_review` falsos. Las dos
 listas viven en módulos (y nodos) distintos porque n8n no permite compartir una
 constante entre nodos, así que el arnés comprueba que coincidan (`--generator`,
 caso `MARKS-SYNC`).
 
+**Red de seguridad, independiente de las marcas** (10/09): `combineFilterExpr`
+descarta además todo grupo de comparaciones numéricas sobre el **mismo campo**
+cuya intersección sea vacía (`dropUnsatisfiableComparisonGroups`). Mismo
+razonamiento autoverificable que la regla de negación de tramos del 08/09: un
+AND insatisfacible no expresa ninguna condición, y emitirlo es el peor
+resultado posible — la línea desaparece de la comparativa en silencio, más
+difícil de detectar que una línea que sobra. Existe porque la marca no puede
+ser la única defensa: cualquier unidad futura que enumere umbrales del mismo
+campo **sin traer marca** cae en lo mismo. Es deliberadamente estrecho (solo
+grupos de 2+ dependencias, todas con operador `>`/`>=`/`<`/`<=` y valor
+numérico; basta un `=`, un `IN` o un valor no numérico para no opinar), y
+descarta solo el grupo contradictorio, no el `FILTER_EXPR` entero. Los dos
+mecanismos se cubren mutuamente: sabotear la marca deja que la red atrape
+`su_00092`, y al contrario.
+
 > **Trampa a recordar** (ver 5.11): *una marca que nadie lee no hace nada.*
 > `transversal_chapter` estuvo semanas sin efecto porque
 > `coverage insert generation` no la leía, y
 > `vacuous_for_ramo`/`category_expressed_as_type` repitieron el patrón el
-> 04/09. **Al crear una marca nueva, cablearla en
-> `coverage insert generation` en el mismo trabajo.**
+> 04/09, y `percentage_indemnification` otra vez el 10/09. **Al crear una
+> marca nueva, cablearla en `coverage insert generation` en el mismo
+> trabajo.**
 >
 > Corolario descubierto el 08/09, y peor de detectar: *una marca sin cablear
 > puede estar acertando por accidente.* `category_expressed_as_type` parecía
@@ -302,6 +328,15 @@ caso `MARKS-SYNC`).
 > varias compañías) el accidente desaparece y el filtro falso aparecería.
 > **Antes de añadir vocabulario a una ontología, mirar qué marcas traen las
 > dependencias que empezarán a traducir.**
+>
+> Segundo corolario, del 10/09: *el no determinismo del
+> `Coverage Match Decision Agent` esconde estos defectos, así que una
+> ejecución limpia no es prueba de nada.* `percentage_indemnification` llevaba
+> sin cablear desde su creación y no se vio porque las 5 unidades afectadas
+> quedaban en `unmatched` — hasta que la 407 matcheó una. **Al revisar un
+> draft, mirar también qué unidades quedaron sin matchear y qué producirían si
+> matchearan**, que es una comprobación offline de un minuto contra el
+> artefacto.
 
 **Dos incoherencias estructurales reales, para no tropezar:**
 
