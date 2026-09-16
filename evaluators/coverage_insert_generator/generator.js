@@ -1093,6 +1093,54 @@ function applyTierFilterToOwnContent(entries, tierFilterExpr) {
   );
 }
 
+// Acota el contenido propio de la cobertura (sources "default" y
+// "modality_bullet") a las modalidades que SI la ofrecen, enumerandolo una vez
+// por cada una en vez de dejarlo con modality_id null.
+//
+// Bug real (Mapfre Autos 237, ejecucion del 04/09; detectado el 16/09 al
+// revisar la comparativa generada): los covers 10 "Defensa en multas" y 11
+// "Retirada de carne" salian INCLUDED en 5614/5663/5666, donde el Excel dice
+// "No contratable". El fix del 24/08 (ver el bloque base_not_offered de
+// buildEntriesForCover) arreglo solo la mitad: anadio el NOT_INCLUDED
+// explicito que faltaba para esas modalidades, pero dejo el bloque del texto
+// comun con PRODUCT_COMPANY_MODALITY_ID = NULL, que el modelo lee como "aplica
+// a TODAS las modalidades". Los dos bloques aplican a la vez a 5614, y la
+// agregacion del estado de la cobertura ("INCLUDED si alguno es INCLUDED", ver
+// knowledge/Modelo comparativa de coberturas - AI ready.md) deja ganar al
+// global -- que ademas renderiza su texto en una modalidad que no puede
+// contratar la cobertura.
+//
+// La regla de optimizacion obligatoria del modelo (mismos valores en todas las
+// modalidades -> modality_id NULL) NO aplica aqui, precisamente porque no son
+// los mismos: las modalidades ausentes no tienen bloque de texto ninguno. Es el
+// mismo criterio que la rama de opcionales ya aplicaba desde el 22/07 (ver
+// GEN-MISSING-001, que exige "0 entries con modality_id null"); esta funcion lo
+// extiende al contenido propio, haya o no filas en "Coberturas opcionales" --
+// la colision es identica en los dos casos, y con opcionales el NOT_INCLUDED
+// por modalidad lo genera ese mismo bucle.
+//
+// El disparador es estrecho, y por eso se escapo: hace falta que el texto sea
+// IDENTICO en todas las modalidades presentes (si varia, cada una ya tenia su
+// propia entry y no hay entry global con la que colisionar) y que ademas haya
+// alguna modalidad "No contratable". En la ejecucion real de Mapfre solo 2 de
+// las 15 coberturas cumplian las dos cosas a la vez.
+function scopeOwnContentToPresentModalities(entries, { presentModalityIds = [], missingModalityIds = [] } = {}) {
+  if (!missingModalityIds || missingModalityIds.length === 0) return entries;
+  if (!presentModalityIds || presentModalityIds.length === 0) return entries;
+
+  const result = [];
+  for (const entry of entries) {
+    if (!OWN_CONTENT_SOURCES.has(entry.source) || entry.modality_id != null) {
+      result.push(entry);
+      continue;
+    }
+    for (const modalityId of presentModalityIds) {
+      result.push({ ...entry, modality_id: modalityId });
+    }
+  }
+  return result;
+}
+
 // Reparte el contenido propio de la cobertura (sources "default" y
 // "modality_bullet") entre las modalidades donde esta INCLUIDA y aquellas
 // donde solo se OFRECE (celda con el marcador "Garantía Opcional").
@@ -1446,10 +1494,18 @@ function buildEntriesForCover({
     }
   }
 
+  // Acotar el contenido propio a las modalidades presentes va ANTES del
+  // reparto por marcador, no despues: cuando TODAS las presentes estan
+  // marcadas, applyOptionalMarkerToOwnContent conserva a proposito la entry
+  // unica con modality_id null (ver su cabecera), y esa entry volveria a
+  // aplicar a las modalidades "No contratable" -- la misma colision, colada
+  // por la otra rama.
+  const scoped = scopeOwnContentToPresentModalities(entries, { presentModalityIds, missingModalityIds });
+
   // El reparto por marcador va ANTES de computeCoverOverride: cambia el
   // hiring_status_expr y el filter_expr de las entries de contenido propio, y
   // el override de la cobertura se calcula agregando justamente eso.
-  const withMarker = applyOptionalMarkerToOwnContent(entries, {
+  const withMarker = applyOptionalMarkerToOwnContent(scoped, {
     markerModalityIds: optionalMarkerModalityIds,
     presentModalityIds,
     coverTuningKey,
@@ -1632,6 +1688,7 @@ module.exports = {
   runtimeVisibilityFilterExpr,
   buildOwnContentMarkerFilterExpr,
   buildOptionScopedCoverLines,
+  scopeOwnContentToPresentModalities,
   applyOptionalMarkerToOwnContent,
   combineFilterExpr,
   spelStringLiteral,

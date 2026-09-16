@@ -2547,7 +2547,7 @@
     },
     {
       "id": "GEN-MISSING-003",
-      "description": "Bug real 24/08 (Mapfre Autos 237, cover 11 'Retirada de carné'): sin ninguna cobertura opcional en TODO el producto (hoja 'Coberturas opcionales' vacia), con missingModalityIds no vacio -- antes del fix esas modalidades ausentes se quedaban sin ningun NOT_INCLUDED explicito, porque esa logica solo vivia dentro del bucle de opcionales (ver GEN-MISSING-001/002). El ENTRY por defecto (mismo texto en todas las modalidades presentes) terminaba aplicando tambien a las modalidades 'No contratable' del Excel. Debe generar 1 ENTRY INCLUDED sin modalidad (el default) + 1 NOT_INCLUDED explicito (source base_not_offered) por cada modalidad ausente.",
+      "description": "Bug real 24/08 y su SEGUNDA MITAD, corregida el 16/09 (Mapfre Autos 237, covers 10 'Defensa en multas' y 11 'Retirada de carné'): sin ninguna cobertura opcional en TODO el producto (hoja 'Coberturas opcionales' vacia), con missingModalityIds no vacio. El fix del 24/08 anadio el NOT_INCLUDED explicito que faltaba para las modalidades ausentes, pero esta MISMA expectativa congelaba el resto del bug: dejaba el ENTRY por defecto con modality_id null, que el modelo lee como 'aplica a TODAS las modalidades' -- asi que a 5614/5663/5666 les aplicaban los dos ENTRY a la vez y la agregacion ('INCLUDED si alguno es INCLUDED') las dejaba INCLUDED en la comparativa real, con el texto y todo. Ahora el contenido propio se enumera por modalidad presente (scopeOwnContentToPresentModalities), igual que la rama de opcionales desde el 22/07 (GEN-MISSING-001 ya exigia '0 entries con modality_id null'): 1 ENTRY INCLUDED por cada modalidad presente + 1 NOT_INCLUDED explicito (source base_not_offered) por cada ausente, y NINGUNA con modality_id null.",
       "input": {
         "coverId": 11,
         "coverName": "Retirada de carné",
@@ -2566,16 +2566,44 @@
         "opcionales": []
       },
       "expected": {
-        "entry_count": 3,
+        "entry_count": 5,
         "cover_override_present": false,
-        "entries_with_null_filter_expr_count": 3,
+        "entries_with_null_filter_expr_count": 5,
         "full_entries": [
           {
             "cover_id": 11,
             "filter_expr": null,
             "hiring_status_expr": "\"INCLUDED\"",
             "value_expr": null,
-            "modality_id": null,
+            "modality_id": "101",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Pago de una indemnización al asegurado cuando haya sido privado de su permiso de conducir.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 11,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "102",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Pago de una indemnización al asegurado cuando haya sido privado de su permiso de conducir.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 11,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "103",
             "source": "default",
             "lines": [
               {
@@ -2630,6 +2658,171 @@
             "hiring_status_expr": "\"NOT_INCLUDED\"",
             "value_expr": null,
             "modality_id": null,
+            "source": "base_not_offered",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-005",
+      "description": "Segunda mitad del bug del 24/08 (corregida 16/09), por la OTRA rama: la cobertura SI tiene filas en 'Coberturas opcionales', asi que el bloque base_not_offered no corre (va guardado con opcionales.length === 0) y el NOT_INCLUDED de la modalidad ausente lo pone el bucle de opcionales. Pero el contenido PROPIO de la cobertura (defaultBullets, mismo texto en las presentes) seguia saliendo con modality_id null, o sea aplicando tambien a la modalidad 'No contratable' -- exactamente la misma colision que GEN-MISSING-003, colada por un camino que aquel caso no cubria. Ninguna entry puede quedar con modality_id null.",
+      "input": {
+        "coverId": 10,
+        "coverName": "Defensa en multas",
+        "defaultBullets": [
+          "Tramitación de recursos en vía administrativa."
+        ],
+        "presentModalityIds": [
+          "101",
+          "102"
+        ],
+        "missingModalityIds": [
+          "201"
+        ],
+        "opcionales": [
+          {
+            "coverName": "Ampliación",
+            "textContent": "Límite 1.000€.",
+            "hiringStatusExpr": "\"OPTIONAL\""
+          }
+        ]
+      },
+      "expected": {
+        "entry_count": 5,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 5,
+        "full_entries": [
+          {
+            "cover_id": 10,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "101",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Tramitación de recursos en vía administrativa.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 10,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "102",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Tramitación de recursos en vía administrativa.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 10,
+            "filter_expr": null,
+            "hiring_status_expr": "\"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "101",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Ampliación. Límite 1.000€.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 10,
+            "filter_expr": null,
+            "hiring_status_expr": "\"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "102",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Ampliación. Límite 1.000€.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 10,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "201",
+            "source": "optional_cover",
+            "lines": []
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-006",
+      "description": "Tercera rama de la misma colision (16/09): TODAS las modalidades presentes traen el marcador 'Garantía Opcional', caso en que applyOptionalMarkerToOwnContent conserva a proposito la entry unica con modality_id null (ver su cabecera: 'Si TODAS las modalidades estan marcadas se conserva la entry unica'). Esa optimizacion es correcta solo si no hay modalidades ausentes; con ellas, la entry OPTIONAL volveria a aplicar a la modalidad 'No contratable'. Por eso scopeOwnContentToPresentModalities corre ANTES del reparto por marcador, no despues.",
+      "input": {
+        "coverId": 12,
+        "coverName": "Cobertura marcada opcional en todas sus modalidades",
+        "defaultBullets": [
+          "Texto de la garantía."
+        ],
+        "presentModalityIds": [
+          "101",
+          "102"
+        ],
+        "missingModalityIds": [
+          "201"
+        ],
+        "optionalMarkerModalityIds": [
+          "101",
+          "102"
+        ],
+        "coverTuningKey": "zmulta",
+        "opcionales": []
+      },
+      "expected": {
+        "entry_count": 3,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 3,
+        "full_entries": [
+          {
+            "cover_id": 12,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.zmulta != null && tuning.zmulta ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "101",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Texto de la garantía.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 12,
+            "filter_expr": null,
+            "hiring_status_expr": "tuning?.zmulta != null && tuning.zmulta ? \"INCLUDED\" : \"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "102",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Texto de la garantía.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 12,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "201",
             "source": "base_not_offered",
             "lines": []
           }
