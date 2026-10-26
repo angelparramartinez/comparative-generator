@@ -1100,8 +1100,8 @@ function applyTierFilterToOwnContent(entries, tierFilterExpr) {
 // Bug real (Mapfre Autos 237, ejecucion del 04/09; detectado el 16/09 al
 // revisar la comparativa generada): los covers 10 "Defensa en multas" y 11
 // "Retirada de carne" salian INCLUDED en 5614/5663/5666, donde el Excel dice
-// "No contratable". El fix del 24/08 (ver el bloque base_not_offered de
-// buildEntriesForCover) arreglo solo la mitad: anadio el NOT_INCLUDED
+// "No contratable". El fix del 24/08 (hoy en
+// ensureNotIncludedForUncoveredModalities) arreglo solo la mitad: anadio el NOT_INCLUDED
 // explicito que faltaba para esas modalidades, pero dejo el bloque del texto
 // comun con PRODUCT_COMPANY_MODALITY_ID = NULL, que el modelo lee como "aplica
 // a TODAS las modalidades". Los dos bloques aplican a la vez a 5614, y la
@@ -1207,6 +1207,49 @@ function applyOptionalMarkerToOwnContent(entries, {
   return result;
 }
 
+// Bug real (Zurich Autos 127, cobertura 13 "Daños propios", detectado 16/09 y
+// confirmado contra el motor el 26/10): 7 modalidades "No contratable" no
+// recibian ENTRY alguna. Antes el NOT_INCLUDED de las modalidades ausentes lo
+// ponian dos sitios que se repartian el trabajo por suposicion: el bloque
+// base_not_offered (solo si la cobertura no tenia filas en "Coberturas
+// opcionales") y el bucle de opcionales -- salvo las ramas que salen antes con
+// `continue` (MODALIDADES rellena, OPCION DE LA COBERTURA, tramos por
+// modalidad). La 13 tiene una fila con MODALIDADES = 1358,1359, asi que no la
+// cubria ninguno de los dos.
+//
+// No es inocuo: el motor (avant-back, CoverServiceSpelBased) solo evalua las
+// ENTRY con modalidad NULL o la de la oferta, y con cero ENTRY la cobertura no
+// entra en el modelo de esa oferta -- el front pinta la celda EN BLANCO, no
+// "No incluida".
+//
+// Por eso la regla ya no depende de que rama corrio: toda modalidad ausente que
+// ninguna ENTRY cubra (ni una suya ni una con modality_id null) recibe su
+// NOT_INCLUDED. Si no hay ninguna modalidad presente ni ENTRY alguna, una sola
+// sin modalidad (regla de optimizacion del modelo, como antes).
+function ensureNotIncludedForUncoveredModalities(entries, { coverId, presentModalityIds = [], missingModalityIds = [] } = {}) {
+  if (!missingModalityIds || missingModalityIds.length === 0) return entries;
+  if (entries.some(e => e.modality_id == null)) return entries;
+
+  const covered = new Set(entries.map(e => String(e.modality_id)));
+  const uncovered = missingModalityIds.filter(id => !covered.has(String(id)));
+  if (uncovered.length === 0) return entries;
+
+  const notIncluded = modalityId => ({
+    cover_id: coverId,
+    filter_expr: null,
+    hiring_status_expr: '"NOT_INCLUDED"',
+    value_expr: null,
+    modality_id: modalityId,
+    source: "base_not_offered",
+    lines: []
+  });
+
+  if (entries.length === 0 && (!presentModalityIds || presentModalityIds.length === 0)) {
+    return [notIncluded(null)];
+  }
+  return [...entries, ...uncovered.map(notIncluded)];
+}
+
 // optionalMarkerModalityIds: modalidades cuya celda traia el marcador
 // "Garantía Opcional" (la cobertura se ofrece ahi, pero no viene incluida).
 // coverTuningKey: tuning_key mapeado a partir del NOMBRE DE LA COBERTURA (via
@@ -1279,51 +1322,9 @@ function buildEntriesForCover({
     });
   }
 
-  // Bug real corregido 24/08 (Mapfre Autos 237, sin ninguna cobertura
-  // opcional en todo el producto): el NOT_INCLUDED explicito para
-  // modalidades que no ofrecen esta cobertura en absoluto ("No
-  // contratable"/"Sin cobertura" en "Coberturas por modalidad") solo se
-  // generaba mas abajo, dentro del bucle de coberturas opcionales -- si la
-  // cobertura no tiene ninguna fila en "Coberturas opcionales", ese bucle
-  // nunca corre y esas modalidades se quedaban sin ningun ENTRY (si el
-  // resto de modalidades presentes tenia texto variable) o, peor,
-  // HEREDABAN el ENTRY por defecto sin modalidad si el resto compartia
-  // exactamente el mismo texto (caso real confirmado: "Defensa en
-  // multas"/"Retirada de carne" de Mapfre, marcadas INCLUDED en el 100% de
-  // las modalidades del producto pese a que el Excel decia "No contratable"
-  // en 14/17 y 17/17 de ellas respectivamente). Guardado con
-  // `opcionales.length === 0` para no duplicar el NOT_INCLUDED que el
-  // bucle de opcionales ya genera correctamente cuando SI hay opcionales
-  // (ver GEN-MISSING-001/002 en generator_golden_dataset.json). Validado
-  // offline (GEN-MISSING-003/004) antes de desplegar.
-  if (opcionales.length === 0 && missingModalityIds.length > 0) {
-    if (presentModalityIds.length === 0) {
-      // Mismo criterio de optimizacion que el bucle de opcionales de abajo:
-      // si la cobertura no esta disponible en NINGUNA modalidad, una unica
-      // ENTRY sin modalidad en vez de una identica por cada una.
-      entries.push({
-        cover_id: coverId,
-        filter_expr: null,
-        hiring_status_expr: '"NOT_INCLUDED"',
-        value_expr: null,
-        modality_id: null,
-        source: "base_not_offered",
-        lines: []
-      });
-    } else {
-      for (const modalityId of missingModalityIds) {
-        entries.push({
-          cover_id: coverId,
-          filter_expr: null,
-          hiring_status_expr: '"NOT_INCLUDED"',
-          value_expr: null,
-          modality_id: modalityId,
-          source: "base_not_offered",
-          lines: []
-        });
-      }
-    }
-  }
+  // El NOT_INCLUDED explicito de las modalidades que no ofrecen la cobertura
+  // ("No contratable") ya no se genera aqui, sino al final, en
+  // ensureNotIncludedForUncoveredModalities -- ver su cabecera.
 
   // Bug real corregido 22/07 (covers 79/81, "Sin cobertura" en varias
   // modalidades de "Coberturas por modalidad"): una cobertura opcional
@@ -1354,7 +1355,14 @@ function buildEntriesForCover({
         opt.filterExpr ?? null
       );
       const optionLines = buildOptionScopedCoverLines(opt, dependencyMatches, coverId);
-      const targetModalityIds = (opt.modalityIds && opt.modalityIds.length > 0) ? opt.modalityIds : [null];
+      // Sin MODALIDADES, la fila aplica a todas las que ofrecen la cobertura:
+      // con modalidades "No contratable", enumerar las presentes en vez de
+      // dejar modality_id null (que tambien aplicaria a las ausentes) -- la
+      // misma colision que scopeOwnContentToPresentModalities evita para el
+      // contenido propio.
+      const targetModalityIds = (opt.modalityIds && opt.modalityIds.length > 0)
+        ? opt.modalityIds
+        : (missingModalityIds.length > 0 && presentModalityIds.length > 0 ? presentModalityIds : [null]);
       for (const modalityId of targetModalityIds) {
         entries.push({
           cover_id: coverId,
@@ -1519,16 +1527,26 @@ function buildEntriesForCover({
     ? withMarker
     : applyTierFilterToOwnContent(withMarker, buildTierOwnContentFilterExpr(opcionales, tuningDictionary));
 
-  const coverOverride = computeCoverOverride(withTierFilter);
+  // Va DESPUES de acotar el contenido propio (para que una entry null que ya
+  // no existe no cuente como cobertura) y ANTES de computeCoverOverride: el
+  // override de la cobertura aplica a todas las modalidades, asi que tiene
+  // que verse tambien los NOT_INCLUDED de las ausentes.
+  const withNotIncluded = ensureNotIncludedForUncoveredModalities(withTierFilter, {
+    coverId,
+    presentModalityIds,
+    missingModalityIds
+  });
+
+  const coverOverride = computeCoverOverride(withNotIncluded);
   if (coverOverride) {
-    for (const entry of withTierFilter) {
+    for (const entry of withNotIncluded) {
       if (entry.filter_expr === coverOverride.sharedCondition) {
         entry.filter_expr = null;
       }
     }
   }
 
-  const sorted = sortEntriesByModality(withTierFilter);
+  const sorted = sortEntriesByModality(withNotIncluded);
   sorted.forEach(entry => delete entry._blockIndex);
 
   return {

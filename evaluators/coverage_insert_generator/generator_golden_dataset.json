@@ -2830,6 +2830,315 @@
       }
     },
     {
+      "id": "GEN-MISSING-007",
+      "description": "Bug real Zurich Autos 127, cobertura 13 \"Daños propios\" (detectado 16/09, confirmado contra el motor el 26/10): la cobertura tiene una fila de opcionales con MODALIDADES rellena (1358,1359), cuya rama sale con continue antes del reparto present/missing, y el bloque base_not_offered iba guardado con opcionales.length === 0 -- asi que las modalidades \"No contratable\" no recibian ninguna ENTRY. El motor (CoverServiceSpelBased) no añade la cobertura al modelo de la oferta y el front pinta la celda en blanco. Cada modalidad ausente debe tener su NOT_INCLUDED explicito.",
+      "input": {
+        "coverId": 13,
+        "coverName": "Daños propios",
+        "conditionedBullets": [
+          {
+            "text": "Daños propios con franquicia.",
+            "modalityId": "1358",
+            "dependencies": []
+          },
+          {
+            "text": "Daños propios con franquicia.",
+            "modalityId": "1359",
+            "dependencies": []
+          },
+          {
+            "text": "Daños propios sin franquicia.",
+            "modalityId": "1692",
+            "dependencies": []
+          }
+        ],
+        "opcionales": [
+          {
+            "coverName": "Fenómenos atmosféricos y daños cinegéticos",
+            "textContent": "Fenómenos atmosféricos y daños cinegéticos.",
+            "hiringStatusExpr": "\"OPTIONAL\"",
+            "modalityIds": [
+              "1358",
+              "1359"
+            ]
+          }
+        ],
+        "presentModalityIds": [
+          "1358",
+          "1359",
+          "1692"
+        ],
+        "missingModalityIds": [
+          "1360",
+          "1690"
+        ]
+      },
+      "expected": {
+        "entry_count": 7,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 7,
+        "full_entries": [
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1358",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Daños propios con franquicia.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1359",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Daños propios con franquicia.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1360",
+            "source": "base_not_offered",
+            "lines": []
+          },
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1690",
+            "source": "base_not_offered",
+            "lines": []
+          },
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1692",
+            "source": "modality_bullet",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Daños propios sin franquicia.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "1358",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Fenómenos atmosféricos y daños cinegéticos. Fenómenos atmosféricos y daños cinegéticos.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 13,
+            "filter_expr": null,
+            "hiring_status_expr": "\"OPTIONAL\"",
+            "value_expr": null,
+            "modality_id": "1359",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Fenómenos atmosféricos y daños cinegéticos. Fenómenos atmosféricos y daños cinegéticos.'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-008",
+      "description": "Misma regla por la rama de OPCION DE LA COBERTURA sin MODALIDADES: antes emitia la ENTRY de la opcion con modality_id null (aplicaba tambien a la modalidad \"No contratable\", la colision de Mapfre del 16/09) y ademas salia con continue sin NOT_INCLUDED. Debe enumerar las presentes y dar NOT_INCLUDED a la ausente; ninguna entry con modality_id null.",
+      "input": {
+        "coverId": 3,
+        "coverName": "Asistencia en viaje",
+        "defaultBullets": [
+          "Asistencia en viaje 24h."
+        ],
+        "opcionales": [
+          {
+            "coverName": "Asistencia en viaje",
+            "textContent": "Asistencia en Viaje 24h. Ampliada:",
+            "tuningKey": "asistenciaViaje",
+            "optionValues": [
+              {
+                "value": "0000000466",
+                "label": "Ampliada"
+              }
+            ]
+          }
+        ],
+        "presentModalityIds": [
+          "1358",
+          "2768"
+        ],
+        "missingModalityIds": [
+          "1360"
+        ]
+      },
+      "expected": {
+        "entry_count": 5,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 3,
+        "full_entries": [
+          {
+            "cover_id": 3,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1358",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Asistencia en viaje 24h.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 3,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1360",
+            "source": "base_not_offered",
+            "lines": []
+          },
+          {
+            "cover_id": 3,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "2768",
+            "source": "default",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Asistencia en viaje 24h.'"
+              }
+            ]
+          },
+          {
+            "cover_id": 3,
+            "filter_expr": "tuning?.asistenciaViaje == '0000000466'",
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "1358",
+            "source": "optional_cover",
+            "cover_option": "Ampliada",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Asistencia en Viaje 24h. Ampliada:'"
+              }
+            ]
+          },
+          {
+            "cover_id": 3,
+            "filter_expr": "tuning?.asistenciaViaje == '0000000466'",
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "2768",
+            "source": "optional_cover",
+            "cover_option": "Ampliada",
+            "lines": [
+              {
+                "filter_expr": null,
+                "text_expr": "'Asistencia en Viaje 24h. Ampliada:'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "GEN-MISSING-009",
+      "description": "Misma regla por la rama de tramos por modalidad (tieredConfig.byModality): solo emite las modalidades de su diccionario y sale con continue. La modalidad ausente que no aparece ahi debe recibir su NOT_INCLUDED explicito.",
+      "input": {
+        "coverId": 21,
+        "coverName": "Daños Estéticos",
+        "opcionales": [
+          {
+            "coverName": "Daños estéticos a la edificación",
+            "textContent": "",
+            "tuningKey": "aestheticDamageToBuilding",
+            "tieredConfig": {
+              "byModality": {
+                "5106": {
+                  "items": [
+                    {
+                      "label": "1.500€",
+                      "value": "1"
+                    }
+                  ],
+                  "notContractedValue": null
+                }
+              }
+            }
+          }
+        ],
+        "presentModalityIds": [
+          "5106"
+        ],
+        "missingModalityIds": [
+          "5107"
+        ]
+      },
+      "expected": {
+        "entry_count": 2,
+        "cover_override_present": false,
+        "entries_with_null_filter_expr_count": 2,
+        "full_entries": [
+          {
+            "cover_id": 21,
+            "filter_expr": null,
+            "hiring_status_expr": "\"NOT_INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "5107",
+            "source": "base_not_offered",
+            "lines": []
+          },
+          {
+            "cover_id": 21,
+            "filter_expr": null,
+            "hiring_status_expr": "\"INCLUDED\"",
+            "value_expr": null,
+            "modality_id": "5106",
+            "source": "optional_cover",
+            "lines": [
+              {
+                "filter_expr": "tuning?.aestheticDamageToBuilding == '1'",
+                "text_expr": "'Daños estéticos a la edificación. 1.500€'"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
       "id": "GEN-ENTRY-017",
       "description": "Formato ampliado 07/09, fila con OPCION DE LA COBERTURA: 1 ENTRY con el texto PROPIO de esa opcion y la condicion de la opcion en el FILTER_EXPR. Caso real Zurich asistenciaViaje, donde cada nivel trae un cuerpo distinto (Esencial 1 linea, Ampliada/Plus 11 viñetas) -- lo que el mecanismo anterior (1 LINE por valor con la etiqueta del desplegable) no podia expresar. NO se antepone el nombre de la cobertura opcional: el texto ya se describe solo.",
       "input": {
