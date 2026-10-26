@@ -23,8 +23,19 @@ ggcc_outputs/
 # Borradores de comparativa (flujo 3)
 coverage_insert_outputs/
 
-# Ejemplos
-examples/
+# Ejemplos: SI se versionan las plantillas de coberturas (.xlsx) y los
+# diccionarios de tuning (.json) -- son entrada real de la generacion de
+# INSERTs y llevan detras horas de revision manual que no se puede reconstruir.
+# Los condicionados generales (PDF) NO: pesan, no se editan nunca y siempre se
+# pueden volver a pedir a la compania.
+#
+# Se ignora el CONTENIDO (examples/**) y no el directorio: con "examples/" git
+# no desciende y cualquier negacion de dentro se queda sin efecto.
+examples/**
+!examples/**/
+!examples/**/*.xlsx
+!examples/**/*.json
+examples/**/condicionados generales/
 
 # Node
 node_modules/

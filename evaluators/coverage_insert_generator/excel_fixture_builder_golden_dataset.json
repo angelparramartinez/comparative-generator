@@ -3111,5 +3111,96 @@
       "text": "",
       "expected": false
     }
+  ],
+  "optional_marker_modality_cases": [
+    {
+      "id": "OMM-001",
+      "description": "Celda con SOLO el marcador (precedente Generali covers 79/81): la modalidad se detecta como marcada.",
+      "modalities": {
+        "1358": {
+          "formattedValue": "Garantía Opcional",
+          "effectiveFormat": {
+            "textFormat": {
+              "bold": false
+            }
+          }
+        }
+      },
+      "expected": [
+        "1358"
+      ]
+    },
+    {
+      "id": "OMM-002",
+      "description": "Celda con el marcador MAS el texto propio de la cobertura (caso real Zurich covers 11/12/14, 07/09): tambien se detecta -- blocksFromCell ya filtra la linea del marcador, aqui solo importa en que modalidades esta.",
+      "modalities": {
+        "1358": {
+          "formattedValue": "Garantía Opcional\n• Subsidio por pérdida de carné",
+          "effectiveFormat": {
+            "textFormat": {
+              "bold": false
+            }
+          }
+        }
+      },
+      "expected": [
+        "1358"
+      ]
+    },
+    {
+      "id": "OMM-003",
+      "description": "Mezcla real (Zurich cover 12): marcada en una modalidad e incluida con texto en otra -- solo se devuelve la marcada, porque el estado difiere entre las dos.",
+      "modalities": {
+        "1358": {
+          "formattedValue": "• Pérdida total 100% valor de nuevo.",
+          "effectiveFormat": {
+            "textFormat": {
+              "bold": false
+            }
+          }
+        },
+        "1360": {
+          "formattedValue": "Garantía Opcional\n• Pérdida total 100% valor de nuevo.",
+          "effectiveFormat": {
+            "textFormat": {
+              "bold": false
+            }
+          }
+        }
+      },
+      "expected": [
+        "1360"
+      ]
+    },
+    {
+      "id": "OMM-004",
+      "description": "Ninguna celda marcada (el caso normal): lista vacia, el reparto por marcador no se activa y el comportamiento anterior queda intacto.",
+      "modalities": {
+        "1358": {
+          "formattedValue": "• Texto normal",
+          "effectiveFormat": {
+            "textFormat": {
+              "bold": false
+            }
+          }
+        }
+      },
+      "expected": []
+    },
+    {
+      "id": "OMM-005",
+      "description": "El marcador debe ser una LINEA entera, no una subcadena: un texto que lo mencione de pasada no marca la modalidad.",
+      "modalities": {
+        "1358": {
+          "formattedValue": "• No aplica la garantía opcional de terceros",
+          "effectiveFormat": {
+            "textFormat": {
+              "bold": false
+            }
+          }
+        }
+      },
+      "expected": []
+    }
   ]
 }

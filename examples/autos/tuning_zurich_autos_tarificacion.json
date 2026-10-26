@@ -1,0 +1,382 @@
+{
+    "descuento": {
+        "section": "section.discounts",
+        "label": "Descuento comercial %",
+        "type": "percentage",
+        "component": "number",
+        "step": 1,
+        "precision": 2,
+        "required": false,
+        "min": -100,
+        "max": 100,
+        "value": 0,
+        "suffix": "/tuning?.descuento<0 ? { 'text': 'Recargo', 'style': 'warning' } : {}/",
+        "allowSavedTuning": true
+    },
+    "cdnegocioMediacion": {
+        "section": "section.additionalData",
+        "label": "Código de negocio",
+        "type": "string",
+        "component": "input",
+        "required": false,
+        "value": null,
+        "allowSavedTuning": true
+    },
+    "siniestrosUltimoAnyo": {
+        "section": "section.additionalData",
+        "label": "Siniestros en el último año",
+        "type": "number",
+        "component": "number",
+        "visible": "/(insurance?.risk?.previouslyInsured != null && insurance?.risk?.previouslyInsured) && insurance?.risk?.previousInsurance?.yearsWithoutAccidents != null && insurance?.risk?.previousInsurance?.yearsWithoutAccidents < 1/",
+        "step": 1,
+        "required": false,
+        "min": 0,
+        "max": "/#this?.stage == 'edit' ? 100 : insurance?.risk?.previousInsurance?.lastFiveYearsAccidents/",
+        "value": 0,
+        "allowSavedTuning": true
+    },
+    "usoVehiculo": {
+        "section": "section.additionalData",
+        "label": "Uso del vehículo",
+        "type": "string",
+        "component": "select",
+        "placeholder": "Seleccione una opción",
+        "required": false,
+        "value": null,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Turismo particular",
+                        "value": "110"
+                    },
+                    {
+                        "label": "Turismo particular matriculado a nombre de empresa",
+                        "value": "111"
+                    },
+                    {
+                        "label": "Turismo particular histórico",
+                        "value": "113"
+                    },
+                    {
+                        "label": "Turismo particular clásico",
+                        "value": "117"
+                    },
+                    {
+                        "label": "Furgoneta particular y transportes propios",
+                        "value": "210"
+                    },
+                    {
+                        "label": "Furgoneta particular y transportes terceros",
+                        "value": "220"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "tipoRemolque": {
+        "section": "section.additionalData",
+        "label": "Tipo de remolque",
+        "type": "string",
+        "component": "select",
+        "visible": "/insurance?.risk?.lightTrailer !=null && insurance?.risk?.lightTrailer/",
+        "required": false,
+        "value": "2",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Animales",
+                        "value": "A"
+                    },
+                    {
+                        "label": "Sidecar",
+                        "value": "1"
+                    },
+                    {
+                        "label": "Equipajes",
+                        "value": "2"
+                    },
+                    {
+                        "label": "Viviendas(Roulottes)",
+                        "value": "4"
+                    },
+                    {
+                        "label": "Embarcaciones",
+                        "value": "9"
+                    },
+                    {
+                        "label": "Otros",
+                        "value": "O"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "frecuenciaUso": {
+        "section": "section.additionalData",
+        "label": "Frecuencia uso vehículo",
+        "type": "string",
+        "component": "select",
+        "visible": false,
+        "required": false,
+        "value": "001",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Ocasional",
+                        "value": "001"
+                    },
+                    {
+                        "label": "Diario y fin de semana",
+                        "value": "002"
+                    },
+                    {
+                        "label": "Profesional",
+                        "value": "003"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "paisExpedicion": {
+        "section": "section.additionalData",
+        "label": "País expedición carnet del conductor habitual",
+        "type": "string",
+        "component": "autocomplete",
+        "required": false,
+        "visible": "/insurance.risk?.primaryDriver?.drivingLicenses?.size() > 0 && insurance.risk?.primaryDriver?.drivingLicenses[0]?.issuingZone != 'Spain'/",
+        "value": null,
+        "resource": {
+            "url": "/persons/nationalities"
+        }
+    },
+    "accidentesConductor": {
+        "section": "section.covers",
+        "label": "Accidentes del conductor",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "value": "0000000468",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Esencial",
+                        "value": "0000000468"
+                    },
+                    {
+                        "label": "Ampliada",
+                        "value": "0000000469"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "capitalAccidenteConductor": {
+        "section": "section.covers",
+        "label": "Capital accidente conductor",
+        "type": "string",
+        "component": "select",
+        "placeholder": "Seleccione una opción",
+        "required": "/tuning?.accidentesConductor != '0000000468' && tuning?.capitalAccidenteConductor == '3A'/",
+        "value": "3A",
+        "options": [
+            {
+                "condition": "/#this?.stage == 'edit' || tuning.accidentesConductor == '0000000468'/",
+                "items": [
+                    {
+                        "label": "6.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3A"
+                    },
+                    {
+                        "label": "12.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3B"
+                    },
+                    {
+                        "label": "18.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3C"
+                    }
+                ]
+            },
+            {
+                "condition": "/tuning.accidentesConductor != '0000000468'/",
+                "items": [
+                    {
+                        "label": "Seleccione una opción",
+                        "value": "3A"
+                    },
+                    {
+                        "label": "24.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3D"
+                    },
+                    {
+                        "label": "30.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3E"
+                    },
+                    {
+                        "label": "36.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3F"
+                    },
+                    {
+                        "label": "42.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3G"
+                    },
+                    {
+                        "label": "48.000 Euros MUERTE e INVALIDEZ",
+                        "value": "3H"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "asistenciaViaje": {
+        "section": "section.covers",
+        "label": "Asistencia en viaje",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "value": "0000000465",
+        "options": [
+            {
+                "condition": "/insurance.risk?.base7Version != null && (insurance.risk?.base7Version?.typeCode == '200' || insurance.risk?.base7Version?.typeCode == '250' || insurance.risk?.base7Version?.typeCode == '300' || insurance.risk?.base7Version?.typeCode == '310')/",
+                "items": [
+                    {
+                        "label": "Esencial",
+                        "value": "0000000465"
+                    },
+                    {
+                        "label": "Ampliada",
+                        "value": "0000000466"
+                    }
+                ]
+            },
+            {
+                "condition": "/#this?.stage == 'edit' || insurance.risk?.base7Version != null && (insurance.risk?.base7Version?.typeCode != '200' && insurance.risk?.base7Version?.typeCode != '250' && insurance.risk?.base7Version?.typeCode != '300' && insurance.risk?.base7Version?.typeCode != '310')/",
+                "items": [
+                    {
+                        "label": "Esencial",
+                        "value": "0000000465"
+                    },
+                    {
+                        "label": "Ampliada",
+                        "value": "0000000466"
+                    },
+                    {
+                        "label": "Plus",
+                        "value": "0000000467"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "privacionPermiso": {
+        "section": "section.covers",
+        "label": "Privación del permiso de conducir",
+        "type": "boolean",
+        "component": "radio",
+        "required": true,
+        "value": false,
+        "allowSavedTuning": true
+    },
+    "importeRetiradaCarnet": {
+        "section": "section.covers",
+        "label": "Importe privación del permiso",
+        "type": "number",
+        "component": "number",
+        "step": 100,
+        "visible": "/tuning?.privacionPermiso/",
+        "enabled": "/tuning?.privacionPermiso/",
+        "required": false,
+        "min": 0,
+        "max": 3000,
+        "value": 0,
+        "allowSavedTuning": true
+    },
+    "rcCarga": {
+        "section": "section.covers",
+        "label": "Responsabilidad civil de la carga",
+        "type": "string",
+        "component": "select",
+        "visible": "/insurance.risk?.base7Version != null && (insurance.risk?.base7Version?.typeCode == '200' || insurance.risk?.base7Version?.typeCode == '250' || insurance.risk?.base7Version?.typeCode == '300' || insurance.risk?.base7Version?.typeCode == '310')/",
+        "enabled": "/insurance.risk?.base7Version != null && (insurance.risk?.base7Version?.typeCode == '200' || insurance.risk?.base7Version?.typeCode == '250' || insurance.risk?.base7Version?.typeCode == '300' || insurance.risk?.base7Version?.typeCode == '310')/",
+        "required": false,
+        "value": "N",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "No contrata",
+                        "value": "N"
+                    },
+                    {
+                        "label": "60.000€",
+                        "value": "0000000272"
+                    },
+                    {
+                        "label": "150.000€",
+                        "value": "0000000273"
+                    },
+                    {
+                        "label": "300.000€",
+                        "value": "0000000274"
+                    },
+                    {
+                        "label": "450.000€",
+                        "value": "0000000275"
+                    },
+                    {
+                        "label": "600.000€",
+                        "value": "0000000276"
+                    }
+                ]
+            }
+        ],
+        "allowSavedTuning": true
+    },
+    "proteccionJuridicaAmpliada": {
+        "stage": {
+            "quotation": false
+        },
+        "section": "section.covers",
+        "label": "Protección jurídica ampliada",
+        "type": "boolean",
+        "component": "radio",
+        "help": "Cobertura opcional solo disponible en modalidad de Terceros",
+        "value": false,
+        "allowSavedTuning": true,
+        "required": true
+    },
+    "fenomenosAtmosfericos": {
+        "stage": {
+            "quotation": false
+        },
+        "section": "section.covers",
+        "label": "Fenómenos atmosféricos y daños cinegéticos",
+        "type": "boolean",
+        "component": "radio",
+        "help": "Cobertura opcional solo disponible en modalidades de Terceros y Terceros+Lunas",
+        "value": false,
+        "allowSavedTuning": true,
+        "required": true
+    },
+    "perdidaTotal": {
+        "stage": {
+            "quotation": false
+        },
+        "section": "section.covers",
+        "label": "Pérdida total",
+        "type": "boolean",
+        "component": "radio",
+        "value": false,
+        "allowSavedTuning": true,
+        "required": true
+    }
+}

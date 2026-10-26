@@ -53,16 +53,354 @@ function translateToSpel(dependency) {
 }
 
 // Combina varias dependencias de un mismo ENTRY con AND. Con 1 sola
-// dependencia no anade parentesis de mas.
+// dependencia no anade parentesis de mas. Es el punto de paso UNICO por el que
+// una dependencia de flujo 2 se convierte en SPEL, asi que es donde se filtran
+// las VACUAS (04/09).
+//
+// Una dependencia con "vacuous_for_ramo: true" (Guardrail v29b de flujo 2) es
+// cierta para TODOS los riesgos del ramo: exige una categoria de vehiculo que
+// cubre entera la del ramo que se esta procesando (p.ej. "primera categoria"
+// en un producto de Autos). Traducirla a SPEL produciria un FILTER_EXPR que
+// no discrimina nada y que, peor, LEIDO POR UNA PERSONA parece decir que la
+// cobertura solo aplica a cierto tipo de vehiculo.
+//
+// Caso real que lo motivo (Zurich su_00039, "Asistencia en viaje"): el texto
+// da 450 EUR para primera y tercera categoria y 900 EUR para el resto. La
+// rama de los 900 EUR ya la rechaza flujo 2 por estar fuera de ramo
+// (segunda categoria = camiones, sin ramo en ASM), y la que queda cubre todo
+// el ramo. Resultado correcto: UN solo ENTRY, INCLUDED, sin FILTER_EXPR y con
+// su importe -- que es exactamente lo que observo el usuario ("no necesitamos
+// 2 entries con diferente value_expr, porque para autos y motos el valor de
+// 900 EUR no se daria nunca").
+//
+// Segunda marca que suprime el FILTER_EXPR, "category_expressed_as_type"
+// (Guardrail v29a, cableada aqui el 08/09): la dependencia enumera SUBTIPOS
+// donde el texto delimitaba una categoria entera, asi que la enumeracion es un
+// artefacto de la extraccion, no la condicion. Traducirla produce un filtro
+// RESTRICTIVO Y FALSO: mas estrecho que lo que dice el condicionado.
+//
+// Caso real que lo motivo (Zurich su_00071, "5-. Robo"): la frase es "Para
+// turismos de uso particular o furgonetas de transporte propio, cuyo PMA sea
+// menor de 3.500 kg", que delimita la categoria AUTOS completa. De esa MISMA
+// frase, flujo 2 saca dos dependencias: los subtipos (marcada v29a) y la
+// categoria (marcada vacuous_for_ramo). Filtrar por los subtipos ocultaria la
+// linea para un monovolumen o un todo terreno, que la frase si cubre. La
+// hermana bien expresada -- la categoria -- es la que debe mandar, y resulta
+// que es vacua, asi que no hay FILTER_EXPR y eso es correcto.
+//
+// Por que hacia falta cablearla y no bastaba con no tener vocabulario para
+// "furgoneta": hasta el 08/09 esa dependencia se caia sola porque
+// `base7Type.id` no tenia `value_aliases`, o sea acertaba por accidente. Al
+// dar de alta el alias de "furgoneta" (que SI es un tipo real y aparece a
+// secas en dependencias de varias companias) el accidente desaparece y el
+// filtro falso apareceria. Es el patron que ya advierte CLAUDE.md 4.2: una
+// marca que nadie lee no hace nada.
+//
+// Tercera marca que suprime el FILTER_EXPR, "percentage_indemnification"
+// (Guardrail v17/v24, cableada aqui el 10/09): la dependencia sale de una
+// ESCALA DE VALORACION -- decide el IMPORTE de la indemnizacion, no si la
+// cobertura esta incluida. Es su propia definicion (ver CLAUDE.md 4.2), asi
+// que por construccion nunca deberia haber producido un FILTER_EXPR.
+//
+// Caso real que lo destapo (Zurich su_00092, "10-. Daños por fenomenos
+// atmosfericos y animales", ejecucion 407): el texto es una tabla de tramos de
+// antiguedad ("hasta el 2o año...", "del 3o al 5o..."), y flujo 2 saca UNA
+// dependencia por umbral. Las cinco caen sobre el mismo campo y se combinan
+// con AND, que aqui es lo correcto para rangos pero produce
+// "registrationYears <= 2 && >= 3 && <= 5 && <= 3 && >= 4": INSATISFACIBLE.
+// Efecto observado: dos LINES de la cobertura 13 que dejaban de renderizarse.
+//
+// La exposicion real era 5 veces mayor de lo que se veia: hay CINCO unidades
+// con esta forma (su_00071/77/82/86/92, los "Criterios para la valoracion de
+// siniestros" de Robo, Incendio, Perdida total, Daños propios y Fenomenos
+// atmosfericos), cada una con las mismas cinco dependencias. En la 407 solo
+// una llego a matchear -- el `Coverage Match Decision Agent` no es
+// determinista, y en la 406 la misma unidad habia quedado en unmatched. Otra
+// vez el patron de CLAUDE.md 4.2, y otra vez tapado por un acierto accidental.
+//
+// Solo se filtra la generacion de SPEL: la dependencia sigue viajando intacta
+// en el JSON revisable, con su marca, para que quien revise entienda por que
+// el FILTER_EXPR esta vacio.
+//
+// MANTENER EN SINCRONIA con MARKS_EXEMPT_FROM_TRANSLATION de value_matcher.js:
+// una dependencia cuyo valor no llega nunca al SPEL tampoco debe exigir
+// traduccion (si no, marca needs_review por algo que no es un problema). Son
+// dos modulos y dos nodos distintos, asi que no se puede compartir la
+// constante; el arnes comprueba que las dos listas coincidan (--generator).
+const MARKS_SUPPRESSING_FILTER_EXPR = ["vacuous_for_ramo", "category_expressed_as_type", "percentage_indemnification"];
+
+function suppressesFilterExpr(dependency) {
+  return MARKS_SUPPRESSING_FILTER_EXPR.some(mark => dependency[mark] === true);
+}
+
+// Varias dependencias del MISMO campo con operador de pertenencia se funden en
+// una sola, uniendo sus valores -- no se pueden combinar con AND.
+//
+// Motivo, y es aritmetico antes que semantico: un campo escalar no puede valer
+// dos cosas a la vez, asi que "campo = A && campo = B" es INSATISFACIBLE. Y
+// cuando el condicionado enumera alternativas ("vehiculos electricos/hibridos")
+// lo que dice es un OR, aunque la extraccion lo parta en dos dependencias con
+// "=" -- flujo 2 emite una por valor y no tiene forma de expresar el OR en el
+// esquema actual (decision de alcance, ver CLAUDE.md 5.8).
+//
+// Caso real que lo motivo (Zurich su_00066, "3-. Asistencia en viaje", frase
+// "Para el caso de vehiculos electricos/hibridos, se ofrece asistencia
+// tecnologica remota"): dos dependencias sobre base7Engine.id, una a
+// "vehiculo electrico" y otra a "vehiculo hibrido". Sin fundirlas sale
+// "{3,13}.contains(campo) && {7,11,12}.contains(campo)", siempre falso -- otra
+// condicion sintacticamente valida e imposible de cumplir, la misma clase de
+// fallo que motivo el rediseño del catalogo de valores el 08/09. Antes no se
+// veia porque ninguno de los dos valores traducia.
+//
+// Solo se funden grupos HOMOGENEOS en signo: todos de pertenencia positiva
+// (=/IN) -> un IN con la union; todos negativos (!=/NOT_IN) -> un NOT_IN con
+// la union (que es el equivalente correcto: no estar en A y no estar en B es
+// no estar en la union). Cualquier otra mezcla se deja como estaba y se
+// combina con AND, porque ahi el AND SI es lo correcto: "= A && != B" es
+// satisfacible, y con comparaciones de rango ("registrationYears >= 2 &&
+// <= 5") el AND es justamente el combinador que se quiere.
+const POSITIVE_MEMBERSHIP_OPERATORS = new Set(["=", "IN"]);
+const NEGATIVE_MEMBERSHIP_OPERATORS = new Set(["!=", "NOT_IN"]);
+
+function mergeSameFieldMembership(dependencies) {
+  const groups = new Map();
+  for (const dep of dependencies) {
+    if (!groups.has(dep.risk_field)) groups.set(dep.risk_field, []);
+    groups.get(dep.risk_field).push(dep);
+  }
+
+  const merged = [];
+  for (const group of groups.values()) {
+    if (group.length === 1) { merged.push(group[0]); continue; }
+
+    const allPositive = group.every(dep => POSITIVE_MEMBERSHIP_OPERATORS.has(dep.operator));
+    const allNegative = group.every(dep => NEGATIVE_MEMBERSHIP_OPERATORS.has(dep.operator));
+    if (!allPositive && !allNegative) { merged.push(...group); continue; }
+
+    const values = [];
+    for (const dep of group) {
+      for (const value of Array.isArray(dep.value) ? dep.value : [dep.value]) {
+        if (!values.includes(value)) values.push(value);
+      }
+    }
+    merged.push({
+      ...group[0],
+      operator: values.length === 1 ? (allPositive ? "=" : "!=") : (allPositive ? "IN" : "NOT_IN"),
+      value: values.length === 1 ? values[0] : values
+    });
+  }
+  return merged;
+}
+
+// Red de seguridad independiente de las marcas: un grupo de comparaciones
+// numericas sobre el MISMO campo cuya interseccion esta vacia se descarta del
+// FILTER_EXPR en vez de emitirse.
+//
+// Es el mismo razonamiento autoverificable que la regla de negacion de tramos
+// del 08/09 (si tras negar no queda ningun valor posible, esta mal por
+// construccion): un AND insatisfacible no expresa ninguna condicion real, y
+// emitirlo es el PEOR resultado posible -- la linea desaparece de la
+// comparativa en silencio, que es mas dificil de detectar que una linea que
+// sobra.
+//
+// Existe porque la marca no puede ser la unica defensa. `percentage_indemnification`
+// tapa el caso conocido (las tablas de antiguedad de Zurich), pero cualquier
+// unidad futura que enumere umbrales del mismo campo sin traer marca cae en lo
+// mismo, y flujo 2 no tiene forma de expresar un OR en el esquema actual
+// (decision de alcance, ver CLAUDE.md 5.8). Este chequeo no depende de que
+// nadie acierte con la marca.
+//
+// Deliberadamente estrecho, para no tocar nada que hoy funcione:
+//   - solo grupos de 2+ dependencias sobre el mismo campo,
+//   - solo si TODAS usan comparacion numerica (>, >=, <, <=) con valor
+//     numerico. Basta un "=", un "IN" o un valor no numerico para dejar el
+//     grupo intacto: ahi la satisfacibilidad ya no es un intervalo y no se
+//     puede decidir con esta aritmetica.
+// Un rango legitimo ("registrationYears >= 2 && <= 5") tiene interseccion no
+// vacia, asi que pasa sin tocarse.
+//
+// Solo se descarta el grupo contradictorio, NO el FILTER_EXPR entero: las
+// condiciones sobre otros campos de la misma unidad pueden ser perfectamente
+// buenas y no hay motivo para perderlas.
+const COMPARISON_OPERATORS = new Set([">", ">=", "<", "<="]);
+
+function isUnsatisfiableComparisonGroup(group) {
+  if (group.length < 2) return false;
+  if (!group.every(dep => COMPARISON_OPERATORS.has(dep.operator) && typeof dep.value === "number")) return false;
+
+  let lower = -Infinity;
+  let lowerStrict = false;
+  let upper = Infinity;
+  let upperStrict = false;
+
+  for (const dep of group) {
+    if (dep.operator === ">" || dep.operator === ">=") {
+      if (dep.value > lower || (dep.value === lower && dep.operator === ">")) {
+        lower = dep.value;
+        lowerStrict = dep.operator === ">";
+      }
+    } else {
+      if (dep.value < upper || (dep.value === upper && dep.operator === "<")) {
+        upper = dep.value;
+        upperStrict = dep.operator === "<";
+      }
+    }
+  }
+
+  if (lower > upper) return true;
+  return lower === upper && (lowerStrict || upperStrict);
+}
+
+function dropUnsatisfiableComparisonGroups(dependencies) {
+  const groups = new Map();
+  for (const dep of dependencies) {
+    if (!groups.has(dep.risk_field)) groups.set(dep.risk_field, []);
+    groups.get(dep.risk_field).push(dep);
+  }
+
+  const kept = [];
+  for (const group of groups.values()) {
+    if (!isUnsatisfiableComparisonGroup(group)) kept.push(...group);
+  }
+  return kept;
+}
+
 function combineFilterExpr(dependencies) {
   if (!dependencies || dependencies.length === 0) return null;
-  const parts = dependencies.map(translateToSpel);
+  const effective = dropUnsatisfiableComparisonGroups(
+    dependencies.filter(dep => dep && !suppressesFilterExpr(dep))
+  );
+  if (effective.length === 0) return null;
+  const parts = mergeSameFieldMembership(effective).map(translateToSpel);
   return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
 }
 
 // Escapa un texto libre para usarlo como literal de cadena SPEL en TEXT_EXPR.
 function spelStringLiteral(text) {
   return `'${(text || "").replace(/'/g, "\\'")}'`;
+}
+
+// --- Formato ampliado de la hoja "Coberturas opcionales" (07/09) ---
+//
+// Dos columnas nuevas, las dos con la MISMA semantica de lista: vacia =
+// "todas", rellena = "solo estas".
+//   OPCIÓN DE LA COBERTURA -> a que opciones (nivel o capital) aplica el texto
+//   MODALIDADES            -> a que PRODUCT_COMPANY_MODALITY_ID aplica la fila
+// Se nombran en lenguaje de negocio a proposito: el Excel lo rellena alguien
+// externo de la compania, no vale hablar de "tuning" ni de "$1" (ver
+// prompts/excel_coverage_sheet_builder.md).
+function parseOptionalSheetList(text) {
+  return (text || "")
+    .toString()
+    .split(",")
+    .map(part => part.trim())
+    .filter(part => part.length > 0);
+}
+
+// Resuelve el texto de "OPCIÓN DE LA COBERTURA" a los items reales del
+// desplegable de tuning. Acepta la ETIQUETA (lo natural para quien rellena el
+// Excel: "Esencial", "60.000€") o el valor en crudo, y busca en TODOS los
+// grupos de options[] -- imprescindible en un campo con grupos condicionados
+// por otro campo, donde el mismo valor puede aparecer en dos grupos con
+// etiquetas distintas (caso real capitalAccidenteConductor de Zurich: el valor
+// "3A" es "6.000 Euros MUERTE e INVALIDEZ" en un grupo y el placeholder
+// "Seleccione una opcion" en el otro -- por eso se empareja por etiqueta y no
+// por valor).
+//
+// Devuelve null si el campo no tiene opciones (booleano/numerico: no hay nada
+// que elegir) o si alguna de las opciones nombradas no existe -- nunca
+// adivina, para no generar un FILTER_EXPR sobre un valor inventado.
+function resolveTuningOptionValues(tuningFieldDef, optionText) {
+  const wanted = parseOptionalSheetList(optionText);
+  if (wanted.length === 0) return null;
+
+  const items = [];
+  for (const group of (tuningFieldDef && tuningFieldDef.options) || []) {
+    for (const item of group.items || []) items.push(item);
+  }
+  if (items.length === 0) return null;
+
+  const resolved = [];
+  for (const name of wanted) {
+    const hit = items.find(item => item.value === name)
+      || items.find(item => normalizeTuningLabel(item.label) === normalizeTuningLabel(name));
+    if (!hit) return null;
+    if (!resolved.some(r => r.value === hit.value)) resolved.push({ value: hit.value, label: hit.label });
+  }
+  return resolved;
+}
+
+// Condicion SPEL "el valor contratado es una de estas opciones" y su negacion.
+// La negacion se usa para el texto PROPIO de una cobertura marcada "Garantía
+// Opcional": ese texto explica como conseguirla, asi que solo debe verse
+// mientras NO se haya contratado ninguna de las opciones que si la incluyen
+// (caso real Zurich cover 14, que la legacy resolvia con OVERWRITE=1).
+function buildTuningValueEqualityExpr(tuningKey, optionValues) {
+  if (!tuningKey || tuningKey === "NOT_FOUND" || !optionValues || optionValues.length === 0) return null;
+  const parts = optionValues.map(o => `tuning?.${tuningKey} == ${quoteSpelValue(o.value)}`);
+  return parts.length === 1 ? parts[0] : parts.join(" || ");
+}
+
+function buildTuningValueInequalityExpr(tuningKey, optionValues) {
+  if (!tuningKey || tuningKey === "NOT_FOUND" || !optionValues || optionValues.length === 0) return null;
+  return optionValues.map(o => `tuning?.${tuningKey} != ${quoteSpelValue(o.value)}`).join(" && ");
+}
+
+// Marcador de valor del formato ampliado: CUALQUIER texto entre llaves en la
+// columna de texto significa "aqui va el valor que el cliente eligio para
+// esta cobertura opcional". Sustituye al $1 de RISK_TUNING_COVER (notacion
+// interna de la legacy de ASM, ver USE_TUNNING_VALUE en CoverServiceLegacy).
+// No hay vocabulario que aprender: cada fila tiene UNA sola cobertura
+// opcional, asi que "{importe contratado}", "{el importe}" o "{capital}"
+// significan lo mismo. Se eligieron las llaves porque no aparecen ni una vez
+// en las fuentes reales medidas y porque [[...]] ya significa otra cosa
+// (condicion de riesgo, ver extractBracketMarker).
+const TUNING_VALUE_PLACEHOLDER_PATTERN = /\{[^{}]*\}/;
+
+function hasTuningValuePlaceholder(text) {
+  return TUNING_VALUE_PLACEHOLDER_PATTERN.test(text || "");
+}
+
+// TEXT_EXPR de una LINE: literal SPEL de siempre, o una concatenacion cuando
+// el texto trae el marcador de valor. Sin tuning_key resuelto se deja el
+// texto tal cual (con las llaves visibles) en vez de inventar una expresion:
+// asi el revisor humano ve que ese marcador no se pudo resolver.
+function buildLineTextExpr(text, tuningKey) {
+  if (!hasTuningValuePlaceholder(text) || !tuningKey || tuningKey === "NOT_FOUND") {
+    return spelStringLiteral(text);
+  }
+  const parts = [];
+  let rest = text;
+  let match;
+  while ((match = TUNING_VALUE_PLACEHOLDER_PATTERN.exec(rest)) !== null) {
+    if (match.index > 0) parts.push(spelStringLiteral(rest.slice(0, match.index)));
+    parts.push(`tuning?.${tuningKey}`);
+    rest = rest.slice(match.index + match[0].length);
+  }
+  if (rest.length > 0) parts.push(spelStringLiteral(rest));
+  return parts.join(" + ");
+}
+
+// El `visible` de un campo de tuning es la condicion bajo la que la compania
+// ofrece de verdad esa cobertura opcional, y hasta ahora se ignoraba por
+// completo. Hay que distinguir dos formas, porque se resuelven en momentos
+// distintos:
+//   - `${modalityId}==NNNN`  -> se conoce al GENERAR el INSERT; lo cubre la
+//     columna MODALIDADES, no debe acabar en el FILTER_EXPR (no existe
+//     ${modalityId} en el contexto SPEL de ejecucion).
+//   - cualquier otra (otro campo de tuning o datos del riesgo) -> es una
+//     condicion de EJECUCION y va al FILTER_EXPR. Casos reales de Zurich:
+//     importeRetiradaCarnet visible solo si privacionPermiso (el importe no
+//     significa nada sin la cobertura), y rcCarga visible solo para ciertos
+//     base7Version.typeCode.
+const MODALITY_ID_TUNING_REFERENCE = /\$\{modalityId\}/;
+
+function runtimeVisibilityFilterExpr(tuningFieldDef) {
+  const visible = tuningFieldDef && tuningFieldDef.visible;
+  if (typeof visible !== "string") return null;
+  if (MODALITY_ID_TUNING_REFERENCE.test(visible)) return null;
+  const unwrapped = unwrapTuningSpelExpression(visible);
+  return unwrapped && unwrapped.trim().length > 0 ? unwrapped.trim() : null;
 }
 
 // Simbolos de enumeracion que el texto libre del Excel puede traer ya
@@ -185,12 +523,17 @@ function combineTwoFilterExprStrings(a, b) {
 // tanto de "Coberturas por modalidad" como de "Coberturas opcionales") para
 // que aplique en cualquier sitio sin tener que tocar cada función que
 // construye lineas por separado.
-function finalizeLine(text, filterExpr, isHeader) {
+// tuningKey (opcional, formato ampliado 07/09): solo se usa para resolver el
+// marcador de valor {...} del texto; sin el, el texto se emite tal cual.
+function finalizeLine(text, filterExpr, isHeader, tuningKey) {
   const { cleanText, markerText } = extractBracketMarker(text);
   const bracketDependency = resolveBracketDependency(markerText);
   const bracketExpr = bracketDependency ? translateToSpel(bracketDependency) : null;
   const combinedExpr = combineTwoFilterExprStrings(filterExpr, bracketExpr);
-  return { filter_expr: combinedExpr, text_expr: spelStringLiteral(formatLineText(cleanText, isHeader)) };
+  return {
+    filter_expr: combinedExpr,
+    text_expr: buildLineTextExpr(formatLineText(cleanText, isHeader), tuningKey)
+  };
 }
 
 // Trocea el texto libre de una celda del Excel en bullets (una linea por
@@ -299,18 +642,85 @@ function ensureTrailingPeriod(text) {
 // ver finalizeLine). Se le pasa coverName a splitBulletsFromCellText para no
 // duplicar la cabecera si el propio textContent ya repite el nombre como
 // primera linea.
-function buildOptionalCoverLines(opt) {
+// Normaliza una linea para emparejarla con la cita literal de una
+// dependencia. Tiene que dar el MISMO resultado que matcher.normalize, que es
+// lo que usa excel_fixture_builder.findDependenciesForText para las lineas de
+// la hoja de modalidades: si los dos normalizadores divergen, la misma frase
+// recibiria condicion en una hoja y no en la otra. Se duplica porque
+// generator.js es autocontenido a proposito (se copia entero al Code node, sin
+// requires -- ver la cabecera y normalizeTuningLabel, misma razon); el arnes
+// comprueba que las dos versiones coinciden (--generator, caso NORMALIZE-SYNC).
+function normalizeLineForDependencyMatch(str) {
+  return (str || "")
+    .toString()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // quitar acentos
+    .replace(/^[\d]+(\.[\d]+)*\.?\s*/, "") // quitar numeracion inicial "3.2. "
+    .replace(/^[a-z]\)\s*/, "") // quitar numeracion tipo "a) "
+    .replace(/^articulo\s+[\wº.]+\s*/, "") // quitar "Articulo 8º "
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+// Dependencias que aplican a una linea concreta de la hoja "Coberturas
+// opcionales", emparejando por cita literal igual que se hace con las lineas
+// de la hoja de modalidades.
+//
+// Hueco real que cierra (revision manual del usuario, 08/09): las lineas de la
+// hoja de opcionales llamaban a finalizeLine con la dependencia fijada a null,
+// asi que la MISMA clausula llevaba su condicion en el texto base y no la
+// llevaba en las opciones. Caso concreto, Zurich cover 3: "Remolque vehiculos
+// electricos.Hasta el punto de recarga para la bateria" salia con
+// {3,13}.contains(base7Engine.id) en la celda de modalidad y sin condicion en
+// Ampliada y Plus (12 entries afectadas).
+//
+// Se empareja contra el texto del cuerpo ANTES de que formatLineText le ponga
+// la viñeta: los dos lados llegan sin marcador, asi que el emparejamiento no
+// depende de como se decore la linea despues.
+function findDependenciesForLineText(text, matches, coverId) {
+  if (!text || !matches || matches.length === 0) return null;
+  const normalized = normalizeLineForDependencyMatch(text);
+  if (!normalized) return null;
+  const hit = matches.find(
+    m => m.cover_id === coverId
+      && normalizeLineForDependencyMatch(m.excel_quote || m.bullet_match || "") === normalized
+  );
+  return hit ? (hit.dependencies_translated || []) : null;
+}
+
+function buildOptionalCoverLines(opt, matches, coverId) {
   const bodyLines = splitBulletsFromCellText(opt.textContent, opt.coverName);
+  const depsOf = text => combineFilterExpr(findDependenciesForLineText(text, matches, coverId));
   if (bodyLines.length === 0) {
-    return [finalizeLine(opt.coverName, null, true)];
+    return [finalizeLine(opt.coverName, null, true, opt.tuningKey)];
   }
   if (bodyLines.length === 1) {
-    return [finalizeLine(`${ensureTrailingPeriod(opt.coverName)} ${bodyLines[0]}`, null, true)];
+    return [finalizeLine(`${ensureTrailingPeriod(opt.coverName)} ${bodyLines[0]}`, depsOf(bodyLines[0]), true, opt.tuningKey)];
   }
   return [
-    finalizeLine(ensureTrailingPeriod(opt.coverName), null, true),
-    ...bodyLines.map(text => finalizeLine(text, null, false))
+    finalizeLine(ensureTrailingPeriod(opt.coverName), null, true, opt.tuningKey),
+    ...bodyLines.map(text => finalizeLine(text, depsOf(text), false, opt.tuningKey))
   ];
+}
+
+// LINES de una fila con "OPCIÓN DE LA COBERTURA" rellena. A diferencia de
+// buildOptionalCoverLines, NO antepone el nombre de la cobertura opcional: el
+// texto que la compania da para una opcion concreta ya se describe solo (caso
+// real Zurich, "Asistencia en Viaje 24h. Ampliada:" seguido de sus viñetas), y
+// anteponerlo producia cabeceras redundantes del tipo "Asistencia en viaje.
+// Asistencia en Viaje 24h Esencial". Mismo formato que defaultBullets: la
+// primera linea hace de titulo.
+function buildOptionScopedCoverLines(opt, matches, coverId) {
+  const bodyLines = splitBulletsFromCellText(opt.textContent, opt.coverName);
+  if (bodyLines.length === 0) return [finalizeLine(opt.coverName, null, true, opt.tuningKey)];
+  return bodyLines.map((text, i) => finalizeLine(
+    text,
+    combineFilterExpr(findDependenciesForLineText(text, matches, coverId)),
+    i === 0,
+    opt.tuningKey
+  ));
 }
 
 // Compara labels de opciones de tuning ignorando mayusculas/acentos (uso
@@ -330,7 +740,13 @@ function normalizeTuningLabel(text) {
 // "No" (Allianz, solarPanels) -- mismo concepto, distinta redaccion por
 // compania. Ampliar aqui solo cuando aparezca una tercera convencion real,
 // no adivinar variantes hipoteticas.
-const TUNING_NOT_CONTRACTED_LABELS = new Set(["no contratada", "no"]);
+// Redacciones reales del item "apagado" de un desplegable de tuning. Ampliar
+// SOLO cuando aparezca una nueva en el diccionario real de una compania:
+// "no contratada" (Generali: zasihb/zimpac/ztcar), "no" (radios si/no) y
+// "no contrata" (Zurich Autos: rcCarga -- sin esta, resolveTuningSelectConfig
+// devolvia null y los 5 capitales de RC de la carga caian al formato booleano
+// en vez de al de capitales, hallazgo del 07/09).
+const TUNING_NOT_CONTRACTED_LABELS = new Set(["no contratada", "no contrata", "no"]);
 
 // El valor que significa "no contratado" dentro de un grupo de opciones de
 // tuning (item cuyo label normaliza a una de TUNING_NOT_CONTRACTED_LABELS,
@@ -535,6 +951,311 @@ function buildTieredHiringStatusExpr(opt, tuningConfig) {
   return `tuning?.${opt.tuningKey} == null || tuning.${opt.tuningKey} == ${quoteSpelValue(tuningConfig.notContractedValue)} ? "OPTIONAL" : "INCLUDED"`;
 }
 
+// FILTER_EXPR que hay que aplicar al contenido PROPIO de una cobertura
+// marcada "Garantía Opcional": ese texto explica como conseguir la cobertura
+// ("Contratando Asistencia en viaje 24 h Plus..."), asi que deja de tener
+// sentido en cuanto se contrata una de las opciones que SI la incluyen -- se
+// filtra con la negacion de esas opciones. Es lo que la legacy hacia con
+// OVERWRITE=1 (sustituir el texto base), traducido a SPEL.
+//
+// Solo cuentan las filas CON opcion: una fila sin opcion (booleano o importe)
+// AÑADE informacion al texto propio en vez de sustituirlo (OVERWRITE=0 en la
+// legacy), asi que no debe filtrarlo -- caso real Zurich cover 11, donde
+// "Subsidio por pérdida de carné" se ve siempre y el capital se suma al
+// contratar.
+function buildOwnContentMarkerFilterExpr(opcionales) {
+  const replacing = (opcionales || []).filter(
+    o => o.optionValues && o.optionValues.length > 0 && o.tuningKey && o.tuningKey !== "NOT_FOUND"
+  );
+  const parts = replacing
+    .map(o => buildTuningValueInequalityExpr(o.tuningKey, o.optionValues))
+    .filter(Boolean);
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
+}
+
+// FILTER_EXPR del contenido propio de una cobertura que esta SIEMPRE INCLUIDA
+// pero cuyo campo de tuning elige entre TRAMOS (sin estado "no contratada").
+//
+// El texto de la celda de "Coberturas por modalidad" no es entonces un
+// "cómo conseguir la cobertura" -- es UNO de los tramos, el que queda cuando
+// no se elige ninguno de los que tienen fila propia. Sin filtrarlo se
+// renderiza a la vez que el tramo elegido y la comparativa se contradice.
+//
+// Caso real que lo motivo (Zurich cover 3 "Asistencia en viaje", revision
+// manual del usuario 08/09): `asistenciaViaje` tiene tres opciones y ninguna
+// "no contratada" (465 Esencial por defecto, 466 Ampliada, 467 Plus), y la
+// celda base contiene justo el texto de Esencial -- de hecho el usuario borro
+// la fila "Esencial" sin modalidades el 07/09 precisamente porque duplicaba
+// esa celda. Al elegir Ampliada salian las DOS entries con "INCLUDED", y el
+// resultado decia a la vez "Remolque hasta 200 km" y "Remolque ilimitada".
+//
+// Se niegan SOLO las opciones cuya fila aplica a TODAS las modalidades
+// (columna MODALIDADES vacia). Las filas acotadas por modalidad son extras
+// ADITIVOS de esas modalidades -- los "Green" de Zurich -- y negarlas dejaria
+// el texto base sin verse nunca: la fila de Esencial existe, pero solo para
+// las 18 Green, asi que el tramo Esencial de las otras 20 modalidades vive
+// unicamente en la celda base.
+//
+// Distinto de buildOwnContentMarkerFilterExpr, que niega TODAS las opciones
+// con fila: ahi el texto base es el "contratando X..." de una cobertura
+// marcada "Garantía Opcional" y debe desaparecer en cuanto se contrate
+// cualquiera de ellas. Aqui el texto base ES un tramo.
+//
+// Limite conocido y aceptado: si una compañia acotara por modalidad TODOS sus
+// tramos, no se negaria nada y la duplicacion volveria. Haria falta que el
+// Excel dijera explicitamente a que opcion corresponde la celda base; no se
+// inventa el mecanismo hasta que aparezca un caso real.
+// Todos los valores distintos que puede tomar un campo de tuning, y si entre
+// ellos hay un estado "no contratada". Recorre TODOS los grupos de options[]
+// (un campo puede traer varios, condicionados por modalidad o por etiqueta) --
+// a diferencia de resolveTuningSelectConfig, que elige UN grupo: aqui interesa
+// el universo completo de valores posibles.
+function tuningFieldValueUniverse(tuningFieldDef) {
+  const groups = (tuningFieldDef && tuningFieldDef.options) || [];
+  const values = new Set();
+  let hasNotContracted = false;
+  for (const group of groups) {
+    for (const item of (group && group.items) || []) {
+      if (item == null || item.value == null) continue;
+      values.add(item.value);
+      if (TUNING_NOT_CONTRACTED_LABELS.has(normalizeTuningLabel(item.label))) hasNotContracted = true;
+    }
+  }
+  return { values, hasNotContracted };
+}
+
+function buildTierOwnContentFilterExpr(opcionales, tuningDictionary) {
+  const globalRows = (opcionales || []).filter(
+    o => o.optionValues && o.optionValues.length > 0
+      && o.tuningKey && o.tuningKey !== "NOT_FOUND"
+      && (!o.modalityIds || o.modalityIds.length === 0)
+  );
+
+  // Se agrupa por campo: la decision de negar o no es del CAMPO, no de la fila.
+  const rowsByKey = new Map();
+  for (const row of globalRows) {
+    if (!rowsByKey.has(row.tuningKey)) rowsByKey.set(row.tuningKey, []);
+    rowsByKey.get(row.tuningKey).push(row);
+  }
+
+  const parts = [];
+  for (const [tuningKey, rows] of rowsByKey) {
+    const { values, hasNotContracted } = tuningFieldValueUniverse((tuningDictionary || {})[tuningKey]);
+
+    // Con estado "no contratada", el campo NO es un selector de tramos: sus
+    // filas AÑADEN contenido al texto base en vez de sustituirlo (OVERWRITE=0
+    // en la legacy), asi que negarlas ocultaria el texto base en cuanto se
+    // contrate algo. Caso real que lo destapo (Zurich cover 2
+    // "Responsabilidad civil voluntaria", revision de la ejecucion 406):
+    // `rcCarga` tiene "No contrata" y 5 capitales, y negar los 5 escondia el
+    // texto propio de la RC voluntaria al contratar RC de la carga.
+    if (hasNotContracted) continue;
+
+    // Si las filas globales cubren TODOS los valores del campo, no queda
+    // ningun tramo para el texto base y negarlas lo haria invisible SIEMPRE.
+    // Es la comprobacion que de verdad discrimina, y es autoverificable: si
+    // tras negar no queda valor posible, la negacion es incorrecta por
+    // construccion. Casos reales de la misma ejecucion 406:
+    // `accidentesConductor` (2 valores, 2 filas) y `capitalAccidenteConductor`
+    // (8 valores, 8 filas) -- frente a `asistenciaViaje`, donde el tramo por
+    // defecto (Esencial) no tiene fila global porque la suya esta acotada a
+    // las modalidades Green, y por eso ahi la negacion SI es correcta.
+    // Sin universo de valores conocido no se niega: la decision depende de
+    // datos del campo que no se pueden comprobar, y negar a ciegas es
+    // exactamente lo que produjo las dos regresiones de la ejecucion 406.
+    if (values.size === 0) continue;
+
+    const covered = new Set();
+    for (const row of rows) for (const o of row.optionValues) covered.add(o.value);
+    const uncovered = [...values].filter(v => !covered.has(v));
+    if (uncovered.length === 0) continue;
+
+    const expr = buildTuningValueInequalityExpr(tuningKey, rows.flatMap(r => r.optionValues));
+    if (expr) parts.push(expr);
+  }
+
+  if (parts.length === 0) return null;
+  return parts.length === 1 ? parts[0] : parts.map(p => `(${p})`).join(" && ");
+}
+
+// Aplica ese filtro a las entries de contenido propio, conservando su
+// HIRING_STATUS: la cobertura sigue INCLUIDA, solo se acota QUE texto se ve.
+// No toca las entries de la hoja de opcionales ni los NOT_INCLUDED.
+const OWN_CONTENT_SOURCES = new Set(["default", "modality_bullet"]);
+
+function applyTierFilterToOwnContent(entries, tierFilterExpr) {
+  if (!tierFilterExpr) return entries;
+  return entries.map(entry =>
+    OWN_CONTENT_SOURCES.has(entry.source)
+      ? { ...entry, filter_expr: combineTwoFilterExprStrings(entry.filter_expr, tierFilterExpr) }
+      : entry
+  );
+}
+
+// Acota el contenido propio de la cobertura (sources "default" y
+// "modality_bullet") a las modalidades que SI la ofrecen, enumerandolo una vez
+// por cada una en vez de dejarlo con modality_id null.
+//
+// Bug real (Mapfre Autos 237, ejecucion del 04/09; detectado el 16/09 al
+// revisar la comparativa generada): los covers 10 "Defensa en multas" y 11
+// "Retirada de carne" salian INCLUDED en 5614/5663/5666, donde el Excel dice
+// "No contratable". El fix del 24/08 (hoy en
+// ensureNotIncludedForUncoveredModalities) arreglo solo la mitad: anadio el NOT_INCLUDED
+// explicito que faltaba para esas modalidades, pero dejo el bloque del texto
+// comun con PRODUCT_COMPANY_MODALITY_ID = NULL, que el modelo lee como "aplica
+// a TODAS las modalidades". Los dos bloques aplican a la vez a 5614, y la
+// agregacion del estado de la cobertura ("INCLUDED si alguno es INCLUDED", ver
+// knowledge/Modelo comparativa de coberturas - AI ready.md) deja ganar al
+// global -- que ademas renderiza su texto en una modalidad que no puede
+// contratar la cobertura.
+//
+// La regla de optimizacion obligatoria del modelo (mismos valores en todas las
+// modalidades -> modality_id NULL) NO aplica aqui, precisamente porque no son
+// los mismos: las modalidades ausentes no tienen bloque de texto ninguno. Es el
+// mismo criterio que la rama de opcionales ya aplicaba desde el 22/07 (ver
+// GEN-MISSING-001, que exige "0 entries con modality_id null"); esta funcion lo
+// extiende al contenido propio, haya o no filas en "Coberturas opcionales" --
+// la colision es identica en los dos casos, y con opcionales el NOT_INCLUDED
+// por modalidad lo genera ese mismo bucle.
+//
+// El disparador es estrecho, y por eso se escapo: hace falta que el texto sea
+// IDENTICO en todas las modalidades presentes (si varia, cada una ya tenia su
+// propia entry y no hay entry global con la que colisionar) y que ademas haya
+// alguna modalidad "No contratable". En la ejecucion real de Mapfre solo 2 de
+// las 15 coberturas cumplian las dos cosas a la vez.
+function scopeOwnContentToPresentModalities(entries, { presentModalityIds = [], missingModalityIds = [] } = {}) {
+  if (!missingModalityIds || missingModalityIds.length === 0) return entries;
+  if (!presentModalityIds || presentModalityIds.length === 0) return entries;
+
+  const result = [];
+  for (const entry of entries) {
+    if (!OWN_CONTENT_SOURCES.has(entry.source) || entry.modality_id != null) {
+      result.push(entry);
+      continue;
+    }
+    for (const modalityId of presentModalityIds) {
+      result.push({ ...entry, modality_id: modalityId });
+    }
+  }
+  return result;
+}
+
+// Reparte el contenido propio de la cobertura (sources "default" y
+// "modality_bullet") entre las modalidades donde esta INCLUIDA y aquellas
+// donde solo se OFRECE (celda con el marcador "Garantía Opcional").
+//
+// Antes, un bloque que venia de una celda llevaba '"INCLUDED"' fijo, asi que
+// una cobertura marcada como opcional en su celda salia como incluida. Cuando
+// unas modalidades estan marcadas y otras no (caso real Zurich cover 12,
+// marcada solo en la 1360, y cover 13 en 1358/1359) hay que ENUMERAR por
+// modalidad: el estado ya no es el mismo en todas, asi que la regla de
+// optimizacion del modelo ("mismos valores en todas -> modality_id NULL") no
+// aplica. Si TODAS las modalidades estan marcadas (covers 11 y 14) se
+// conserva la entry unica.
+function applyOptionalMarkerToOwnContent(entries, {
+  markerModalityIds = [],
+  presentModalityIds = [],
+  coverTuningKey = null,
+  markerFilterExpr = null
+} = {}) {
+  if (!markerModalityIds || markerModalityIds.length === 0) return entries;
+
+  const marker = new Set(markerModalityIds.map(String));
+  // Con markerFilterExpr, el propio FILTER_EXPR ya acota la entry a la rama
+  // "no contratada" (es la negacion de las opciones que SI incluyen la
+  // cobertura), asi que el estado es OPTIONAL sin necesidad de ternario -- y
+  // sin depender de que el mapeo nombre-de-cobertura -> tuning_key haya
+  // acertado. Sin markerFilterExpr la MISMA entry se ve en los dos estados
+  // (el texto propio se conserva al contratar, OVERWRITE=0 en la legacy), y
+  // ahi si hace falta el ternario sobre el campo de la cobertura.
+  const optionalStatusExpr = markerFilterExpr
+    ? '"OPTIONAL"'
+    : buildOptionalHiringStatusExpr(coverTuningKey);
+  const present = presentModalityIds.map(String);
+  const includedIds = present.filter(id => !marker.has(id));
+  const optionalIds = present.filter(id => marker.has(id));
+
+  const asOptional = entry => ({
+    ...entry,
+    hiring_status_expr: optionalStatusExpr,
+    filter_expr: combineTwoFilterExprStrings(entry.filter_expr, markerFilterExpr)
+  });
+
+  const result = [];
+  for (const entry of entries) {
+    const isOwnContent = entry.source === "default" || entry.source === "modality_bullet";
+    if (!isOwnContent) {
+      result.push(entry);
+      continue;
+    }
+    if (entry.modality_id != null) {
+      result.push(marker.has(String(entry.modality_id)) ? asOptional(entry) : entry);
+      continue;
+    }
+    if (optionalIds.length === 0) {
+      result.push(entry);
+      continue;
+    }
+    if (includedIds.length === 0) {
+      result.push(asOptional(entry));
+      continue;
+    }
+    for (const modalityId of includedIds) result.push({ ...entry, modality_id: modalityId });
+    for (const modalityId of optionalIds) result.push(asOptional({ ...entry, modality_id: modalityId }));
+  }
+  return result;
+}
+
+// Bug real (Zurich Autos 127, cobertura 13 "Daños propios", detectado 16/09 y
+// confirmado contra el motor el 26/10): 7 modalidades "No contratable" no
+// recibian ENTRY alguna. Antes el NOT_INCLUDED de las modalidades ausentes lo
+// ponian dos sitios que se repartian el trabajo por suposicion: el bloque
+// base_not_offered (solo si la cobertura no tenia filas en "Coberturas
+// opcionales") y el bucle de opcionales -- salvo las ramas que salen antes con
+// `continue` (MODALIDADES rellena, OPCION DE LA COBERTURA, tramos por
+// modalidad). La 13 tiene una fila con MODALIDADES = 1358,1359, asi que no la
+// cubria ninguno de los dos.
+//
+// No es inocuo: el motor (avant-back, CoverServiceSpelBased) solo evalua las
+// ENTRY con modalidad NULL o la de la oferta, y con cero ENTRY la cobertura no
+// entra en el modelo de esa oferta -- el front pinta la celda EN BLANCO, no
+// "No incluida".
+//
+// Por eso la regla ya no depende de que rama corrio: toda modalidad ausente que
+// ninguna ENTRY cubra (ni una suya ni una con modality_id null) recibe su
+// NOT_INCLUDED. Si no hay ninguna modalidad presente ni ENTRY alguna, una sola
+// sin modalidad (regla de optimizacion del modelo, como antes).
+function ensureNotIncludedForUncoveredModalities(entries, { coverId, presentModalityIds = [], missingModalityIds = [] } = {}) {
+  if (!missingModalityIds || missingModalityIds.length === 0) return entries;
+  if (entries.some(e => e.modality_id == null)) return entries;
+
+  const covered = new Set(entries.map(e => String(e.modality_id)));
+  const uncovered = missingModalityIds.filter(id => !covered.has(String(id)));
+  if (uncovered.length === 0) return entries;
+
+  const notIncluded = modalityId => ({
+    cover_id: coverId,
+    filter_expr: null,
+    hiring_status_expr: '"NOT_INCLUDED"',
+    value_expr: null,
+    modality_id: modalityId,
+    source: "base_not_offered",
+    lines: []
+  });
+
+  if (entries.length === 0 && (!presentModalityIds || presentModalityIds.length === 0)) {
+    return [notIncluded(null)];
+  }
+  return [...entries, ...uncovered.map(notIncluded)];
+}
+
+// optionalMarkerModalityIds: modalidades cuya celda traia el marcador
+// "Garantía Opcional" (la cobertura se ofrece ahi, pero no viene incluida).
+// coverTuningKey: tuning_key mapeado a partir del NOMBRE DE LA COBERTURA (via
+// Build Tuning Context -> Tuning Key Mapping Agent), distinto del tuning_key
+// de cada fila de "Coberturas opcionales" -- es el que decide el
+// HIRING_STATUS_EXPR del contenido propio en esas modalidades.
 function buildEntriesForCover({
   coverId,
   coverName,
@@ -544,7 +1265,11 @@ function buildEntriesForCover({
   conditionedBlocks = [],
   opcionales = [],
   presentModalityIds = [],
-  missingModalityIds = []
+  missingModalityIds = [],
+  optionalMarkerModalityIds = [],
+  coverTuningKey = null,
+  dependencyMatches = [],
+  tuningDictionary = {}
 }) {
   const entries = [];
 
@@ -597,51 +1322,9 @@ function buildEntriesForCover({
     });
   }
 
-  // Bug real corregido 24/08 (Mapfre Autos 237, sin ninguna cobertura
-  // opcional en todo el producto): el NOT_INCLUDED explicito para
-  // modalidades que no ofrecen esta cobertura en absoluto ("No
-  // contratable"/"Sin cobertura" en "Coberturas por modalidad") solo se
-  // generaba mas abajo, dentro del bucle de coberturas opcionales -- si la
-  // cobertura no tiene ninguna fila en "Coberturas opcionales", ese bucle
-  // nunca corre y esas modalidades se quedaban sin ningun ENTRY (si el
-  // resto de modalidades presentes tenia texto variable) o, peor,
-  // HEREDABAN el ENTRY por defecto sin modalidad si el resto compartia
-  // exactamente el mismo texto (caso real confirmado: "Defensa en
-  // multas"/"Retirada de carne" de Mapfre, marcadas INCLUDED en el 100% de
-  // las modalidades del producto pese a que el Excel decia "No contratable"
-  // en 14/17 y 17/17 de ellas respectivamente). Guardado con
-  // `opcionales.length === 0` para no duplicar el NOT_INCLUDED que el
-  // bucle de opcionales ya genera correctamente cuando SI hay opcionales
-  // (ver GEN-MISSING-001/002 en generator_golden_dataset.json). Validado
-  // offline (GEN-MISSING-003/004) antes de desplegar.
-  if (opcionales.length === 0 && missingModalityIds.length > 0) {
-    if (presentModalityIds.length === 0) {
-      // Mismo criterio de optimizacion que el bucle de opcionales de abajo:
-      // si la cobertura no esta disponible en NINGUNA modalidad, una unica
-      // ENTRY sin modalidad en vez de una identica por cada una.
-      entries.push({
-        cover_id: coverId,
-        filter_expr: null,
-        hiring_status_expr: '"NOT_INCLUDED"',
-        value_expr: null,
-        modality_id: null,
-        source: "base_not_offered",
-        lines: []
-      });
-    } else {
-      for (const modalityId of missingModalityIds) {
-        entries.push({
-          cover_id: coverId,
-          filter_expr: null,
-          hiring_status_expr: '"NOT_INCLUDED"',
-          value_expr: null,
-          modality_id: modalityId,
-          source: "base_not_offered",
-          lines: []
-        });
-      }
-    }
-  }
+  // El NOT_INCLUDED explicito de las modalidades que no ofrecen la cobertura
+  // ("No contratable") ya no se genera aqui, sino al final, en
+  // ensureNotIncludedForUncoveredModalities -- ver su cabecera.
 
   // Bug real corregido 22/07 (covers 79/81, "Sin cobertura" en varias
   // modalidades de "Coberturas por modalidad"): una cobertura opcional
@@ -655,6 +1338,50 @@ function buildEntriesForCover({
   // normal), se mantiene el comportamiento de siempre: una unica ENTRY sin
   // modalidad.
   for (const opt of opcionales) {
+    // Fila con "OPCIÓN DE LA COBERTURA" rellena (formato ampliado 07/09): 1
+    // ENTRY por fila, con su PROPIO texto y la condicion de esa(s) opcion(es)
+    // en el FILTER_EXPR -- criterio de granularidad del modelo (ENTRY = una
+    // condicion estructural distinta, ver knowledge/Modelo comparativa...).
+    //
+    // Sustituye, para estas filas, al apaño de buildTieredOptionalCoverLines
+    // ("1 LINE por valor, con la etiqueta del desplegable como texto"), que
+    // solo podia variar la ETIQUETA y no el cuerpo. Caso real que lo exigia:
+    // asistenciaViaje de Zurich, donde Esencial es una linea y Ampliada/Plus
+    // son listas de 11 viñetas completamente distintas.
+    const optionSelectionExpr = buildTuningValueEqualityExpr(opt.tuningKey, opt.optionValues);
+    if (optionSelectionExpr) {
+      const optionFilterExpr = combineTwoFilterExprStrings(
+        combineTwoFilterExprStrings(optionSelectionExpr, opt.visibilityFilterExpr ?? null),
+        opt.filterExpr ?? null
+      );
+      const optionLines = buildOptionScopedCoverLines(opt, dependencyMatches, coverId);
+      // Sin MODALIDADES, la fila aplica a todas las que ofrecen la cobertura:
+      // con modalidades "No contratable", enumerar las presentes en vez de
+      // dejar modality_id null (que tambien aplicaria a las ausentes) -- la
+      // misma colision que scopeOwnContentToPresentModalities evita para el
+      // contenido propio.
+      const targetModalityIds = (opt.modalityIds && opt.modalityIds.length > 0)
+        ? opt.modalityIds
+        : (missingModalityIds.length > 0 && presentModalityIds.length > 0 ? presentModalityIds : [null]);
+      for (const modalityId of targetModalityIds) {
+        entries.push({
+          cover_id: coverId,
+          filter_expr: optionFilterExpr,
+          hiring_status_expr: '"INCLUDED"',
+          value_expr: null,
+          modality_id: modalityId,
+          source: "optional_cover",
+          // Informativo, para el JSON revisable por humano: a que opcion(es)
+          // de la cobertura corresponde esta ENTRY (assembleHumanReviewJson
+          // propaga los campos de la entry tal cual, y validateEntryShape
+          // ignora los que no conoce).
+          cover_option: opt.optionValues.map(o => o.label).join(", "),
+          lines: optionLines
+        });
+      }
+      continue;
+    }
+
     // opt.tieredConfig.byModality (ver resolveTuningSelectConfig): caso real
     // Allianz 28/07 (aestheticDamageToBuilding/aestheticDamageToContent) --
     // los tramos de capital YA vienen resueltos por modalidad en el propio
@@ -684,9 +1411,37 @@ function buildEntriesForCover({
     // valor posible) como el HIRING_STATUS_EXPR (comparacion de valor, no
     // truthy) y puede anadir un FILTER_EXPR de grupo (yvig24). Sin
     // tieredConfig, se mantiene el comportamiento de siempre.
-    const optLines = opt.tieredConfig ? buildTieredOptionalCoverLines(opt, opt.tieredConfig) : buildOptionalCoverLines(opt);
+    const optLines = opt.tieredConfig ? buildTieredOptionalCoverLines(opt, opt.tieredConfig) : buildOptionalCoverLines(opt, dependencyMatches, coverId);
     const optHiringStatusExpr = opt.tieredConfig ? buildTieredHiringStatusExpr(opt, opt.tieredConfig) : (opt.hiringStatusExpr || '"OPTIONAL"');
-    const optFilterExpr = (opt.tieredConfig ? opt.tieredConfig.groupFilterExpr : null) ?? opt.filterExpr ?? null;
+    // opt.visibilityFilterExpr (formato ampliado 07/09): el `visible` del
+    // campo de tuning, o sea la condicion real bajo la que la compania ofrece
+    // esta cobertura opcional (ver runtimeVisibilityFilterExpr). Antes se
+    // ignoraba, asi que el opcional se mostraba tambien donde no aplica --
+    // caso real Zurich rcCarga, visible solo para ciertos base7Version.
+    const optFilterExpr = combineTwoFilterExprStrings(
+      (opt.tieredConfig ? opt.tieredConfig.groupFilterExpr : null) ?? opt.filterExpr ?? null,
+      opt.visibilityFilterExpr ?? null
+    );
+
+    // "MODALIDADES" rellena: la fila aplica SOLO a esas modalidades. No entra
+    // en el reparto present/missing de la cobertura, que responde a otra
+    // pregunta (donde se ofrece la cobertura entera, no el alcance de un
+    // opcional concreto) -- caso real Zurich fenomenosAtmosfericos, ofrecido
+    // solo en las modalidades 1358 y 1359.
+    if (opt.modalityIds && opt.modalityIds.length > 0) {
+      for (const modalityId of opt.modalityIds) {
+        entries.push({
+          cover_id: coverId,
+          filter_expr: optFilterExpr,
+          hiring_status_expr: optHiringStatusExpr,
+          value_expr: null,
+          modality_id: modalityId,
+          source: "optional_cover",
+          lines: optLines
+        });
+      }
+      continue;
+    }
 
     if (missingModalityIds.length === 0) {
       entries.push({
@@ -747,16 +1502,51 @@ function buildEntriesForCover({
     }
   }
 
-  const coverOverride = computeCoverOverride(entries);
+  // Acotar el contenido propio a las modalidades presentes va ANTES del
+  // reparto por marcador, no despues: cuando TODAS las presentes estan
+  // marcadas, applyOptionalMarkerToOwnContent conserva a proposito la entry
+  // unica con modality_id null (ver su cabecera), y esa entry volveria a
+  // aplicar a las modalidades "No contratable" -- la misma colision, colada
+  // por la otra rama.
+  const scoped = scopeOwnContentToPresentModalities(entries, { presentModalityIds, missingModalityIds });
+
+  // El reparto por marcador va ANTES de computeCoverOverride: cambia el
+  // hiring_status_expr y el filter_expr de las entries de contenido propio, y
+  // el override de la cobertura se calcula agregando justamente eso.
+  const withMarker = applyOptionalMarkerToOwnContent(scoped, {
+    markerModalityIds: optionalMarkerModalityIds,
+    presentModalityIds,
+    coverTuningKey,
+    markerFilterExpr: buildOwnContentMarkerFilterExpr(opcionales)
+  });
+
+  // Solo cuando la cobertura NO esta marcada "Garantía Opcional": ese camino
+  // ya ha aplicado su propia negacion (la de TODAS las opciones), y aplicar
+  // las dos dejaria el texto base sin verse nunca.
+  const withTierFilter = optionalMarkerModalityIds.length > 0
+    ? withMarker
+    : applyTierFilterToOwnContent(withMarker, buildTierOwnContentFilterExpr(opcionales, tuningDictionary));
+
+  // Va DESPUES de acotar el contenido propio (para que una entry null que ya
+  // no existe no cuente como cobertura) y ANTES de computeCoverOverride: el
+  // override de la cobertura aplica a todas las modalidades, asi que tiene
+  // que verse tambien los NOT_INCLUDED de las ausentes.
+  const withNotIncluded = ensureNotIncludedForUncoveredModalities(withTierFilter, {
+    coverId,
+    presentModalityIds,
+    missingModalityIds
+  });
+
+  const coverOverride = computeCoverOverride(withNotIncluded);
   if (coverOverride) {
-    for (const entry of entries) {
+    for (const entry of withNotIncluded) {
       if (entry.filter_expr === coverOverride.sharedCondition) {
         entry.filter_expr = null;
       }
     }
   }
 
-  const sorted = sortEntriesByModality(entries);
+  const sorted = sortEntriesByModality(withNotIncluded);
   sorted.forEach(entry => delete entry._blockIndex);
 
   return {
@@ -893,7 +1683,31 @@ function buildInsertStatements({ coverId, productCompanyId, coverOverride, entri
 }
 
 module.exports = {
+  tuningFieldValueUniverse,
+  normalizeLineForDependencyMatch,
+  findDependenciesForLineText,
+  OWN_CONTENT_SOURCES,
+  buildTierOwnContentFilterExpr,
+  applyTierFilterToOwnContent,
+  POSITIVE_MEMBERSHIP_OPERATORS,
+  NEGATIVE_MEMBERSHIP_OPERATORS,
+  mergeSameFieldMembership,
+  MARKS_SUPPRESSING_FILTER_EXPR,
+  suppressesFilterExpr,
+  COMPARISON_OPERATORS,
+  isUnsatisfiableComparisonGroup,
+  dropUnsatisfiableComparisonGroups,
   translateToSpel,
+  parseOptionalSheetList,
+  resolveTuningOptionValues,
+  buildTuningValueEqualityExpr,
+  buildTuningValueInequalityExpr,
+  buildLineTextExpr,
+  runtimeVisibilityFilterExpr,
+  buildOwnContentMarkerFilterExpr,
+  buildOptionScopedCoverLines,
+  scopeOwnContentToPresentModalities,
+  applyOptionalMarkerToOwnContent,
   combineFilterExpr,
   spelStringLiteral,
   splitBulletsFromCellText,

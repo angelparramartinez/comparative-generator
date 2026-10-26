@@ -6,15 +6,22 @@
 // (CLAUDE.md SS7), sin gastar creditos de LLM.
 //
 // A diferencia del arnes de flujo 2, este NO extrae el codigo de un workflow
-// n8n real -- el workflow de flujo 3 todavia no existe (ver plan, Fase 4).
-// Valida directamente matcher.js; cuando se construya el nodo real en n8n,
-// migrar este arnes al mismo patron de "extraer el jsCode del workflow".
+// n8n real: valida los modulos .js de este directorio, y produccion ejecuta
+// una COPIA de ese codigo pegada en cada nodo. Los workflows de flujo 3 YA
+// existen (nota anterior obsoleta, corregida el 04/09), asi que la migracion
+// al patron de "extraer el jsCode del workflow" sigue siendo deseable pero es
+// mas costosa de lo que parece: el mapeo modulo<->nodo no es 1:1. Mientras
+// tanto, el check --node-sync verifica que las dos copias no divergan.
 //
 // Flags:
 //   --matching        valida el matcher de candidatos (dependencia -> COVER_ID/bullet)
 //   --generator       valida el generador de ENTRY/LINES (traduccion SPEL,
 //                      granularidad, hoisting de condicion compartida)
 //   --tuning          valida el matcher texto-Excel -> tuning_key
+//   --ontology-catalog valida el parser que construye el catalogo de valores
+//                      de enum desde la ontologia del ramo
+//                      (ontology_value_catalog.js) -- se ejecuta contra los
+//                      .md REALES, asi que tambien vigila el dato
 //   --value-matching  valida el matcher de valor espanol -> valor enum ingles
 //                      (paso previo a generator.translateToSpel para enums)
 //   --excel-fixture   valida los adaptadores Sheet limpio -> fixture de
@@ -61,6 +68,12 @@
 // substring) ya esta implementado, pero para el LLM de DECISION del diseno de
 // Fase 4 (Coverage Match Decision Agent), no para matcher.js -- ver
 // review_assembly.js (applyGroundingGuardrail) y su check --review-assembly.
+//   --node-sync       verifica que cada modulo .js de este directorio siga
+//                      identico a la copia pegada en su nodo n8n (9 de los 10
+//                      modulos estan duplicados). Compara funcion a funcion,
+//                      cabecera de comentarios incluida, normalizando el
+//                      namespace del require. No elimina la duplicacion:
+//                      impide que derive en silencio.
 
 const path = require("path");
 const fs = require("fs");
@@ -75,6 +88,7 @@ const REVIEW_ASSEMBLY_DATASET_PATH = path.join(__dirname, "review_assembly_golde
 const RICH_TEXT_BLOCK_PARSER_DATASET_PATH = path.join(__dirname, "rich_text_block_parser_golden_dataset.json");
 const INSERT_GENERATION_DATASET_PATH = path.join(__dirname, "insert_generation_golden_dataset.json");
 const TUNING_MERGER_DATASET_PATH = path.join(__dirname, "tuning_dictionary_merger_golden_dataset.json");
+const ONTOLOGY_VALUE_CATALOG_DATASET_PATH = path.join(__dirname, "ontology_value_catalog_golden_dataset.json");
 const matcher = require("./matcher");
 const generator = require("./generator");
 const tuningMatcher = require("./tuning_matcher");
@@ -84,6 +98,7 @@ const reviewAssembly = require("./review_assembly");
 const richTextBlockParser = require("./rich_text_block_parser");
 const insertGeneration = require("./insert_generation");
 const tuningDictionaryMerger = require("./tuning_dictionary_merger");
+const ontologyValueCatalog = require("./ontology_value_catalog");
 const excelGridReader = require("./excel_grid_reader");
 const ExcelJS = require("exceljs");
 
@@ -97,6 +112,56 @@ function loadGeneratorGoldenDataset() {
 
 function loadTuningGoldenDataset() {
   return JSON.parse(fs.readFileSync(TUNING_DATASET_PATH, "utf8"));
+}
+
+function loadOntologyValueCatalogGoldenDataset() {
+  return JSON.parse(fs.readFileSync(ONTOLOGY_VALUE_CATALOG_DATASET_PATH, "utf8"));
+}
+
+// Catalogos de valores de enum construidos desde los .md REALES de
+// knowledge/ontologies/, una vez por ejecucion del arnes.
+//
+// Se leen los ficheros de verdad y no un fixture inline a proposito: asi los
+// checks --ontology-catalog y --value-matching vigilan tambien el DATO. Si
+// alguien rompe un bloque `value_aliases:` de una ontologia, o cambia un
+// `Imports:`, el arnes falla -- que es exactamente la clase de fallo que no
+// tuvo aviso el 08/09 (ver la cabecera de ontology_value_catalog.js).
+//
+// El mapa Ramo -> fichero replica el del nodo `Read Ramo Ontology File` de
+// `ontology indexing`, que es su fuente de verdad.
+const RAMO_TO_ONTOLOGY_TYPE = { Hogar: "home", Autos: "auto" };
+
+let valueCatalogsByRamoCache = null;
+
+function valueCatalogsByRamo() {
+  if (valueCatalogsByRamoCache) return valueCatalogsByRamoCache;
+  const ontologiesDir = path.join(REPO_ROOT, "knowledge", "ontologies");
+  valueCatalogsByRamoCache = {};
+  for (const [ramo, type] of Object.entries(RAMO_TO_ONTOLOGY_TYPE)) {
+    const ramoText = fs.readFileSync(path.join(ontologiesDir, `ontology-${type}.md`), "utf8");
+    // Los ficheros compartidos a leer salen del `Imports:` de la cabecera del
+    // ramo, no de una lista fija aqui -- misma cadena que produccion
+    // (Detect Imports -> Prepare Import File Paths -> Read Shared Ontology
+    // File). Escrito primero con la lista fija, y el test en negativo lo
+    // destapo: al romper el `Imports:` de Autos el catalogo seguia saliendo
+    // completo, asi que el arnes no podia ver ese fallo.
+    const sharedTexts = {};
+    for (const name of ontologyValueCatalog.parseHeaderImports(ramoText)) {
+      sharedTexts[name] = fs.readFileSync(path.join(ontologiesDir, "shared", `${name}.md`), "utf8");
+    }
+    valueCatalogsByRamoCache[ramo] = ontologyValueCatalog.buildValueCatalog(ramoText, sharedTexts);
+  }
+  return valueCatalogsByRamoCache;
+}
+
+// Ramo por defecto de un caso de golden set: Hogar, el ramo con el que se
+// escribieron todos los casos anteriores al 08/09.
+function catalogForCase(c) {
+  const catalogs = valueCatalogsByRamo();
+  const ramo = c.ramo || "Hogar";
+  const catalog = catalogs[ramo];
+  if (!catalog) throw new Error(`Caso ${c.id}: ramo desconocido '${ramo}' (esperado uno de ${Object.keys(catalogs).join(", ")}).`);
+  return catalog;
 }
 
 function loadValueMatcherGoldenDataset() {
@@ -198,6 +263,49 @@ function checkMatching(golden) {
   return failures === 0 ? 0 : 1;
 }
 
+// generator.MARKS_SUPPRESSING_FILTER_EXPR y
+// value_matcher.MARKS_EXEMPT_FROM_TRANSLATION tienen que declarar lo mismo: una
+// dependencia cuyo valor no llega nunca al SPEL tampoco debe exigir traduccion.
+// Viven en dos modulos (y dos nodos) distintos porque no se puede compartir una
+// constante entre nodos de n8n, asi que la coherencia se comprueba aqui en vez
+// de confiarse.
+function checkSuppressionMarksInSync() {
+  const suppressing = generator.MARKS_SUPPRESSING_FILTER_EXPR;
+  const exempt = valueMatcher.MARKS_EXEMPT_FROM_TRANSLATION;
+  const pass = JSON.stringify([...suppressing].sort()) === JSON.stringify([...exempt].sort());
+  console.log(`  [${pass ? "PASS" : "FAIL"}] MARKS-SYNC (generator.MARKS_SUPPRESSING_FILTER_EXPR vs value_matcher.MARKS_EXEMPT_FROM_TRANSLATION)${pass ? `: ${suppressing.join(", ")}` : ` -- generator: ${suppressing.join(", ")} | value_matcher: ${exempt.join(", ")}`}`);
+  return pass;
+}
+
+// generator.normalizeLineForDependencyMatch tiene que dar el MISMO resultado
+// que matcher.normalize: el primero empareja las lineas de la hoja de
+// opcionales con la cita de una dependencia, el segundo hace lo mismo con las
+// de la hoja de modalidades (via excel_fixture_builder.findDependenciesForText).
+// Si divergen, la misma frase recibe condicion en una hoja y no en la otra --
+// que es justo el hueco que se cerro el 08/09. Estan duplicados porque
+// generator.js es autocontenido a proposito (se copia entero al Code node).
+const NORMALIZE_SYNC_SAMPLES = [
+  "  • Remolque vehículos eléctricos.Hasta el punto de recarga para la batería",
+  "Remolque vehículos eléctricos.Hasta el punto de recarga para la batería",
+  "3.2. Asistencia en km 0 al vehículo/personas",
+  "a) Rescate",
+  "Artículo 8º Robo con franquicia",
+  "  Green: -Asesoramiento sobre el cuadro de mandos (mensajes de error)",
+  "Pérdida total 100% valor de nuevo en vehículos de hasta 3 años",
+  "",
+  "   ",
+  "ÁÉÍÓÚñÑ  ---  ***"
+];
+
+function checkNormalizeSync() {
+  const diffs = NORMALIZE_SYNC_SAMPLES.filter(
+    sample => matcher.normalize(sample) !== generator.normalizeLineForDependencyMatch(sample)
+  );
+  const pass = diffs.length === 0;
+  console.log(`  [${pass ? "PASS" : "FAIL"}] NORMALIZE-SYNC (matcher.normalize vs generator.normalizeLineForDependencyMatch)${pass ? `: ${NORMALIZE_SYNC_SAMPLES.length} muestras` : ` -- divergen en: ${diffs.map(d => JSON.stringify(d)).join(", ")}`}`);
+  return pass;
+}
+
 function checkGenerator(golden) {
   console.log("\n=== --generator ===");
   let failures = 0;
@@ -230,11 +338,40 @@ function checkGenerator(golden) {
   for (const c of golden.entry_building_cases || []) {
     total++;
     const { entries, coverOverride } = generator.buildEntriesForCover(c.input);
-    const checks = [
-      ["entry_count", entries.length, c.expected.entry_count],
-      ["cover_override_present", coverOverride != null, c.expected.cover_override_present],
-      ["entries_with_null_filter_expr_count", entries.filter(e => e.filter_expr === null).length, c.expected.entries_with_null_filter_expr_count]
-    ];
+    // Los tres primeros solo se comprueban si el caso los declara: los casos
+    // del 08/09 miran una cosa concreta (el filtro del contenido propio, o el
+    // de cada LINE de una opcional) y declarar de mas los haria fragiles a
+    // cualquier cambio no relacionado en el numero de entries.
+    const checks = [];
+    if (c.expected.entry_count !== undefined) {
+      checks.push(["entry_count", entries.length, c.expected.entry_count]);
+    }
+    if (c.expected.cover_override_present !== undefined) {
+      checks.push(["cover_override_present", coverOverride != null, c.expected.cover_override_present]);
+    }
+    if (c.expected.entries_with_null_filter_expr_count !== undefined) {
+      checks.push(["entries_with_null_filter_expr_count", entries.filter(e => e.filter_expr === null).length, c.expected.entries_with_null_filter_expr_count]);
+    }
+    // FILTER_EXPR del contenido propio (sources default/modality_bullet): con
+    // el fix de tramos del 08/09 todas esas entries comparten el mismo.
+    if (c.expected.own_content_filter_expr !== undefined) {
+      const own = entries.filter(e => generator.OWN_CONTENT_SOURCES.has(e.source));
+      const distinct = [...new Set(own.map(e => JSON.stringify(e.filter_expr)))];
+      checks.push([
+        "own_content_filter_expr",
+        distinct.length === 1 ? JSON.parse(distinct[0]) : `(${distinct.length} distintos: ${distinct.join(" | ")})`,
+        c.expected.own_content_filter_expr
+      ]);
+    }
+    // filter_expr de cada LINE de la entry de source optional_cover.
+    if (c.expected.optional_line_filter_exprs !== undefined) {
+      const opt = entries.find(e => e.source === "optional_cover");
+      checks.push([
+        "optional_line_filter_exprs",
+        JSON.stringify(opt ? opt.lines.map(l => l.filter_expr) : null),
+        JSON.stringify(c.expected.optional_line_filter_exprs)
+      ]);
+    }
     if (c.expected.first_entry_hiring_status_expr !== undefined) {
       checks.push(["first_entry_hiring_status_expr", entries[0] ? entries[0].hiring_status_expr : undefined, c.expected.first_entry_hiring_status_expr]);
     }
@@ -336,6 +473,33 @@ function checkGenerator(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected_sql_line}`}`);
   }
 
+  // Funciones puras del formato ampliado de "Coberturas opcionales" (07/09).
+  // Un solo bucle para las tres: el caso declara que funcion prueba, para no
+  // repetir tres bloques identicos.
+  const OPTIONAL_SHEET_FNS = {
+    resolveTuningOptionValues: c => generator.resolveTuningOptionValues(c.tuningFieldDef, c.optionText),
+    buildLineTextExpr: c => generator.buildLineTextExpr(c.text, c.tuningKey),
+    runtimeVisibilityFilterExpr: c => generator.runtimeVisibilityFilterExpr(c.tuningFieldDef),
+    buildTuningValueEqualityExpr: c => generator.buildTuningValueEqualityExpr(c.tuningKey, c.optionValues),
+    buildTuningValueInequalityExpr: c => generator.buildTuningValueInequalityExpr(c.tuningKey, c.optionValues),
+    buildOwnContentMarkerFilterExpr: c => generator.buildOwnContentMarkerFilterExpr(c.opcionales),
+    parseOptionalSheetList: c => generator.parseOptionalSheetList(c.text)
+  };
+  for (const c of golden.optional_sheet_format_cases || []) {
+    total++;
+    const fn = OPTIONAL_SHEET_FNS[c.fn];
+    const got = fn ? fn(c) : `FUNCION DESCONOCIDA: ${c.fn}`;
+    const pass = !!fn && JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  total++;
+  if (!checkSuppressionMarksInSync()) failures++;
+
+  total++;
+  if (!checkNormalizeSync()) failures++;
+
   console.log(`--generator: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;
 }
@@ -346,7 +510,14 @@ function checkTuning(golden) {
   let failures = 0;
   let warnings = 0;
   for (const c of golden.cases) {
-    const result = tuningMatcher.matchCoverToTuningKey(c.cover_name, tuningIndex);
+    // Un caso puede traer su PROPIO diccionario (`tuning_dictionary`) en vez
+    // de usar el compartido: los casos de otra compania no deben alterar el
+    // corpus de idf del diccionario de Generali, que es lo que puntuan los
+    // 16 casos originales (anadido 07/09 con el caso de Zurich GD-TUNE-017).
+    const index = c.tuning_dictionary
+      ? tuningMatcher.buildTuningIndex(c.tuning_dictionary)
+      : tuningIndex;
+    const result = tuningMatcher.matchCoverToTuningKey(c.cover_name, index);
     const correct = result.tuning_key === c.expected_tuning_key;
     const isKnownAmbiguousCase = c.expected_confidence !== "alta";
     const pass = correct || isKnownAmbiguousCase;
@@ -374,21 +545,30 @@ function checkValueMatching(golden) {
 
   for (const c of golden.value_match_cases || []) {
     total++;
-    const got = valueMatcher.matchEnumValue(c.risk_field, c.spanish_value);
-    const pass = got.matched === c.expected_matched && got.value === c.expected_value && got.reason === c.expected_reason;
+    const got = valueMatcher.matchEnumValue(catalogForCase(c), c.risk_field, c.spanish_value);
+    // `expected_values` solo se comprueba si el caso lo declara: es la lista
+    // completa, y el uno-a-muchos deja `value` en null a proposito.
+    const valuesOk = c.expected_values === undefined
+      || JSON.stringify(got.values) === JSON.stringify(c.expected_values);
+    const pass = got.matched === c.expected_matched && got.value === c.expected_value
+      && got.reason === c.expected_reason && valuesOk;
     if (!pass) failures++;
-    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.risk_field}="${c.spanish_value}") -- got: matched=${got.matched}, value=${got.value}, reason=${got.reason}${pass ? "" : ` | esperado: matched=${c.expected_matched}, value=${c.expected_value}, reason=${c.expected_reason}`}`);
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.risk_field}="${c.spanish_value}") -- got: matched=${got.matched}, value=${got.value}, values=${JSON.stringify(got.values)}, reason=${got.reason}${pass ? "" : ` | esperado: matched=${c.expected_matched}, value=${c.expected_value}, values=${JSON.stringify(c.expected_values)}, reason=${c.expected_reason}`}`);
   }
 
   for (const c of golden.dependency_translation_cases || []) {
     total++;
-    const got = valueMatcher.translateDependencyValue(c.dependency);
+    const got = valueMatcher.translateDependencyValue(catalogForCase(c), c.dependency);
     const gotUnmatchedRaw = got.unmatched.map(u => u.raw);
     const checks = [
       ["translated_value", JSON.stringify(got.dependency.value), JSON.stringify(c.expected_translated_value)],
       ["fully_translated", got.fullyTranslated, c.expected_fully_translated],
       ["unmatched_raw_values", JSON.stringify(gotUnmatchedRaw), JSON.stringify(c.expected_unmatched_raw_values)]
     ];
+    // El operador puede cambiar, no solo el valor: un alias que resuelve a
+    // varios valores promueve = -> IN y != -> NOT_IN. Si el caso no declara
+    // expected_operator, se exige que NO haya cambiado.
+    checks.push(["operator", got.dependency.operator, c.expected_operator ?? c.dependency.operator]);
     const mismatches = checks.filter(([, g, e]) => g !== e);
     const pass = mismatches.length === 0;
     if (!pass) failures++;
@@ -397,7 +577,7 @@ function checkValueMatching(golden) {
 
   for (const c of golden.pipeline_integration_cases || []) {
     total++;
-    const translated = valueMatcher.translateDependencyValue(c.dependency);
+    const translated = valueMatcher.translateDependencyValue(catalogForCase(c), c.dependency);
     const got = generator.translateToSpel(translated.dependency);
     const pass = got === c.expected_final_spel;
     if (!pass) failures++;
@@ -406,7 +586,7 @@ function checkValueMatching(golden) {
 
   for (const c of golden.dependency_set_translation_cases || []) {
     total++;
-    const got = valueMatcher.translateDependencies(c.dependencies);
+    const got = valueMatcher.translateDependencies(catalogForCase(c), c.dependencies);
     const checks = [
       ["dependencies_translated", JSON.stringify(got.dependencies_translated), JSON.stringify(c.expected_dependencies_translated)],
       ["fully_translated", got.fully_translated, c.expected_fully_translated]
@@ -417,7 +597,77 @@ function checkValueMatching(golden) {
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- ${mismatches.map(([k, g, e]) => `${k}: got=${g}, esperado=${e}`).join("; ")}`}`);
   }
 
+  for (const c of golden.catalog_guard_cases || []) {
+    total++;
+    let threw = false;
+    try {
+      valueMatcher.translateDependencies(c.catalog, c.dependencies);
+    } catch (err) {
+      threw = true;
+    }
+    const pass = threw === c.expected_throws;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (lanza=${threw})${pass ? "" : ` | esperado lanza=${c.expected_throws}`}`);
+  }
+
   console.log(`--value-matching: ${total - failures}/${total} casos OK`);
+  return failures === 0 ? 0 : 1;
+}
+
+// Parser ontologia del ramo -> catalogo de valores de enum. Es el check que
+// cubre el hueco del 08/09: antes ese catalogo era una constante hardcodeada
+// en value_matcher.js con los tres campos de Hogar, y nada vigilaba que un
+// ramo nuevo tuviera el suyo.
+function checkOntologyValueCatalog(golden) {
+  console.log("\n=== --ontology-catalog ===");
+  let failures = 0;
+  let total = 0;
+
+  const catalogs = valueCatalogsByRamo();
+
+  for (const c of golden.catalog_entry_cases || []) {
+    total++;
+    const got = catalogs[c.ramo] ? catalogs[c.ramo][c.risk_field] : undefined;
+    const gotNormalized = got === undefined ? null : got;
+    const pass = JSON.stringify(gotNormalized) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.ramo}/${c.risk_field})${pass ? "" : ` -- got: ${JSON.stringify(gotNormalized)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  for (const c of golden.catalog_shape_cases || []) {
+    total++;
+    const catalog = catalogs[c.ramo] || {};
+    const missing = (c.must_contain_keys || []).filter(k => !(k in catalog));
+    const unexpected = (c.must_not_contain_keys || []).filter(k => k in catalog);
+    const problems = [];
+    if (missing.length) problems.push(`faltan: ${missing.join(", ")}`);
+    if (unexpected.length) problems.push(`no deberian estar: ${unexpected.join(", ")}`);
+
+    if (c.must_equal_valid_risk_fields) {
+      const raw = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, c.must_equal_valid_risk_fields), "utf8"));
+      const expectedFields = new Set(Array.isArray(raw) ? raw : (raw.risk_fields || raw.valid_risk_fields || Object.keys(raw)));
+      const own = new Set(Object.keys(catalog));
+      const soloEnValid = [...expectedFields].filter(k => !own.has(k));
+      const soloEnCatalogo = [...own].filter(k => !expectedFields.has(k));
+      if (soloEnValid.length) problems.push(`en valid_risk_fields pero no en el catalogo: ${soloEnValid.join(", ")}`);
+      if (soloEnCatalogo.length) problems.push(`en el catalogo pero no en valid_risk_fields: ${soloEnCatalogo.join(", ")}`);
+    }
+
+    const pass = problems.length === 0;
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.ramo})${pass ? "" : ` -- ${problems.join("; ")}`}`);
+  }
+
+  for (const c of golden.parser_unit_cases || []) {
+    total++;
+    const catalog = ontologyValueCatalog.buildValueCatalog(c.ontology_text, {});
+    const got = catalog[c.risk_field] === undefined ? null : catalog[c.risk_field];
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.risk_field})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
+  }
+
+  console.log(`--ontology-catalog: ${total - failures}/${total} casos OK`);
   return failures === 0 ? 0 : 1;
 }
 
@@ -458,6 +708,14 @@ function checkExcelFixture(golden) {
     const pass = got === c.expected;
     if (!pass) failures++;
     console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description}) -- got: ${got}${pass ? "" : ` | esperado: ${c.expected}`}`);
+  }
+
+  for (const c of golden.optional_marker_modality_cases || []) {
+    total++;
+    const got = excelFixtureBuilder.optionalMarkerModalityIdsOf(c.modalities);
+    const pass = JSON.stringify(got) === JSON.stringify(c.expected);
+    if (!pass) failures++;
+    console.log(`  [${pass ? "PASS" : "FAIL"}] ${c.id} (${c.description})${pass ? "" : ` -- got: ${JSON.stringify(got)} | esperado: ${JSON.stringify(c.expected)}`}`);
   }
 
   console.log(`--excel-fixture: ${total - failures}/${total} casos OK`);
@@ -779,12 +1037,301 @@ async function checkExcelGridReader() {
   return failures === 0 ? 0 : 1;
 }
 
+// ============================================================
+// SINCRONIA MODULO <-> NODO n8n (04/09)
+// ============================================================
+//
+// A diferencia del arnes de flujo 2 -- que extrae el jsCode del workflow y por
+// tanto valida EXACTAMENTE lo que corre produccion -- este arnes valida los
+// modulos .js de este directorio, mientras que produccion ejecuta una COPIA de
+// ese codigo pegada dentro de cada nodo n8n. 9 de los 10 modulos estan
+// duplicados asi (~114 KB). El fallo que eso habilita es el peor de todos: que
+// el arnes se quede verde validando el fichero mientras produccion ejecuta
+// algo distinto.
+//
+// Medido el 04/09 antes de escribir esto: 81 funciones comparadas, 79
+// identicas byte a byte, 2 distintas SOLO por el namespace del modulo y 0
+// divergencias reales -- la disciplina de editar los dos sitios ha aguantado
+// las 9 veces que hizo falta (9 de 23 commits del area). Este chequeo no
+// elimina la duplicacion: convierte "acuerdate de editar los dos" en "el
+// arnes no te deja olvidarlo".
+//
+// La solucion estructural (generar el codigo del nodo desde los modulos con un
+// paso de build) queda pendiente y es mas costosa de lo que parece, porque el
+// mapeo modulo<->nodo NO es 1:1: "Build Excel Fixture for Matcher" tiene
+// inlineados TRES modulos, y una funcion de excel_fixture_builder.js la
+// implementa produccion en otro nodo distinto.
+const NODE_SYNC_MAP = [
+  { module: "generator.js", workflow: "coverage insert generation", node: "Generate ENTRY/LINES per Cover" },
+  { module: "matcher.js", workflow: "coverage insert generation", node: "Build Excel Fixture for Matcher" },
+  { module: "rich_text_block_parser.js", workflow: "coverage insert generation", node: "Build Excel Fixture for Matcher" },
+  {
+    module: "excel_fixture_builder.js",
+    workflow: "coverage insert generation",
+    node: "Build Excel Fixture for Matcher",
+    // Produccion resuelve el marcador "No contratable" AGUAS ARRIBA, en el
+    // nodo que limpia las celdas, no en el que construye el fixture. La
+    // funcion vive en este modulo porque es donde el arnes la prueba
+    // (marker_cases). No es una divergencia -- se verifica que el nodo
+    // declarado aqui exista y siga respaldando el concepto. Su vocabulario
+    // (la constante) vive en ese mismo nodo, asi que va declarado igual.
+    implementedElsewhere: {
+      isCoverNotOfferedMarker: "Clean covers and modalities",
+      COVER_NOT_OFFERED_MARKERS_NORMALIZED: "Clean covers and modalities"
+    }
+  },
+  { module: "review_assembly.js", workflow: "coverage insert generation", node: "Grounding Guardrail" },
+  { module: "value_matcher.js", workflow: "coverage insert generation", node: "Translate Dependency Values" },
+  { module: "ontology_value_catalog.js", workflow: "coverage insert generation", node: "Build Ontology Value Catalog" },
+  { module: "tuning_dictionary_merger.js", workflow: "coverage insert generation", node: "Merge Tuning Dictionaries" },
+  { module: "excel_grid_reader.js", workflow: "coverage insert generation", node: "Parse Coverage Excel" },
+  { module: "insert_generation.js", workflow: "coverage insert sql generation", node: "Build Insert SQL" }
+];
+
+// tuning_matcher.js NO tiene nodo espejo a proposito: ese matching lo hace un
+// LLM en produccion (agente + prompt), y el modulo solo existe para validar
+// offline el post-proceso determinista.
+const MODULES_WITHOUT_NODE = new Set(["tuning_matcher.js", "run_offline_eval.js"]);
+
+// Modulos que TODAVIA no tienen nodo espejo porque su despliegue esta
+// pendiente. Categoria distinta de MODULES_WITHOUT_NODE a proposito: aquella
+// dice "no lo tendra nunca", esta dice "le falta" -- y el check lo imprime,
+// para que no se quede aqui olvidado haciendo de excepcion permanente.
+//
+// Vacia ahora mismo, y asi deberia quedarse: ontology_value_catalog.js estuvo
+// aqui unas horas el 08/09, entre escribirlo y desplegarlo como
+// "Build Ontology Value Catalog".
+const MODULES_PENDING_NODE = new Set([]);
+
+// Los modulos se llaman entre si con el namespace del require
+// (generator.computeCoverOverride(...)); dentro del nodo todo vive en un unico
+// ambito plano, asi que la misma llamada es directa. Consecuencia inevitable
+// del empaquetado, no un cambio de comportamiento: se normaliza antes de
+// comparar.
+const MODULE_NAMESPACES = [
+  "generator", "matcher", "richTextBlockParser", "excelFixtureBuilder",
+  "reviewAssembly", "valueMatcher", "insertGeneration", "tuningDictionaryMerger",
+  "excelGridReader", "tuningMatcher"
+];
+
+// Extrae cada "function nombre(...)" de nivel superior emparejando llaves, MAS
+// el bloque de comentarios "//" contiguo que la precede. Incluir la cabecera de
+// comentarios no es un extra: en este proyecto es donde vive el razonamiento y
+// los casos reales que motivaron cada regla, asi que un comentario actualizado
+// en un solo lado tambien es una divergencia que interesa ver.
+// (Escrito primero sin esto, y el propio test en negativo lo destapo: una
+// divergencia de solo comentario pasaba desapercibida.)
+function extractTopLevelFunctions(source) {
+  const found = {};
+  const declaration = /^function ([A-Za-z0-9_]+)\s*\(/gm;
+  let match;
+
+  while ((match = declaration.exec(source)) !== null) {
+    // La llave del CUERPO es la primera despues de cerrar la lista de
+    // parametros, no el primer "{" del texto: con un parametro
+    // desestructurado (`function f(entries, { a, b })`) ese primer "{" es el
+    // de la desestructuracion, y balancear desde ahi cortaba la funcion en la
+    // propia firma. Agujero real del check destapado el 07/09 al propagar los
+    // cambios a los nodos: de buildEntriesForCover (>4.000 caracteres) se
+    // comparaban solo 286 -- su CUERPO nunca se habia comparado.
+    let paren = source.indexOf("(", match.index);
+    let parenDepth = 0;
+    while (paren < source.length) {
+      if (source[paren] === "(") parenDepth++;
+      else if (source[paren] === ")") {
+        parenDepth--;
+        if (parenDepth === 0) break;
+      }
+      paren++;
+    }
+    const open = source.indexOf("{", paren);
+    if (open === -1) continue;
+
+    let depth = 0;
+    let cursor = open;
+    while (cursor < source.length) {
+      if (source[cursor] === "{") depth++;
+      else if (source[cursor] === "}") {
+        depth--;
+        if (depth === 0) break;
+      }
+      cursor++;
+    }
+    // Camina hacia atras por las lineas de comentario "//" contiguas.
+    let start = match.index;
+    const before = source.slice(0, match.index).split("\n");
+    let line = before.length - 2;
+    while (line >= 0 && before[line].trim().startsWith("//")) {
+      start -= before[line].length + 1;
+      line--;
+    }
+
+    found[match[1]] = source.slice(start, cursor + 1);
+  }
+
+  return found;
+}
+
+// Agujero real del check, destapado el 07/09 al cambiar
+// TUNING_NOT_CONTRACTED_LABELS solo en generator.js: --node-sync daba 0
+// divergencias porque solo comparaba FUNCIONES, y varias reglas de negocio de
+// estos modulos viven en constantes de nivel superior (vocabularios,
+// patrones), no en funciones. Se excluyen los `const ... = require(...)`: el
+// modulo los necesita y el nodo no (todo vive en un ambito plano), asi que
+// esa diferencia es estructural y esperada, no una divergencia.
+function extractTopLevelConstants(source) {
+  const found = {};
+  const declaration = /^const ([A-Z][A-Z0-9_]*)\s*=/gm;
+  let match;
+
+  while ((match = declaration.exec(source)) !== null) {
+    // Avanza hasta el ";" de cierre con profundidad 0, saltando el contenido
+    // de comillas y de literales de expresion regular.
+    let cursor = declaration.lastIndex;
+    let depth = 0;
+    let quote = null;
+    while (cursor < source.length) {
+      const ch = source[cursor];
+      if (quote) {
+        if (ch === "\\") cursor++;
+        else if (ch === quote) quote = null;
+      } else if (ch === '"' || ch === "'" || ch === "`" || ch === "/") {
+        if (ch !== "/" || /[=([,:]\s*$/.test(source.slice(Math.max(0, cursor - 12), cursor))) quote = ch;
+      } else if (ch === "(" || ch === "[" || ch === "{") depth++;
+      else if (ch === ")" || ch === "]" || ch === "}") depth--;
+      else if (ch === ";" && depth === 0) break;
+      cursor++;
+    }
+
+    const body = source.slice(match.index, cursor + 1);
+    if (/\brequire\s*\(/.test(body)) continue;
+
+    let start = match.index;
+    const before = source.slice(0, match.index).split("\n");
+    let line = before.length - 2;
+    while (line >= 0 && before[line].trim().startsWith("//")) {
+      start -= before[line].length + 1;
+      line--;
+    }
+
+    found[match[1]] = source.slice(start, cursor + 1);
+  }
+
+  return found;
+}
+
+function normalizeFunctionText(text) {
+  let normalized = text.replace(/\s+/g, " ").trim();
+  for (const namespace of MODULE_NAMESPACES) {
+    normalized = normalized.split(`${namespace}.`).join("");
+  }
+  return normalized;
+}
+
+function checkNodeSync() {
+  console.log("\n=== Check: sincronia modulo .js <-> nodo n8n ===");
+
+  const workflowCache = {};
+  const nodeCodeOf = (workflowName, nodeName) => {
+    if (!(workflowName in workflowCache)) {
+      const file = path.join(REPO_ROOT, "n8n", "workflows", `${workflowName}.json`);
+      workflowCache[workflowName] = fs.existsSync(file)
+        ? JSON.parse(fs.readFileSync(file, "utf8"))
+        : null;
+    }
+    const workflow = workflowCache[workflowName];
+    if (!workflow) return null;
+    const node = (workflow.nodes || []).find(n => n.name === nodeName);
+    return node ? (node.parameters || {}).jsCode || null : null;
+  };
+
+  let failures = 0;
+  let comparadas = 0;
+
+  for (const entry of NODE_SYNC_MAP) {
+    const nodeCode = nodeCodeOf(entry.workflow, entry.node);
+
+    if (!nodeCode) {
+      failures++;
+      console.log(`  [FAIL] ${entry.module}: no se encontro el nodo '${entry.node}' en '${entry.workflow}'`);
+      continue;
+    }
+
+    const fileSource = fs.readFileSync(path.join(__dirname, entry.module), "utf8");
+    const fileFunctions = {
+      ...extractTopLevelFunctions(fileSource),
+      ...extractTopLevelConstants(fileSource)
+    };
+    const nodeFunctions = {
+      ...extractTopLevelFunctions(nodeCode),
+      ...extractTopLevelConstants(nodeCode)
+    };
+
+    const divergentes = [];
+    const ausentes = [];
+
+    for (const [name, text] of Object.entries(fileFunctions)) {
+      const elsewhere = (entry.implementedElsewhere || {})[name];
+
+      if (elsewhere) {
+        if (!nodeCodeOf(entry.workflow, elsewhere)) {
+          ausentes.push(`${name} (declarada como implementada en '${elsewhere}', nodo que ya no existe)`);
+        }
+        continue;
+      }
+
+      comparadas++;
+
+      if (!(name in nodeFunctions)) {
+        ausentes.push(name);
+        continue;
+      }
+
+      if (normalizeFunctionText(text) !== normalizeFunctionText(nodeFunctions[name])) {
+        divergentes.push(name);
+      }
+    }
+
+    const ok = divergentes.length === 0 && ausentes.length === 0;
+    if (!ok) failures++;
+
+    let detalle = `${Object.keys(fileFunctions).length} funciones/constantes`;
+    if (divergentes.length) detalle += ` | DIVERGEN: ${divergentes.join(", ")}`;
+    if (ausentes.length) detalle += ` | FALTAN en el nodo: ${ausentes.join(", ")}`;
+
+    console.log(`  [${ok ? "PASS" : "FAIL"}] ${entry.module} <-> '${entry.node}': ${detalle}`);
+  }
+
+  // Que ningun modulo nuevo se quede fuera del mapa sin que nadie se entere.
+  const mapeados = new Set(NODE_SYNC_MAP.map(e => e.module));
+  const sinClasificar = fs.readdirSync(__dirname)
+    .filter(f => f.endsWith(".js"))
+    .filter(f => !mapeados.has(f) && !MODULES_WITHOUT_NODE.has(f) && !MODULES_PENDING_NODE.has(f));
+
+  if (sinClasificar.length > 0) {
+    failures++;
+    console.log(`  [FAIL] modulos sin entrada en NODE_SYNC_MAP, MODULES_WITHOUT_NODE ni MODULES_PENDING_NODE: ${sinClasificar.join(", ")} -- anadirlos a uno de los tres`);
+  } else {
+    console.log(`  [PASS] todos los modulos estan clasificados (${mapeados.size} con nodo espejo, ${MODULES_WITHOUT_NODE.size} sin nodo a proposito, ${MODULES_PENDING_NODE.size} pendientes de desplegar)`);
+  }
+
+  // Los pendientes se imprimen SIEMPRE, aunque no fallen: una excepcion que no
+  // se ve es una excepcion que se queda para siempre.
+  if (MODULES_PENDING_NODE.size > 0) {
+    console.log(`  [INFO] pendientes de nodo espejo (su codigo aun no corre en produccion): ${[...MODULES_PENDING_NODE].join(", ")}`);
+  }
+
+  console.log(`--node-sync: ${comparadas} funciones/constantes comparadas, ${failures === 0 ? "0 divergencias" : failures + " modulo(s) con problemas"}`);
+  return failures === 0 ? 0 : 1;
+}
+
 async function main() {
   const args = process.argv.slice(2);
   const runAll = args.length === 0;
   const golden = loadGoldenDataset();
   const generatorGolden = loadGeneratorGoldenDataset();
   const tuningGolden = loadTuningGoldenDataset();
+  const ontologyValueCatalogGolden = loadOntologyValueCatalogGoldenDataset();
   const valueMatcherGolden = loadValueMatcherGoldenDataset();
   const excelFixtureGolden = loadExcelFixtureGoldenDataset();
   const reviewAssemblyGolden = loadReviewAssemblyGoldenDataset();
@@ -801,6 +1348,9 @@ async function main() {
   }
   if (runAll || args.includes("--tuning")) {
     exitCode = Math.max(exitCode, checkTuning(tuningGolden));
+  }
+  if (runAll || args.includes("--ontology-catalog")) {
+    exitCode = Math.max(exitCode, checkOntologyValueCatalog(ontologyValueCatalogGolden));
   }
   if (runAll || args.includes("--value-matching")) {
     exitCode = Math.max(exitCode, checkValueMatching(valueMatcherGolden));
@@ -822,6 +1372,9 @@ async function main() {
   }
   if (runAll || args.includes("--excel-grid-reader")) {
     exitCode = Math.max(exitCode, await checkExcelGridReader());
+  }
+  if (runAll || args.includes("--node-sync")) {
+    exitCode = Math.max(exitCode, checkNodeSync());
   }
   process.exit(exitCode);
 }

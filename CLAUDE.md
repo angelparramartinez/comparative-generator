@@ -92,7 +92,11 @@ Tres flujos:
 
 1. **`ontology indexing`**: parsea `knowledge/ontologies/*.md` (nodo `Ontology
    Splitter`) e indexa cada concepto en Qdrant (nodo `Build Qdrant Point` +
-   `Upsert en Qdrant`), colección `insurance_ontology`. Incluye ya el campo
+   `Upsert en Qdrant`), en una colección **por ramo**:
+   `insurance_ontology_auto` e `insurance_ontology_home` (comprobado en Qdrant
+   el 04/09 — antes aquí decía `insurance_ontology` a secas, que ya no existe;
+   el aislamiento por ramo se introdujo con el rediseño de la indexación del
+   21/08). Incluye ya el campo
    `negative_aliases` (ver 5.3).
 2. **`coverage rules extraction GGCC`** (foco del trabajo hecho hasta ahora):
    extrae del condicionado las dependencias de cada cobertura respecto a los
@@ -192,6 +196,157 @@ On form submission → Convert → ast walker → cleanup → Hierarchy Builder
   `ungrounded_dependencies` y sus contadores agregados. `source_text` se
   reconstruye como `chunks.map(c => c.text).join("\n\n")` — no es el texto
   original del PDF tal cual, es la unión de los chunks ya procesados.
+
+### 4.2 Catálogo de marcas y rechazos de una `coverage dependency`
+
+`Coverage Dependency Risk Field Guardrail` usa **dos mecanismos distintos**, y
+conviene no confundirlos:
+
+- **Marcas** (11): banderas que viajan **dentro** de la dependencia, en
+  `coverage_dependencies`. Nunca la quitan — son visibilidad, no bloqueo.
+- **Rechazos** (18 motivos): la dependencia sale de `coverage_dependencies` y
+  va a `rejected_dependencies` con su `rejection_reason`. Nunca se descarta
+  nada en silencio.
+
+Cada marca tiene además su lista agregada `<marca>_dependencies` en el
+artefacto, con su contador `total_<marca>_dependencies` en el contrato.
+
+**Las 11 marcas, agrupadas por la pregunta que responden:**
+
+*Cómo se obtuvo la dependencia (no dicen nada de su contenido)*
+
+| Marca | Para qué |
+|---|---|
+| `ungrounded` | El `risk_field` es válido pero no estaba entre los candidatos que recibió el LLM en esa llamada |
+| `unverified_evidence` | La `evidence` no es cita literal del `source_text` — evita que cite el `coverage_context` en vez del cuerpo |
+
+> **`ungrounded` NO es un indicador de calidad.** Significa "este campo no
+> estaba entre los candidatos de esa llamada", y es sensible al troceo y al
+> tope de 5 candidatos por chunk. En la ronda del 04/09 hay dependencias
+> `ungrounded` perfectamente correctas. **No usarlo como señal en la revisión
+> manual.**
+
+*"Esto no es una condición de inclusión"* (bien formada, pero responde a otra pregunta)
+
+| Marca | Guardrail |
+|---|---|
+| `transversal_chapter` | v5 / v23 — vive en un capítulo de glosario o definiciones |
+| `coverage_scope_definition` | v8 — describe a quién o qué cubre la garantía |
+| `procedural_instruction` | v6 / v21b — instrucción operativa, no condición |
+| `percentage_indemnification` | v17 / v24 — escala o tabla de valoración: decide el importe |
+| `policy_admission_criteria` | v16 / v20 — requisito de admisión en la **póliza** |
+| `premium_calculation_rule` | v21 — cálculo de prima, bonificación o recargo |
+
+*"Sí es condición, pero está mal expresada"*
+
+| Marca | Guardrail |
+|---|---|
+| `inconsistent_figure_selection` | v12 — el mismo campo base sobre más de una figura de Person en la misma unidad |
+| `category_expressed_as_type` | v29a — enumera subtipos donde el texto delimitaba una categoría entera |
+
+*"Es correcta, pero no aporta nada"*
+
+| Marca | Guardrail |
+|---|---|
+| `vacuous_for_ramo` | v29b — cierta para todo el ramo; el `FILTER_EXPR` debe omitirse |
+
+**Los 18 motivos de rechazo**: `risk_field_not_in_ontology_catalog`,
+`operator_incompatible_with_data_type`,
+`value_type_incompatible_with_data_type`,
+`date_field_used_with_relative_duration_value`, `list_field_used_as_scalar`,
+`driving_licenses_used_as_scalar`, `engine_field_invalid_value`,
+`vehicle_type_field_invalid_value`, `vehicle_category_field_invalid_value`,
+`vehicle_category_out_of_ramo_scope`,
+`duration_field_used_as_existence_check`,
+`age_threshold_implausible_for_figure`, `figure_keyword_mismatch`,
+`duplicate_figure_without_distinction`, `duplicate_dependency_in_unit`,
+`person_weight_field_for_non_person_evidence`,
+`trailer_scope_extension_not_condition`, `undeclared_person_at_claim_time`.
+
+**Quién lee las marcas**: el `Coverage Match Decision Agent` de
+`coverage insert generation` lee las 11. Su esquema de salida es cerrado
+(`additionalProperties: false`), así que solo puede reaccionar vía `confidence`
+y `reasoning`. Y **tres** de ellas además **cambian el SQL**:
+`combineFilterExpr` (en `generator.js` y en su nodo espejo) omite del
+`FILTER_EXPR` las dependencias marcadas con cualquiera de las marcas de
+`MARKS_SUPPRESSING_FILTER_EXPR`:
+
+- `vacuous_for_ramo` (v29b, desde el 04/09): la condición es cierta para todo
+  el ramo, así que el filtro no discrimina nada.
+- `category_expressed_as_type` (v29a, desde el 08/09): la dependencia enumera
+  subtipos donde el texto delimitaba una categoría entera, así que el filtro
+  sería **restrictivo y falso** — más estrecho que el condicionado. Caso real:
+  Zurich `su_00071`, donde de la misma frase ("turismos de uso particular o
+  furgonetas de transporte propio, cuyo PMA sea menor de 3.500 kg", que es la
+  categoría AUTOS completa) salen las dos marcas, una en cada dependencia.
+- `percentage_indemnification` (v17/v24, desde el 10/09): la dependencia sale
+  de una **escala de valoración** — decide el importe, no la inclusión, que es
+  su propia definición. Caso real: Zurich `su_00092`, una tabla de tramos de
+  antigüedad de la que salen 5 dependencias sobre el mismo campo; el AND
+  (correcto para rangos) daba `registrationYears <= 2 && >= 3 && <= 5 && <= 3
+  && >= 4`, **insatisfiable**, y dos LINES de la cobertura 13 dejaban de
+  renderizarse. Hay 5 unidades con esa forma (`su_00071`/`77`/`82`/`86`/`92`),
+  así que la exposición era 5 veces la observada: en la ejecución 407 solo una
+  llegó a matchear, y en la 406 ninguna — el `Coverage Match Decision Agent`
+  no es determinista.
+
+Esas mismas tres marcas exoneran de traducir el valor en
+`value_matcher.js` (`MARKS_EXEMPT_FROM_TRANSLATION`): si el valor no llega
+nunca al SPEL, exigirle vocabulario solo produce `needs_review` falsos. Las dos
+listas viven en módulos (y nodos) distintos porque n8n no permite compartir una
+constante entre nodos, así que el arnés comprueba que coincidan (`--generator`,
+caso `MARKS-SYNC`).
+
+**Red de seguridad, independiente de las marcas** (10/09): `combineFilterExpr`
+descarta además todo grupo de comparaciones numéricas sobre el **mismo campo**
+cuya intersección sea vacía (`dropUnsatisfiableComparisonGroups`). Mismo
+razonamiento autoverificable que la regla de negación de tramos del 08/09: un
+AND insatisfacible no expresa ninguna condición, y emitirlo es el peor
+resultado posible — la línea desaparece de la comparativa en silencio, más
+difícil de detectar que una línea que sobra. Existe porque la marca no puede
+ser la única defensa: cualquier unidad futura que enumere umbrales del mismo
+campo **sin traer marca** cae en lo mismo. Es deliberadamente estrecho (solo
+grupos de 2+ dependencias, todas con operador `>`/`>=`/`<`/`<=` y valor
+numérico; basta un `=`, un `IN` o un valor no numérico para no opinar), y
+descarta solo el grupo contradictorio, no el `FILTER_EXPR` entero. Los dos
+mecanismos se cubren mutuamente: sabotear la marca deja que la red atrape
+`su_00092`, y al contrario.
+
+> **Trampa a recordar** (ver 5.11): *una marca que nadie lee no hace nada.*
+> `transversal_chapter` estuvo semanas sin efecto porque
+> `coverage insert generation` no la leía, y
+> `vacuous_for_ramo`/`category_expressed_as_type` repitieron el patrón el
+> 04/09, y `percentage_indemnification` otra vez el 10/09. **Al crear una
+> marca nueva, cablearla en `coverage insert generation` en el mismo
+> trabajo.**
+>
+> Corolario descubierto el 08/09, y peor de detectar: *una marca sin cablear
+> puede estar acertando por accidente.* `category_expressed_as_type` parecía
+> inofensiva porque su dependencia se caía sola — `base7Type.id` no tenía
+> `value_aliases`, así que el valor no traducía. Al dar de alta ese vocabulario
+> (legítimo: "furgoneta" es un tipo real y aparece a secas en dependencias de
+> varias compañías) el accidente desaparece y el filtro falso aparecería.
+> **Antes de añadir vocabulario a una ontología, mirar qué marcas traen las
+> dependencias que empezarán a traducir.**
+>
+> Segundo corolario, del 10/09: *el no determinismo del
+> `Coverage Match Decision Agent` esconde estos defectos, así que una
+> ejecución limpia no es prueba de nada.* `percentage_indemnification` llevaba
+> sin cablear desde su creación y no se vio porque las 5 unidades afectadas
+> quedaban en `unmatched` — hasta que la 407 matcheó una. **Al revisar un
+> draft, mirar también qué unidades quedaron sin matchear y qué producirían si
+> matchearan**, que es una comprobación offline de un minuto contra el
+> artefacto.
+
+**Dos incoherencias estructurales reales, para no tropezar:**
+
+1. `person_field_mismatch_dependencies` es la **única** lista cuyo contenido
+   NO está en `coverage_dependencies`: va emparejada con el rechazo duro de
+   v22 y existe para no perder el motivo concreto. Si se lee esperando
+   dependencias aceptadas, confunde.
+2. La bandera se llama `coverage_scope_definition` pero su lista es
+   `coverage_scope_dependencies` (herencia de v8). Todas las demás coinciden
+   en nombre.
 
 ## 5. Historial de mejoras aplicadas
 
@@ -426,11 +581,25 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
    mayúsculas/acentos ya no afecta al matcher de valor enum (normaliza antes de
    comparar); sigue sin resolver la preferencia `IN` de 1 elemento vs. `=`
    (ambas formas son equivalentes en SPEL, no bloqueante).
-5. **[Opcional, menor]** Preservar separadores de bullet/salto de línea en
+5. **[Posible mejora, sin decidir — 03/09]** Señal `limit_selection` para
+   flujo 3: hay condiciones que no deciden si una cobertura está incluida,
+   sino **qué importe/límite aplica** (caso real: Zurich `su_00039`,
+   "límite de 450 € para ciclomotores, motocicletas y turismos; 900 € para
+   el resto"). El usuario confirmó (03/09) que son un límite, no una
+   condición de inclusión, y que serían candidatas a `VALUE_EXPR`, pero
+   **no está decidido si merece la pena abordarlo**. Diseño esbozado: marca
+   de visibilidad nueva en el guardrail (la dependencia se conserva
+   íntegra, no se rechaza) + el prompt del `Coverage Match Decision Agent`
+   la lee como "esto no decide la inclusión; es candidata a `VALUE_EXPR` o
+   a partir la cobertura en varios `ENTRY` con distinto importe". Antes de
+   implementarla habría que medir el vocabulario candidato ("límite de
+   N €", "hasta un límite de", "con un máximo de") sobre las ejecuciones
+   reales, igual que se hizo con los patrones 1, 2 y 4.
+6. **[Opcional, menor]** Preservar separadores de bullet/salto de línea en
    `Semantic Assembler` para que `Rule Chunker` pueda subdividir mejor prosa con
    listas largas (ver 5.9) — solo si aparecen más casos como `su_00196` que lo
    necesiten de verdad.
-6. **[Pendiente]** Variante "campo equivocado" del mismo antipatrón resuelto
+7. **[Pendiente]** Variante "campo equivocado" del mismo antipatrón resuelto
    en 5.11: `GD-HALLUC-003`/`004` (Generali) son casos donde SÍ existe una
    condición real (p. ej. "vivienda principal o secundaria"), pero el LLM
    elige un `risk_field` semánticamente incorrecto (`content`, un capital, en
@@ -439,7 +608,7 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
    `article`/`coverage_path` ya fiable (5.10) probablemente ayude igual que
    en 5.11, pero la solución no es la misma (no es un capítulo transversal,
    es una garantía concreta con el campo mal elegido).
-7. **[Pendiente, menor]** `su_00013` (Allianz): una frase de la sección
+8. **[Pendiente, menor]** `su_00013` (Allianz): una frase de la sección
    general de "Asegurado"/"Definiciones" aparece intercalada dentro del
    párrafo de la garantía "Acción del agua" (confirmado leyendo el
    `source_text` completo — no es un problema de interpretación del LLM,
@@ -473,6 +642,11 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
   admite `executionOrder` (rechaza `binaryMode` y otros campos que sí trae el
   export completo). Verificar siempre con un segundo `GET` tras el `PUT` que el
   código desplegado coincide byte a byte con el local.
+  Desde la 2.x, si el workflow está **publicado**, el `PUT` lo **republica
+  automáticamente**; se evita con el query param `publishIfActive=false`, que
+  guarda el cambio como borrador sobre la versión publicada. Con los workflows de
+  este proyecto (todos despublicados, se lanzan a mano) no aplica, pero sí en
+  cuanto alguno se deje publicado de forma permanente.
 - **Acceso a n8n**: vía su API REST pública (`X-N8N-API-KEY`), no vía MCP — no hay
   conector oficial de n8n en el directorio de Anthropic a día de hoy. Variables de
   entorno esperadas:
@@ -482,11 +656,37 @@ el coste real, a cambio de asumir el riesgo de perder algún caso raro.
   ```
   **Ya están rellenas en `.env` en la raíz del proyecto** (gitignored, no commitear).
   Antes de pedirlas al usuario, cargar con `set -a; source .env; set +a`.
-  Nota: la API pública de n8n permite leer/actualizar workflows completos y lanzar
-  ejecuciones, pero no parece tener una operación de "ejecutar solo un nodo" — eso
-  sigue siendo función de la UI (pin data). Confirmar en
-  `docs.n8n.io/connect/n8n-api/api-reference` si hace falta más granularidad.
-- **Ejecución del flujo**: No debes ejecutar el flujo de n8n en ningún caso. Cuando sea necesario probar, avísame y lo ejecutaré yo manualmente. Después podrás leer el resultado si es necesario. Esta regla es independiente de cuánta autonomía se te dé para el resto de pasos (editar ficheros, desplegar por API, ejecutar el arnés offline) — nunca se extiende a disparar una ejecución real.
+  Nota: la API pública permite leer/actualizar workflows completos, pero **no**
+  tiene operación de "ejecutar solo un nodo" — eso sigue siendo función de la UI
+  (pin data).
+- **Ejecutar un workflow por API (comprobado en n8n 2.37.9)**: no existe endpoint
+  `/run` ni `/execute` (devuelven 405), y `/executions/{id}/retry` solo admite
+  ejecuciones **fallidas**. La vía que funciona es disparar el webhook del
+  formulario:
+  1. **Publicar** el workflow — `POST /api/v1/workflows/{id}/publish`. Los cuatro
+     workflows de este proyecto viven en `active=false`, así que este paso hace
+     falta siempre. En la 2.x `publish`/`unpublish` son los endpoints buenos;
+     `activate`/`deactivate` siguen respondiendo pero están marcados como
+     deprecated en el OpenAPI del propio n8n.
+  2. **POST multipart** a `http://<host>:<puerto>/form/{webhookId}` — el
+     `webhookId` está en el nodo `formTrigger` del JSON del workflow. Los campos
+     se llaman **`field-0`, `field-1`, ...** por el **orden** de
+     `formFields.values`, tanto los de texto como los ficheros (así los lee
+     `prepareFormReturnItem`, en `nodes/Form/utils/utils.js` de la imagen).
+     Ejemplo real: `-F "field-0=Hogar" -F "field-1=@condicionado.pdf"`.
+  3. Responde `{"status":200}` **al instante** y ejecuta en background.
+  4. **Despublicar** al terminar (`/unpublish`), para dejar los workflows como
+     estaban.
+
+  **Trampa que cuesta un rato si no se sabe**: `GET /api/v1/executions` **no
+  lista las ejecuciones en curso** por defecto, así que tras un POST correcto
+  parece que no ha pasado nada. Hay que pedir `?status=running`, o ir directo a
+  `GET /api/v1/executions/{id}`.
+
+  Ojo también con el arranque en frío: tras reiniciar los contenedores, la
+  primera conversión de **Docling tarda ~177 s** (recarga de modelos) frente a
+  los ~2 min de una ejecución completa en caliente. No es un cuelgue.
+- **Ejecución del flujo (relajada el 31/08)**: puedes ejecutar un flujo de n8n (vía API) **solo cuando el usuario te lo pida explícitamente en ese momento** — nunca de forma autónoma o proactiva, ni siquiera dentro de una fase ya aprobada para otros pasos (editar ficheros, desplegar por API, ejecutar el arnés offline). Si crees que hace falta una ejecución real para validar algo, propónlo y espera confirmación explícita antes de lanzarla — no asumas que una autorización pasada para otro paso cubre también esto. Motivo del cambio (indicado por el usuario): los flujos ya están más estables y los inputs de prueba son más sencillos que al principio del proyecto.
 
 ## 8. Glosario rápido
 

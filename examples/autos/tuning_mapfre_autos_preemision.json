@@ -1,0 +1,50 @@
+{
+    "chargersToInsureBreakdown": {
+        "section": "Datos del cargador",
+        "label": "tuning.mapfre.chargersToInsure",
+        "type": "array",
+        "component": "list",
+        "minItems": 0,
+        "maxItems": 2,
+        "visible": "/insurance.risk?.base7Version?.engine?.id != null && (insurance.risk?.base7Version?.engine?.id==3 || insurance.risk?.base7Version?.engine?.id==11 || insurance.risk?.base7Version?.engine?.id==12 || insurance.risk?.base7Version?.engine?.id==9 || insurance.risk?.base7Version?.engine?.id==10)/",
+        "items": {
+            "brand": {
+                "section": "/'Cargador '/",
+                "label": "Marca",
+                "type": "string",
+                "component": "input",
+                "required": true,
+                "visible": true,
+                "maxLength": 50
+            },
+            "model": {
+                "section": "/'Cargador '/",
+                "label": "Modelo",
+                "type": "string",
+                "component": "input",
+                "required": true,
+                "visible": true,
+                "maxLength": 80
+            },
+            "serialNumber": {
+                "section": "/'Cargador '/",
+                "label": "Número de serie",
+                "type": "string",
+                "component": "input",
+                "required": true,
+                "visible": true,
+                "maxLength": 50
+            },
+            "address": {
+                "section": "/'Cargador '/",
+                "label": "Datos ubicación cargador",
+                "type": "PostalAddress",
+                "component": "AddressEditor",
+                "required": true,
+                "visible": true,
+                "value": null,
+                "fullAddress": true
+            }
+        }
+    }
+}

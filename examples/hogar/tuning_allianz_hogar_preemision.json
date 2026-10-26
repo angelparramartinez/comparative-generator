@@ -1,0 +1,181 @@
+{
+    "mesesVencimiento": {
+        "section": "section.additionalData",
+        "label": "Fecha de vencimiento",
+        "type": "string",
+        "component": "select",
+        "required": true,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Día 1 del mes actual",
+                        "value": "12"
+                    },
+                    {
+                        "label": "Día 1 del mes siguiente",
+                        "value": "13"
+                    }
+                ]
+            }
+        ],
+        "value": "12"
+    },
+    "specialObjectsOver12000": {
+        "section": "section.additionalData",
+        "label": "¿Objetos especiales con valor unitario superior a 12.000€?",
+        "type": "boolean",
+        "component": "radio",
+        "required": "/insurance.risk.specialValueObjectsLimit >= 12000/",
+        "visible": "/insurance.risk.specialValueObjectsLimit >= 12000/",
+        "value": null
+    },
+    "jewelryInOver7500": {
+        "section": "section.additionalData",
+        "label": "¿Joyas con valor unitario superior a 7500€ dentro de caja fuerte?",
+        "type": "boolean",
+        "component": "radio",
+        "required": "/insurance.risk.jewelsInSafeBoxLimit>=7500/",
+        "visible": "/insurance.risk.jewelsInSafeBoxLimit>=7500/",
+        "value": null
+    },
+    "jewelryOutOver7500": {
+        "section": "section.additionalData",
+        "label": "¿Joyas con valor unitario superior a 7500€ fuera de caja fuerte?",
+        "type": "boolean",
+        "component": "radio",
+        "required": "/insurance.risk.jewelsOutSafeBoxLimit>=7500/",
+        "visible": "/insurance.risk.jewelsOutSafeBoxLimit>=7500/",
+        "value": null
+    },
+    "AttachedFloorAreaSelect": {
+        "section": "section.additionalData",
+        "label": "¿La vivienda dispone de anexos?",
+        "type": "boolean",
+        "component": "radio",
+        "required": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+        "visible": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+        "enabled": false,
+        "help": "/tuning.allianz.AttachedFloorAreaSelectHelp/",
+        "value": false
+    },
+    "AttachedFloorArea": {
+        "section": "section.additionalData",
+        "label": "Anexos (m2)",
+        "type": "number",
+        "component": "number",
+        "step": 1,
+        "required": "/tuning?.AttachedFloorAreaSelect/",
+        "visible": "/tuning?.AttachedFloorAreaSelect/",
+        "enabled": false,
+        "help": "/tuning.allianz.AttachedFloorAreaSelectHelp/",
+        "min": 0,
+        "max": 9999,
+        "value": 0
+    },
+    "aestheticDamageToBuilding": {
+        "section": "section.allianz.covers",
+        "label": "Daños estéticos edificación",
+        "type": "string",
+        "component": "select",
+        "required": "/${modalityId}!=5105/",
+        "visible": "/${modalityId}!=5105/",
+        "options": [
+            {
+                "condition": "/${modalityId}==5106/",
+                "items": [
+                    {
+                        "label": "1.500€",
+                        "value": "1"
+                    },
+                    {
+                        "label": "3.000€",
+                        "value": "2"
+                    }
+                ]
+            },
+            {
+                "condition": "/${modalityId}==5107/",
+                "items": [
+                    {
+                        "label": "3.000€",
+                        "value": "1"
+                    },
+                    {
+                        "label": "6.000€",
+                        "value": "2"
+                    },
+                    {
+                        "label": "9.000€",
+                        "value": "3"
+                    }
+                ]
+            }
+        ],
+        "value": "1"
+    },
+    "aestheticDamageToContent": {
+        "section": "section.allianz.covers",
+        "label": "Daños estéticos contenido",
+        "type": "string",
+        "component": "select",
+        "required": "/${modalityId}!=5105/",
+        "visible": "/${modalityId}!=5105/",
+        "options": [
+            {
+                "condition": "/${modalityId}==5106/",
+                "items": [
+                    {
+                        "label": "750€",
+                        "value": "1"
+                    },
+                    {
+                        "label": "1.500€",
+                        "value": "2"
+                    }
+                ]
+            },
+            {
+                "condition": "/${modalityId}==5107/",
+                "items": [
+                    {
+                        "label": "1.500€",
+                        "value": "1"
+                    },
+                    {
+                        "label": "3.000€",
+                        "value": "2"
+                    }
+                ]
+            }
+        ],
+        "value": "1"
+    },
+    "solarPanels": {
+        "section": "section.allianz.covers",
+        "label": "Placas solares",
+        "type": "string",
+        "component": "select",
+        "required": "/${modalityId}!=5105/",
+        "visible": "/${modalityId}!=5105/",
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "No",
+                        "value": "N"
+                    },
+                    {
+                        "label": "1.000€",
+                        "value": "1"
+                    },
+                    {
+                        "label": "3.000€",
+                        "value": "2"
+                    }
+                ]
+            }
+        ],
+        "value": "N"
+    }
+}

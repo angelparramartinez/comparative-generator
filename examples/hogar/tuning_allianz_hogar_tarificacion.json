@@ -1,0 +1,251 @@
+{
+    "dtoCap": {
+        "section": "section.discounts",
+        "label": "Descuento comercial % (CAP)",
+        "type": "number",
+        "component": "number",
+        "step": 1,
+        "required": false,
+        "min": 0,
+        "max": 100,
+        "value": 0,
+        "allowSavedTuning": true
+    },
+    "dtoVentaCruzada": {
+        "section": "section.discounts",
+        "label": "Descuento comercial % (venta cruzada)",
+        "type": "number",
+        "component": "number",
+        "step": 1,
+        "required": false,
+        "min": 0,
+        "max": 100,
+        "value": 0,
+        "allowSavedTuning": true
+    },
+    "comissionType": {
+        "section": "section.discounts",
+        "label": "Tipo de comisión sobre la prima",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "A",
+                        "value": "A"
+                    },
+                    {
+                        "label": "B",
+                        "value": "B"
+                    },
+                    {
+                        "label": "C",
+                        "value": "C"
+                    },
+                    {
+                        "label": "D",
+                        "value": "D"
+                    }
+                ]
+            }
+        ],
+        "value": "A",
+        "allowSavedTuning": true
+    },
+    "mesesVencimiento": {
+        "section": "section.additionalData",
+        "label": "Fecha de vencimiento",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Día 1 del mes actual",
+                        "value": "12"
+                    },
+                    {
+                        "label": "Día 1 del mes siguiente",
+                        "value": "13"
+                    }
+                ]
+            }
+        ],
+        "value": "12",
+        "allowSavedTuning": true
+    },
+    "specialObjectsOver12000": {
+        "section": "section.additionalData",
+        "label": "¿Objetos especiales con valor unitario superior a 12.000€?",
+        "type": "boolean",
+        "component": "radio",
+        "required": false,
+        "visible": "/insurance.risk.specialValueObjectsLimit >= 12000/",
+        "value": null,
+        "allowSavedTuning": true
+    },
+    "jewelryInOver7500": {
+        "section": "section.additionalData",
+        "label": "¿Joyas con valor unitario superior a 7500€ dentro de caja fuerte?",
+        "type": "boolean",
+        "component": "radio",
+        "required": false,
+        "visible": "/insurance.risk.jewelsInSafeBoxLimit>=7500/",
+        "value": null,
+        "allowSavedTuning": true
+    },
+    "jewelryOutOver7500": {
+        "section": "section.additionalData",
+        "label": "¿Joyas con valor unitario superior a 7500€ fuera de caja fuerte?",
+        "type": "boolean",
+        "component": "radio",
+        "required": false,
+        "visible": "/insurance.risk.jewelsOutSafeBoxLimit>=7500/",
+        "value": null,
+        "allowSavedTuning": true
+    },
+    "AttachedFloorAreaSelect": {
+        "section": "section.additionalData",
+        "label": "¿La vivienda dispone de anexos?",
+        "type": "boolean",
+        "component": "radio",
+        "required": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+        "visible": "/insurance.risk.buildingType=='DetachedHouse' || insurance.risk.buildingType=='TerracedHouse'/",
+        "value": false,
+        "allowSavedTuning": true
+    },
+    "AttachedFloorArea": {
+        "section": "section.additionalData",
+        "label": "Anexos (m2)",
+        "type": "number",
+        "component": "number",
+        "step": 1,
+        "required": "/tuning?.AttachedFloorAreaSelect/",
+        "visible": "/tuning?.AttachedFloorAreaSelect/",
+        "min": 0,
+        "max": 9999,
+        "value": 0,
+        "allowSavedTuning": true
+    },
+    "aestheticDamageToBuilding": {
+        "section": "section.allianz.covers",
+        "label": "Daños estéticos edificación",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "visible": true,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Según modalidad",
+                        "value": null
+                    },
+                    {
+                        "label": "Capital bajo",
+                        "value": "1"
+                    },
+                    {
+                        "label": "Capital medio",
+                        "value": "2"
+                    },
+                    {
+                        "label": "Capital alto",
+                        "value": "3"
+                    }
+                ]
+            }
+        ],
+        "value": null,
+        "allowSavedTuning": true
+    },
+    "aestheticDamageToContent": {
+        "section": "section.allianz.covers",
+        "label": "Daños estéticos contenido",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "visible": true,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "Según modalidad",
+                        "value": null
+                    },
+                    {
+                        "label": "Capital bajo",
+                        "value": "1"
+                    },
+                    {
+                        "label": "Capital medio",
+                        "value": "2"
+                    }
+                ]
+            }
+        ],
+        "value": null,
+        "allowSavedTuning": true
+    },
+    "solarPanels": {
+        "section": "section.allianz.covers",
+        "label": "Placas solares",
+        "type": "string",
+        "component": "select",
+        "required": false,
+        "visible": true,
+        "options": [
+            {
+                "items": [
+                    {
+                        "label": "No",
+                        "value": "N"
+                    },
+                    {
+                        "label": "Capital bajo",
+                        "value": "1"
+                    },
+                    {
+                        "label": "Capital medio",
+                        "value": "2"
+                    }
+                ]
+            }
+        ],
+        "value": "N",
+        "allowSavedTuning": true
+    },
+    "damageCausedByTenant": {
+        "section": "section.allianz.covers",
+        "label": "Daños causados por el inquilino (vandalismo)",
+        "type": "boolean",
+        "component": "radio",
+        "required": true,
+        "visible": "/insurance.risk.use=='Rental'/",
+        "value": false,
+        "allowSavedTuning": true
+    },
+    "smartphonesScreenDamages": {
+        "section": "section.allianz.covers",
+        "label": "Rotura de pantalla de teléfonos móviles",
+        "type": "boolean",
+        "component": "radio",
+        "required": true,
+        "visible": "/${modalityId}==5107/",
+        "value": false,
+        "allowSavedTuning": true
+    },
+    "allRisk": {
+        "section": "section.allianz.covers",
+        "label": "Todo Riesgo",
+        "type": "boolean",
+        "component": "radio",
+        "required": true,
+        "visible": "/${modalityId}==5107/",
+        "value": false,
+        "allowSavedTuning": true
+    }
+}
